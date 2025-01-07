@@ -252,7 +252,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         protected void checkBounds(int paramIndex) throws SQLException {
             int localParamIndex = paramIndex - 1;
 
-            if (paramIndex < 0 || localParamIndex >= ((PreparedQuery) CallableStatement.this.query).getParameterCount()) {
+            if (localParamIndex < 0 || localParamIndex >= ((PreparedQuery) CallableStatement.this.query).getParameterCount()) {
                 throw SQLError.createSQLException(
                         Messages.getString("CallableStatement.11",
                                 new Object[] { paramIndex, ((PreparedQuery) CallableStatement.this.query).getParameterCount() }),

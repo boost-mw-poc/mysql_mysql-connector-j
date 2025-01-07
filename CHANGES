@@ -3,6 +3,8 @@
 
 Version 9.3.0
 
+  - Fix for Bug#19829452, PARAMETER INDEX VALIDATION NOT PROPER IN CALLABLESTATEMENT.
+
 Version 9.2.0
 
   - Fix for Bug#116318 (Bug#37152533), useServerPrepStmts useLocalTransactionState cause first execute rollback failure.

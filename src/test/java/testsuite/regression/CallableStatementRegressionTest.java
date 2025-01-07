@@ -1954,4 +1954,20 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         assertEquals(11, isProcedure ? testCstmt.getInt("c") : testCstmt.getInt(1));
     }
 
+    /**
+     * Tests fix for Bug#19829452, PARAMETER INDEX VALIDATION NOT PROPER IN CALLABLESTATEMENT.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug19829452() throws Exception {
+        createProcedure("testBug19829452", "(IN a VARCHAR(10), INOUT b VARCHAR(10)) BEGIN SET b = 'data'; END");
+        CallableStatement testCstmt = this.conn.prepareCall("{ CALL testBug19829452(?, ?) }");
+        testCstmt.setString(1, "a");
+        testCstmt.setString(2, "b");
+        testCstmt.registerOutParameter(2, java.sql.Types.VARCHAR);
+        testCstmt.execute();
+        assertThrows(SQLException.class, () -> testCstmt.getString(0));
+    }
+
 }
