@@ -1,6 +1,8 @@
 # Changelog
 # https://dev.mysql.com/doc/relnotes/connector-j/en/
 
+Version 9.3.0
+
 Version 9.2.0
 
   - Fix for Bug#116318 (Bug#37152533), useServerPrepStmts useLocalTransactionState cause first execute rollback failure.
