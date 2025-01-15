@@ -22,6 +22,7 @@ package com.mysql.cj.result;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.regex.Pattern;
 
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
@@ -36,6 +37,9 @@ import com.mysql.cj.util.StringUtils;
  * A value factory for creating {@link java.lang.Boolean} values.
  */
 public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
+
+    public static final Pattern FLOATING_POINT_PTRN = Pattern.compile("-?\\d*\\.\\d*");
+    public static final Pattern INTEGER_PTRN = Pattern.compile("-?\\d+");
 
     public BooleanValueFactory(PropertySet pset) {
         super(pset);
@@ -93,10 +97,10 @@ public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
             return createFromLong(1);
         } else if (s.equalsIgnoreCase("N") || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("F") || s.equalsIgnoreCase("false")) {
             return createFromLong(0);
-        } else if (s.contains("e") || s.contains("E") || s.matches("-?\\d*\\.\\d*")) {
+        } else if (s.contains("e") || s.contains("E") || FLOATING_POINT_PTRN.matcher(s).matches()) {
             // floating point
             return createFromDouble(MysqlTextValueDecoder.getDouble(newBytes, 0, newBytes.length));
-        } else if (s.matches("-?\\d+")) {
+        } else if (INTEGER_PTRN.matcher(s).matches()) {
             // integer
             if (s.charAt(0) == '-' // TODO shouldn't we check the length as well?
                     || length <= MysqlTextValueDecoder.MAX_SIGNED_LONG_LEN - 1 && newBytes[0] >= '0' && newBytes[0] <= '8') {

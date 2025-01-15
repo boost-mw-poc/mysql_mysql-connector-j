@@ -20,6 +20,8 @@
 
 package com.mysql.cj.result;
 
+import java.util.regex.Pattern;
+
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
@@ -28,6 +30,9 @@ import com.mysql.cj.protocol.a.MysqlTextValueDecoder;
 import com.mysql.cj.util.StringUtils;
 
 public abstract class AbstractNumericValueFactory<T> extends DefaultValueFactory<T> {
+
+    public static final Pattern FLOATING_POINT_PTRN = Pattern.compile("-?\\d*\\.\\d*");
+    public static final Pattern INTEGER_PTRN = Pattern.compile("-?\\d+");
 
     public AbstractNumericValueFactory(PropertySet pset) {
         super(pset);
@@ -42,10 +47,10 @@ public abstract class AbstractNumericValueFactory<T> extends DefaultValueFactory
         String s = StringUtils.toString(bytes, offset, length, f.getEncoding());
         byte[] newBytes = s.getBytes();
 
-        if (s.contains("e") || s.contains("E") || s.matches("-?\\d*\\.\\d*")) {
+        if (s.contains("e") || s.contains("E") || FLOATING_POINT_PTRN.matcher(s).matches()) {
             // floating point
             return createFromDouble(MysqlTextValueDecoder.getDouble(newBytes, 0, newBytes.length));
-        } else if (s.matches("-?\\d+")) {
+        } else if (INTEGER_PTRN.matcher(s).matches()) {
             // integer
             if (s.charAt(0) == '-' // TODO shouldn't we check the length as well?
                     || length <= MysqlTextValueDecoder.MAX_SIGNED_LONG_LEN - 1 && newBytes[0] >= '0' && newBytes[0] <= '8') {
