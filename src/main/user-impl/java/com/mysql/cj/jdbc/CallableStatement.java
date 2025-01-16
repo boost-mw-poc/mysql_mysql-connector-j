@@ -2279,7 +2279,18 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
 
                         try {
                             setPstmt = this.connection.clientPrepareStatement(queryBuf.toString()).unwrap(ClientPreparedStatement.class);
-                            setPstmt.getQueryBindings().setFromBindValue(0, ((PreparedQuery) this.query).getQueryBindings().getBindValues()[inParamInfo.index]);
+                            int inOutParamIndex = 0;
+                            if (this.paramInfo.placeholderToParameterIndexMap == null) {
+                                inOutParamIndex = inParamInfo.index;
+                            } else {
+                                for (int i = 0; i < this.paramInfo.placeholderToParameterIndexMap.length; i++) {
+                                    if (this.paramInfo.placeholderToParameterIndexMap[i] == inParamInfo.index) {
+                                        inOutParamIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            setPstmt.getQueryBindings().setFromBindValue(0, ((PreparedQuery) this.query).getQueryBindings().getBindValues()[inOutParamIndex]);
                             setPstmt.executeUpdate();
                         } finally {
                             if (setPstmt != null) {

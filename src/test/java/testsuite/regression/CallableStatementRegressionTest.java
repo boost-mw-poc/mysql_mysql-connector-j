@@ -1970,4 +1970,19 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         assertThrows(SQLException.class, () -> testCstmt.getString(0));
     }
 
+    /**
+     * Tests fix for Bug#19857207, EXECUTE ON CALLABLESTATEMENT RESULTS IN ARRAYINDEXOUTOFBOUNDSEXCEPTION.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug19857207() throws Exception {
+        createProcedure("testBug19857207", "(IN a VARCHAR(10),INOUT b VARCHAR(10)) BEGIN SET b = 'data'; END");
+        CallableStatement testCstmt = this.conn.prepareCall("{ CALL testBug19857207('a', ?) }");
+        testCstmt.setString(1, "b");
+        testCstmt.registerOutParameter(1, java.sql.Types.VARCHAR);
+        testCstmt.execute();
+        assertEquals("data", testCstmt.getString(1));
+    }
+
 }
