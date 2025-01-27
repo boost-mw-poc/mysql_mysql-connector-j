@@ -1253,6 +1253,19 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 new ResultsetRowsStatic(new ArrayList<>(), new DefaultColumnDefinition(fields)));
     }
 
+    protected Field[] createBestRowIdentifierFields() {
+        Field[] fields = new Field[8];
+        fields[0] = new Field("", "SCOPE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 5);
+        fields[1] = new Field("", "COLUMN_NAME", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 32);
+        fields[2] = new Field("", "DATA_TYPE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 32);
+        fields[3] = new Field("", "TYPE_NAME", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 32);
+        fields[4] = new Field("", "COLUMN_SIZE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 10);
+        fields[5] = new Field("", "BUFFER_LENGTH", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 10);
+        fields[6] = new Field("", "DECIMAL_DIGITS", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 10);
+        fields[7] = new Field("", "PSEUDO_COLUMN", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 5);
+        return fields;
+    }
+
     @Override
     public ResultSet getBestRowIdentifier(String catalog, String schema, final String table, int scope, boolean nullable) throws SQLException {
         if (table == null) {
@@ -1263,15 +1276,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         final String dbFilter = getDatabase(catalog, schema);
         final String tableFilter = this.pedantic ? table : StringUtils.unQuoteIdentifier(table, this.quotedId);
 
-        Field[] fields = new Field[8];
-        fields[0] = new Field("", "SCOPE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 5);
-        fields[1] = new Field("", "COLUMN_NAME", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 32);
-        fields[2] = new Field("", "DATA_TYPE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 32);
-        fields[3] = new Field("", "TYPE_NAME", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 32);
-        fields[4] = new Field("", "COLUMN_SIZE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 10);
-        fields[5] = new Field("", "BUFFER_LENGTH", this.metadataCollationIndex, this.metadataEncoding, MysqlType.INT, 10);
-        fields[6] = new Field("", "DECIMAL_DIGITS", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 10);
-        fields[7] = new Field("", "PSEUDO_COLUMN", this.metadataCollationIndex, this.metadataEncoding, MysqlType.SMALLINT, 5);
+        Field[] fields = createBestRowIdentifierFields();
 
         final ArrayList<Row> rows = new ArrayList<>();
         final Statement stmt = this.conn.getMetadataSafeStatement();
@@ -1310,40 +1315,13 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                                     row[0] = Integer.toString(bestRowSession).getBytes();
                                     row[1] = rs.getBytes("Field");
 
-                                    String type = rs.getString("Type");
-                                    int size = stmt.getMaxFieldSize();
-                                    int decimals = 0;
-                                    boolean hasLength = false;
-
-                                    // Parse the Type column from MySQL.
-                                    if (type.indexOf("enum") != -1) {
-                                        String temp = type.substring(type.indexOf("("), type.indexOf(")"));
-                                        java.util.StringTokenizer tokenizer = new java.util.StringTokenizer(temp, ",");
-                                        int maxLength = 0;
-                                        while (tokenizer.hasMoreTokens()) {
-                                            maxLength = Math.max(maxLength, tokenizer.nextToken().length() - 2);
-                                        }
-                                        size = maxLength;
-                                        decimals = 0;
-                                        type = "enum";
-                                    } else if (type.indexOf("(") != -1) {
-                                        hasLength = true;
-                                        if (type.indexOf(",") != -1) {
-                                            size = Integer.parseInt(type.substring(type.indexOf("(") + 1, type.indexOf(",")));
-                                            decimals = Integer.parseInt(type.substring(type.indexOf(",") + 1, type.indexOf(")")));
-                                        } else {
-                                            size = Integer.parseInt(type.substring(type.indexOf("(") + 1, type.indexOf(")")));
-                                        }
-                                        type = type.substring(0, type.indexOf("("));
-                                    }
-
-                                    MysqlType ft = MysqlType.getByName(type.toUpperCase());
-                                    row[2] = s2b(
-                                            String.valueOf(ft == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT : ft.getJdbcType()));
-                                    row[3] = s2b(type);
-                                    row[4] = hasLength ? Integer.toString(size + decimals).getBytes() : Long.toString(ft.getPrecision()).getBytes();
+                                    TypeDescriptor typeDesc = new TypeDescriptor(rs.getString("Type"), rs.getString("Null"));
+                                    row[2] = Short.toString(typeDesc.mysqlType == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT
+                                            : (short) typeDesc.mysqlType.getJdbcType()).getBytes();
+                                    row[3] = s2b(typeDesc.mysqlType.getName());
+                                    row[4] = s2b(typeDesc.columnSize.toString());
                                     row[5] = Integer.toString(maxBufferSize).getBytes();
-                                    row[6] = Integer.toString(decimals).getBytes();
+                                    row[6] = typeDesc.decimalDigits == null ? null : s2b(typeDesc.decimalDigits.toString());
                                     row[7] = Integer.toString(bestRowNotPseudo).getBytes();
 
                                     rows.add(new ByteArrayRow(row, getExceptionInterceptor()));
@@ -3103,13 +3081,18 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return getSchemas(null, null);
     }
 
+    protected Field[] createSchemasFields() {
+        Field[] fields = new Field[2];
+        fields[0] = new Field("", "TABLE_SCHEM", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 0);
+        fields[1] = new Field("", "TABLE_CATALOG", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 0);
+        return fields;
+    }
+
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
         List<String> dbList = this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? getDatabases(schemaPattern) : new ArrayList<>();
 
-        Field[] fields = new Field[2];
-        fields[0] = new Field("", "TABLE_SCHEM", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 0);
-        fields[1] = new Field("", "TABLE_CATALOG", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 0);
+        Field[] fields = createSchemasFields();
 
         ArrayList<Row> rows = new ArrayList<>(dbList.size());
         for (String db : dbList) {
@@ -3214,8 +3197,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return "DATABASE,USER,SYSTEM_USER,SESSION_USER,PASSWORD,ENCRYPT,LAST_INSERT_ID,VERSION";
     }
 
-    @Override
-    public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+    protected Field[] createTablePrivilegesFields() {
         Field[] fields = new Field[7];
         fields[0] = new Field("", "TABLE_CAT", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 64);
         fields[1] = new Field("", "TABLE_SCHEM", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 1);
@@ -3224,6 +3206,13 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         fields[4] = new Field("", "GRANTEE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 77);
         fields[5] = new Field("", "PRIVILEGE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 64);
         fields[6] = new Field("", "IS_GRANTABLE", this.metadataCollationIndex, this.metadataEncoding, MysqlType.CHAR, 3);
+
+        return fields;
+    }
+
+    @Override
+    public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+        Field[] fields = createTablePrivilegesFields();
 
         final boolean dbMapsToSchema = this.databaseTerm.getValue() == DatabaseTerm.SCHEMA;
         final String dbFromTerm = getDatabase(catalog, schemaPattern);

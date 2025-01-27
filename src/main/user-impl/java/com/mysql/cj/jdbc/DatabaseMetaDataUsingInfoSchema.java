@@ -40,6 +40,7 @@ import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.result.ResultSetFactory;
+import com.mysql.cj.result.Field;
 import com.mysql.cj.util.LRUCache;
 import com.mysql.cj.util.StringUtils;
 
@@ -123,72 +124,9 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         appendJdbcTypeMappingQuery(query, "DATA_TYPE", "COLUMN_TYPE");
         query.append(" AS DATA_TYPE, ");
 
-        query.append("UPPER(CASE");
-        if (this.tinyInt1isBit) {
-            query.append(" WHEN UPPER(DATA_TYPE)='TINYINT' THEN CASE");
-            query.append(
-                    " WHEN LOCATE('ZEROFILL', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('(1)', COLUMN_TYPE) != 0 THEN ");
-            query.append(this.transformedBitIsBoolean ? "'BOOLEAN'" : "'BIT'");
-            query.append(" WHEN LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 AND LOCATE('UNSIGNED', UPPER(DATA_TYPE)) = 0 THEN 'TINYINT UNSIGNED'");
-            query.append(" ELSE DATA_TYPE END ");
-        }
-        query.append(
-                " WHEN LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 AND LOCATE('UNSIGNED', UPPER(DATA_TYPE)) = 0 AND LOCATE('SET', UPPER(DATA_TYPE)) <> 1 AND LOCATE('ENUM', UPPER(DATA_TYPE)) <> 1 THEN CONCAT(DATA_TYPE, ' UNSIGNED')");
+        appendTypeNameQuery(query);
 
-        // spatial data types
-        query.append(" WHEN UPPER(DATA_TYPE)='POINT' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='LINESTRING' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='POLYGON' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOINT' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTILINESTRING' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOLYGON' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRYCOLLECTION' THEN 'GEOMETRY'");
-        query.append(" WHEN UPPER(DATA_TYPE)='GEOMCOLLECTION' THEN 'GEOMETRY'");
-
-        query.append(" ELSE UPPER(DATA_TYPE) END) AS TYPE_NAME,");
-
-        query.append("UPPER(CASE");
-        query.append(" WHEN UPPER(DATA_TYPE)='DATE' THEN 10"); // supported range is '1000-01-01' to '9999-12-31'
-        if (this.conn.getServerVersion().meetsMinimum(ServerVersion.parseVersion("5.6.4"))) {
-            query.append(" WHEN UPPER(DATA_TYPE)='TIME'"); // supported range is '-838:59:59.000000' to '838:59:59.000000'
-            query.append("  THEN 8+(CASE WHEN DATETIME_PRECISION>0 THEN DATETIME_PRECISION+1 ELSE DATETIME_PRECISION END)");
-            query.append(" WHEN UPPER(DATA_TYPE)='DATETIME' OR"); // supported range is '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
-            query.append("  UPPER(DATA_TYPE)='TIMESTAMP'"); // supported range is '1970-01-01 00:00:01.000000' UTC to '2038-01-19 03:14:07.999999' UTC
-            query.append("  THEN 19+(CASE WHEN DATETIME_PRECISION>0 THEN DATETIME_PRECISION+1 ELSE DATETIME_PRECISION END)");
-        } else {
-            query.append(" WHEN UPPER(DATA_TYPE)='TIME' THEN 8"); // supported range is '-838:59:59.000000' to '838:59:59.000000'
-            query.append(" WHEN UPPER(DATA_TYPE)='DATETIME' OR"); // supported range is '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
-            query.append("  UPPER(DATA_TYPE)='TIMESTAMP'"); // supported range is '1970-01-01 00:00:01.000000' UTC to '2038-01-19 03:14:07.999999' UTC
-            query.append("  THEN 19");
-        }
-
-        query.append(" WHEN UPPER(DATA_TYPE)='YEAR' THEN 4");
-        if (this.tinyInt1isBit && !this.transformedBitIsBoolean) {
-            query.append(
-                    " WHEN UPPER(DATA_TYPE)='TINYINT' AND LOCATE('ZEROFILL', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('(1)', COLUMN_TYPE) != 0 THEN 1");
-        }
-        // workaround for Bug#69042 (16712664), "MEDIUMINT PRECISION/TYPE INCORRECT IN INFORMATION_SCHEMA.COLUMNS", I_S bug returns NUMERIC_PRECISION=7 for MEDIUMINT UNSIGNED when it must be 8.
-        query.append(" WHEN UPPER(DATA_TYPE)='MEDIUMINT' AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 THEN 8");
-        query.append(" WHEN UPPER(DATA_TYPE)='JSON' THEN 1073741824"); // JSON columns is limited to the value of the max_allowed_packet system variable (max value 1073741824)
-
-        // spatial data types
-        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRY' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='POINT' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='LINESTRING' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='POLYGON' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOINT' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTILINESTRING' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOLYGON' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRYCOLLECTION' THEN 65535");
-        query.append(" WHEN UPPER(DATA_TYPE)='GEOMCOLLECTION' THEN 65535");
-
-        query.append(" WHEN CHARACTER_MAXIMUM_LENGTH IS NULL THEN NUMERIC_PRECISION");
-        query.append(" WHEN CHARACTER_MAXIMUM_LENGTH > ");
-        query.append(Integer.MAX_VALUE);
-        query.append(" THEN ");
-        query.append(Integer.MAX_VALUE);
-        query.append(" ELSE CHARACTER_MAXIMUM_LENGTH");
-        query.append(" END) AS COLUMN_SIZE,");
+        appendColumnSizeQuery(query);
 
         query.append(maxBufferSize);
         query.append(" AS BUFFER_LENGTH,");
@@ -1225,34 +1163,239 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         buf.append(" END ");
     }
 
+    private final void appendTypeNameQuery(StringBuilder query) {
+        query.append("UPPER(CASE");
+        if (this.tinyInt1isBit) {
+            query.append(" WHEN UPPER(DATA_TYPE)='TINYINT' THEN CASE");
+            query.append(
+                    " WHEN LOCATE('ZEROFILL', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('(1)', COLUMN_TYPE) != 0 THEN ");
+            query.append(this.transformedBitIsBoolean ? "'BOOLEAN'" : "'BIT'");
+            query.append(" WHEN LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 AND LOCATE('UNSIGNED', UPPER(DATA_TYPE)) = 0 THEN 'TINYINT UNSIGNED'");
+            query.append(" ELSE DATA_TYPE END ");
+        }
+        query.append(
+                " WHEN LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 AND LOCATE('UNSIGNED', UPPER(DATA_TYPE)) = 0 AND LOCATE('SET', UPPER(DATA_TYPE)) <> 1 AND LOCATE('ENUM', UPPER(DATA_TYPE)) <> 1 THEN CONCAT(DATA_TYPE, ' UNSIGNED')");
+
+        // spatial data types
+        query.append(" WHEN UPPER(DATA_TYPE)='POINT' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='LINESTRING' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='POLYGON' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOINT' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTILINESTRING' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOLYGON' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRYCOLLECTION' THEN 'GEOMETRY'");
+        query.append(" WHEN UPPER(DATA_TYPE)='GEOMCOLLECTION' THEN 'GEOMETRY'");
+
+        query.append(" ELSE UPPER(DATA_TYPE) END) AS TYPE_NAME,");
+    }
+
+    private final void appendColumnSizeQuery(StringBuilder query) {
+        query.append("UPPER(CASE");
+        query.append(" WHEN UPPER(DATA_TYPE)='DATE' THEN 10"); // supported range is '1000-01-01' to '9999-12-31'
+        if (this.conn.getServerVersion().meetsMinimum(ServerVersion.parseVersion("5.6.4"))) {
+            query.append(" WHEN UPPER(DATA_TYPE)='TIME'"); // supported range is '-838:59:59.000000' to '838:59:59.000000'
+            query.append("  THEN 8+(CASE WHEN DATETIME_PRECISION>0 THEN DATETIME_PRECISION+1 ELSE DATETIME_PRECISION END)");
+            query.append(" WHEN UPPER(DATA_TYPE)='DATETIME' OR"); // supported range is '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
+            query.append("  UPPER(DATA_TYPE)='TIMESTAMP'"); // supported range is '1970-01-01 00:00:01.000000' UTC to '2038-01-19 03:14:07.999999' UTC
+            query.append("  THEN 19+(CASE WHEN DATETIME_PRECISION>0 THEN DATETIME_PRECISION+1 ELSE DATETIME_PRECISION END)");
+        } else {
+            query.append(" WHEN UPPER(DATA_TYPE)='TIME' THEN 8"); // supported range is '-838:59:59.000000' to '838:59:59.000000'
+            query.append(" WHEN UPPER(DATA_TYPE)='DATETIME' OR"); // supported range is '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
+            query.append("  UPPER(DATA_TYPE)='TIMESTAMP'"); // supported range is '1970-01-01 00:00:01.000000' UTC to '2038-01-19 03:14:07.999999' UTC
+            query.append("  THEN 19");
+        }
+
+        query.append(" WHEN UPPER(DATA_TYPE)='YEAR' THEN 4");
+        if (this.tinyInt1isBit && !this.transformedBitIsBoolean) {
+            query.append(
+                    " WHEN UPPER(DATA_TYPE)='TINYINT' AND LOCATE('ZEROFILL', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) = 0 AND LOCATE('(1)', COLUMN_TYPE) != 0 THEN 1");
+        }
+        // workaround for Bug#69042 (16712664), "MEDIUMINT PRECISION/TYPE INCORRECT IN INFORMATION_SCHEMA.COLUMNS", I_S bug returns NUMERIC_PRECISION=7 for MEDIUMINT UNSIGNED when it must be 8.
+        query.append(" WHEN UPPER(DATA_TYPE)='MEDIUMINT' AND LOCATE('UNSIGNED', UPPER(COLUMN_TYPE)) != 0 THEN 8");
+        query.append(" WHEN UPPER(DATA_TYPE)='JSON' THEN 1073741824"); // JSON columns is limited to the value of the max_allowed_packet system variable (max value 1073741824)
+
+        // spatial data types
+        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRY' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='POINT' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='LINESTRING' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='POLYGON' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOINT' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTILINESTRING' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='MULTIPOLYGON' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='GEOMETRYCOLLECTION' THEN 65535");
+        query.append(" WHEN UPPER(DATA_TYPE)='GEOMCOLLECTION' THEN 65535");
+
+        query.append(" WHEN CHARACTER_MAXIMUM_LENGTH IS NULL THEN NUMERIC_PRECISION");
+        query.append(" WHEN CHARACTER_MAXIMUM_LENGTH > ");
+        query.append(Integer.MAX_VALUE);
+        query.append(" THEN ");
+        query.append(Integer.MAX_VALUE);
+        query.append(" ELSE CHARACTER_MAXIMUM_LENGTH");
+        query.append(" END) AS COLUMN_SIZE,");
+    }
+
     @Override
     public ResultSet getSchemas() throws SQLException {
-        // TODO Implement with I_S
-        return super.getSchemas();
+        return getSchemas(null, null);
     }
 
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-        // TODO Implement with I_S
-        return super.getSchemas(catalog, schemaPattern);
+        final boolean dbMapsToSchema = this.databaseTerm.getValue() == DatabaseTerm.SCHEMA;
+        String dbFilter = getDatabase(catalog, schemaPattern);
+        dbFilter = this.pedantic ? dbFilter : StringUtils.unQuoteIdentifier(dbFilter, this.quotedId);
+
+        StringBuilder query = new StringBuilder("SELECT SCHEMA_NAME AS TABLE_SCHEM, CATALOG_NAME AS TABLE_CATALOG FROM INFORMATION_SCHEMA.SCHEMATA");
+        if (!dbMapsToSchema) {
+            query.append(" WHERE FALSE");
+        } else if (dbFilter != null) {
+            query.append(" WHERE");
+            query.append(dbMapsToSchema && StringUtils.hasWildcards(dbFilter) ? " SCHEMA_NAME LIKE ?" : " SCHEMA_NAME = ?");
+        }
+
+        PreparedStatement pStmt = null;
+        try {
+            pStmt = prepareMetaDataSafeStatement(query.toString());
+
+            if (dbFilter != null) {
+                pStmt.setString(1, dbFilter);
+            }
+
+            ResultSet rs = executeMetadataQuery(pStmt);
+            ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createSchemasFields());
+            return rs;
+        } finally {
+            if (pStmt != null) {
+                pStmt.close();
+            }
+        }
     }
 
     @Override
     public ResultSet getCatalogs() throws SQLException {
-        // TODO Implement with I_S
-        return super.getCatalogs();
+        final boolean dbMapsToSchema = this.databaseTerm.getValue() == DatabaseTerm.SCHEMA;
+        Statement stmt = this.conn.getMetadataSafeStatement();
+
+        StringBuilder query = new StringBuilder("SELECT SCHEMA_NAME AS TABLE_CAT FROM INFORMATION_SCHEMA.SCHEMATA");
+        if (dbMapsToSchema) {
+            query.append(" WHERE FALSE");
+        }
+        ResultSet rs = stmt.executeQuery(query.toString());
+
+        Field[] fields = new Field[1];
+        fields[0] = new Field("", "TABLE_CAT", getMetadataCollationIndex(), getMetadataEncoding(), MysqlType.VARCHAR, 0);
+
+        ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(fields);
+        return rs;
     }
 
     @Override
     public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
-        // TODO Implement with I_S
-        return super.getTablePrivileges(catalog, schemaPattern, tableNamePattern);
+        final boolean dbMapsToSchema = this.databaseTerm.getValue() == DatabaseTerm.SCHEMA;
+        String dbFilter = getDatabase(catalog, schemaPattern);
+        dbFilter = this.pedantic ? dbFilter : StringUtils.unQuoteIdentifier(dbFilter, this.quotedId);
+        final String tableNameFilter = this.pedantic ? tableNamePattern : StringUtils.unQuoteIdentifier(tableNamePattern, this.quotedId);
+
+        StringBuilder query = new StringBuilder(
+                dbMapsToSchema ? "SELECT TABLE_CATALOG AS TABLE_CAT, TABLE_SCHEMA AS TABLE_SCHEM" : "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM");
+        query.append(", TABLE_NAME, NULL AS GRANTOR, GRANTEE, PRIVILEGE_TYPE AS PRIVILEGE, IS_GRANTABLE FROM INFORMATION_SCHEMA.TABLE_PRIVILEGES");
+
+        StringBuilder condition = new StringBuilder();
+        if (dbFilter != null) {
+            condition.append(dbMapsToSchema && StringUtils.hasWildcards(dbFilter) ? " TABLE_SCHEMA LIKE ?" : " TABLE_SCHEMA = ?");
+        }
+        if (tableNameFilter != null) {
+            if (condition.length() > 0) {
+                condition.append(" AND");
+            }
+            condition.append(StringUtils.hasWildcards(tableNameFilter) ? " TABLE_NAME LIKE ?" : " TABLE_NAME = ?");
+        }
+        if (condition.length() > 0) {
+            query.append(" WHERE");
+        }
+        query.append(condition);
+
+        PreparedStatement pStmt = null;
+        try {
+            pStmt = prepareMetaDataSafeStatement(query.toString());
+
+            int nextId = 1;
+            if (dbFilter != null) {
+                pStmt.setString(nextId++, dbFilter);
+            }
+            if (tableNameFilter != null) {
+                pStmt.setString(nextId++, tableNameFilter);
+            }
+            ResultSet rs = executeMetadataQuery(pStmt);
+            ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createTablePrivilegesFields());
+            return rs;
+        } finally {
+            if (pStmt != null) {
+                pStmt.close();
+            }
+        }
     }
 
     @Override
     public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
-        // TODO Implement with I_S
-        return super.getBestRowIdentifier(catalog, schema, table, scope, nullable);
+        if (table == null) {
+            throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.2"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
+                    getExceptionInterceptor());
+        }
+        String dbFilter = getDatabase(catalog, schema);
+        final String tableNameFilter = this.pedantic ? table : StringUtils.unQuoteIdentifier(table, this.quotedId);
+        StringBuilder query = new StringBuilder("SELECT ");
+        query.append(bestRowSession);
+        query.append(" AS SCOPE, COLUMN_NAME, ");
+
+        appendJdbcTypeMappingQuery(query, "DATA_TYPE", "COLUMN_TYPE");
+        query.append(" AS DATA_TYPE, ");
+
+        appendTypeNameQuery(query);
+
+        appendColumnSizeQuery(query);
+
+        query.append(maxBufferSize);
+        query.append(" AS BUFFER_LENGTH,");
+        query.append("UPPER(CASE");
+        query.append(" WHEN UPPER(DATA_TYPE)='DECIMAL' THEN NUMERIC_SCALE");
+        query.append(" WHEN UPPER(DATA_TYPE)='FLOAT' OR UPPER(DATA_TYPE)='DOUBLE' THEN");
+        query.append(" CASE WHEN NUMERIC_SCALE IS NULL THEN 0");
+        query.append(" ELSE NUMERIC_SCALE END");
+        query.append(" ELSE NULL END) AS DECIMAL_DIGITS,");
+        query.append(bestRowNotPseudo);
+        query.append(" AS PSEUDO_COLUMN");
+        query.append(" FROM INFORMATION_SCHEMA.COLUMNS");
+
+        StringBuilder condition = new StringBuilder();
+        if (dbFilter != null) {
+            condition.append(" TABLE_SCHEMA = ?");
+        }
+
+        if (condition.length() > 0) {
+            condition.append(" AND");
+        }
+        condition.append(" TABLE_NAME = ?");
+        condition.append(" AND COLUMN_KEY = 'PRI'");
+        query.append(" WHERE");
+        query.append(condition);
+
+        PreparedStatement pStmt = null;
+        try {
+            pStmt = prepareMetaDataSafeStatement(query.toString());
+            int nextId = 1;
+            if (dbFilter != null) {
+                pStmt.setString(nextId++, dbFilter);
+            }
+            pStmt.setString(nextId++, tableNameFilter);
+            ResultSet rs = executeMetadataQuery(pStmt);
+            ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createBestRowIdentifierFields());
+            return rs;
+        } finally {
+            if (pStmt != null) {
+                pStmt.close();
+            }
+        }
     }
 
 }

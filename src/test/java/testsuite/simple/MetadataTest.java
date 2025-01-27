@@ -113,6 +113,13 @@ public class MetadataTest extends BaseTestCase {
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        final String expectedDbName1 = "wl16756db1";
+        final String expectedDbName2 = "wl16756db1";
+        final String expectedDbName3 = "wl16756db1";
+        createDatabase(expectedDbName1);
+        createDatabase(expectedDbName2);
+        createDatabase(expectedDbName3);
+
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -122,48 +129,79 @@ public class MetadataTest extends BaseTestCase {
                 ResultSet rs1 = null;
                 ResultSet rs2 = null;
                 ResultSet rs3 = null;
+                ResultSet rs4 = null;
 
                 try {
                     testConn = getConnectionWithProps(props);
                     DatabaseMetaData dbmd = testConn.getMetaData();
-                    boolean lowerCaseIds = dbmd.storesLowerCaseQuotedIdentifiers();
-                    String expectedDbName = lowerCaseIds ? this.dbName.toLowerCase() : this.dbName;
 
                     rs1 = dbmd.getSchemas();
-                    rs2 = dbmd.getSchemas(this.dbName, this.dbName.substring(0, 3) + "%");
+                    rs2 = dbmd.getSchemas(null, "wl16756db%");
                     rs3 = dbmd.getCatalogs();
+                    rs4 = dbmd.getSchemas(null, "wl16756dbfoo%");
 
                     if (dbMapsToSchema) {
-                        boolean found = false;
-                        while (!found && rs1.next()) {
+                        boolean found1 = false;
+                        boolean found2 = false;
+                        boolean found3 = false;
+                        while (!found1 && !found2 && !found3 && rs1.next()) {
                             assertEquals("def", rs1.getString("TABLE_CATALOG"));
-                            if (expectedDbName.equals(rs1.getString("TABLE_SCHEM"))) {
-                                found = true;
+                            if (expectedDbName1.equals(rs1.getString("TABLE_SCHEM"))) {
+                                found1 = true;
+                            }
+                            if (expectedDbName2.equals(rs1.getString("TABLE_SCHEM"))) {
+                                found2 = true;
+                            }
+                            if (expectedDbName3.equals(rs1.getString("TABLE_SCHEM"))) {
+                                found3 = true;
                             }
                         }
-                        assertTrue(found);
+                        assertTrue(found1);
+                        assertTrue(found2);
+                        assertTrue(found3);
 
-                        found = false;
-                        while (!found && rs2.next()) {
+                        found1 = false;
+                        found2 = false;
+                        found3 = false;
+                        while (!found1 && !found2 && !found3 && rs2.next()) {
                             assertEquals("def", rs2.getString("TABLE_CATALOG"));
-                            if (expectedDbName.equals(rs2.getString("TABLE_SCHEM"))) {
-                                found = true;
+                            if (expectedDbName1.equals(rs2.getString("TABLE_SCHEM"))) {
+                                found1 = true;
+                            }
+                            if (expectedDbName2.equals(rs2.getString("TABLE_SCHEM"))) {
+                                found2 = true;
+                            }
+                            if (expectedDbName3.equals(rs2.getString("TABLE_SCHEM"))) {
+                                found3 = true;
                             }
                         }
-                        assertTrue(found);
+                        assertTrue(found1);
+                        assertTrue(found2);
+                        assertTrue(found3);
 
                         assertFalse(rs3.next());
+                        assertFalse(rs4.next());
                     } else {
                         assertFalse(rs1.next());
                         assertFalse(rs2.next());
 
-                        boolean found = false;
-                        while (!found && rs3.next()) {
-                            if (expectedDbName.equals(rs3.getString("TABLE_CAT"))) {
-                                found = true;
+                        boolean found1 = false;
+                        boolean found2 = false;
+                        boolean found3 = false;
+                        while (!found1 && !found2 && !found3 && rs3.next()) {
+                            if (expectedDbName1.equals(rs3.getString("TABLE_CAT"))) {
+                                found1 = true;
+                            }
+                            if (expectedDbName2.equals(rs3.getString("TABLE_CAT"))) {
+                                found2 = true;
+                            }
+                            if (expectedDbName3.equals(rs3.getString("TABLE_CAT"))) {
+                                found3 = true;
                             }
                         }
-                        assertTrue(found);
+                        assertTrue(found1);
+                        assertTrue(found2);
+                        assertTrue(found3);
                     }
                 } finally {
                     if (testConn != null) {
@@ -1722,7 +1760,7 @@ public class MetadataTest extends BaseTestCase {
         String tableName = "testGetTablePrivileges";
         createTable(tableName, "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
         createUser("'testGTPUser'@'%'", "IDENTIFIED BY 'aha'");
-        this.stmt.executeUpdate("grant SELECT on `" + this.dbName + "`.`testGetTablePrivileges` to 'testGTPUser'@'%'");
+        this.stmt.executeUpdate("GRANT SELECT ON `" + this.dbName + "`.`testGetTablePrivileges` TO 'testGTPUser'@'%'");
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
@@ -1744,22 +1782,31 @@ public class MetadataTest extends BaseTestCase {
                     }
 
                     this.rs = metaData.getTablePrivileges(null, null, tablePattern);
-                    testGetTablePrivileges_checkResult(dbMapsToSchema, tableName);
+                    testGetTablePrivileges_checkResult(dbMapsToSchema, useIS, tableName);
 
                     this.rs = metaData.getTablePrivileges(null, this.dbName, tablePattern);
-                    testGetTablePrivileges_checkResult(dbMapsToSchema, tableName);
+                    testGetTablePrivileges_checkResult(dbMapsToSchema, useIS, tableName);
 
                     this.rs = metaData.getTablePrivileges(this.dbName, null, tablePattern);
-                    testGetTablePrivileges_checkResult(dbMapsToSchema, tableName);
+                    testGetTablePrivileges_checkResult(dbMapsToSchema, useIS, tableName);
+
+                    this.rs = metaData.getTablePrivileges(null, null, "testGetTablePrivFoo%");
+                    assertFalse(this.rs.next());
 
                     if (dbMapsToSchema) {
                         String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
                         this.rs = metaData.getTablePrivileges(null, dbPattern, tablePattern);
                         assertTrue(this.rs.next(), "Schema pattern " + dbPattern + " should be recognized.");
+
+                        this.rs = metaData.getTablePrivileges(null, "foo", "testGetTablePriv%");
+                        assertFalse(this.rs.next());
                     } else {
                         String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
                         this.rs = metaData.getTablePrivileges(dbPattern, null, tablePattern);
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
+
+                        this.rs = metaData.getTablePrivileges("foo", null, "testGetTablePriv%");
+                        assertFalse(this.rs.next());
                     }
                 } finally {
                     if (testConn != null) {
@@ -1770,7 +1817,7 @@ public class MetadataTest extends BaseTestCase {
         }
     }
 
-    private void testGetTablePrivileges_checkResult(boolean dbMapsToSchema, String tableName) throws Exception {
+    private void testGetTablePrivileges_checkResult(boolean dbMapsToSchema, boolean useIS, String tableName) throws Exception {
         boolean runningOnWindows = Util.isRunningOnWindows();
         assertTrue(this.rs.next());
         if (dbMapsToSchema) {
@@ -1781,10 +1828,15 @@ public class MetadataTest extends BaseTestCase {
             assertNull(this.rs.getString("TABLE_SCHEM"));
         }
         assertEquals(tableName, this.rs.getString("TABLE_NAME"));
-        assertTrue(this.rs.getString("GRANTOR").startsWith(mainConnectionUrl.getMainHost().getUser()));
-        assertEquals("testGTPUser@%", this.rs.getString("GRANTEE"));
+        assertTrue(useIS ? this.rs.getString("GRANTOR") == null : this.rs.getString("GRANTOR").startsWith(mainConnectionUrl.getMainHost().getUser()));
+
+        assertEquals(useIS ? "'testGTPUser'@'%'" : "testGTPUser@%", this.rs.getString("GRANTEE"));
         assertEquals("SELECT", this.rs.getString("PRIVILEGE"));
-        assertNull(this.rs.getString("IS_GRANTABLE"));
+        if (useIS) {
+            assertEquals("NO", this.rs.getString("IS_GRANTABLE"));
+        } else {
+            assertNull(this.rs.getString("IS_GRANTABLE"));
+        }
         assertFalse(this.rs.next());
     }
 
@@ -1803,7 +1855,6 @@ public class MetadataTest extends BaseTestCase {
 
                 Connection conn1 = null;
                 try {
-
                     conn1 = getConnectionWithProps(props);
                     DatabaseMetaData metaData = conn1.getMetaData();
 
@@ -1820,12 +1871,20 @@ public class MetadataTest extends BaseTestCase {
                         String dbPattern = conn1.getSchema().substring(0, conn1.getSchema().length() - 1) + "%";
                         this.rs = metaData.getBestRowIdentifier(null, dbPattern, tableName, DatabaseMetaData.bestRowNotPseudo, true);
                         assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
+
+                        this.rs = metaData.getBestRowIdentifier(null, "foo", "testGetBestRowIdentifier", DatabaseMetaData.bestRowNotPseudo, true);
+                        assertFalse(this.rs.next());
                     } else {
                         String dbPattern = conn1.getCatalog().substring(0, conn1.getCatalog().length() - 1) + "%";
                         this.rs = metaData.getBestRowIdentifier(dbPattern, null, tableName, DatabaseMetaData.bestRowNotPseudo, true);
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
+
+                        this.rs = metaData.getBestRowIdentifier("foo", null, "testGetBestRowIdentifier", DatabaseMetaData.bestRowNotPseudo, true);
+                        assertFalse(this.rs.next());
                     }
 
+                    this.rs = metaData.getBestRowIdentifier(null, null, "testGetBestRowFoo", DatabaseMetaData.bestRowNotPseudo, true);
+                    assertFalse(this.rs.next());
                 } finally {
                     if (conn1 != null) {
                         conn1.close();
@@ -1841,8 +1900,8 @@ public class MetadataTest extends BaseTestCase {
         assertEquals(DatabaseMetaData.bestRowSession, rs1.getShort("SCOPE"));
         assertEquals("field1", rs1.getString("COLUMN_NAME"));
         assertEquals(Types.INTEGER, rs1.getInt("DATA_TYPE"));
-        assertEquals("int", rs1.getString("TYPE_NAME"));
-        assertEquals(versionMeetsMinimum(8, 0, 19) ? 10 : 11, rs1.getInt("COLUMN_SIZE"));
+        assertEquals("INT", rs1.getString("TYPE_NAME"));
+        assertEquals(10, rs1.getInt("COLUMN_SIZE"));
         assertEquals(65535, rs1.getInt("BUFFER_LENGTH"));
         assertEquals(0, rs1.getShort("DECIMAL_DIGITS"));
         assertEquals(DatabaseMetaData.bestRowNotPseudo, rs1.getShort("PSEUDO_COLUMN"));

@@ -5876,7 +5876,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
                     } else {
                         assertTrue(this.rs.next(), testCase);
                         assertEquals("id", this.rs.getString("COLUMN_NAME"), testCase);
-                        assertEquals("int", this.rs.getString("TYPE_NAME"), testCase);
+                        assertEquals("INT", this.rs.getString("TYPE_NAME"), testCase);
                         assertFalse(this.rs.next(), testCase);
                     }
                 }
