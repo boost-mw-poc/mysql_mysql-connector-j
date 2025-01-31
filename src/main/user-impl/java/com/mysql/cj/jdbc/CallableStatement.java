@@ -391,9 +391,9 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
 
     private final static int NOT_OUTPUT_PARAMETER_INDICATOR = Integer.MIN_VALUE;
 
-    private final static String PARAMETER_NAMESPACE_PREFIX = "@com_mysql_jdbc_outparam_";
+    private final static String PARAMETER_NAMESPACE_PREFIX = "com_mysql_jdbc_outparam_";
 
-    private static String mangleParameterName(String origParameterName) {
+    private String mangleParameterName(String origParameterName) {
         if (origParameterName == null) {
             return null;
         }
@@ -404,9 +404,10 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
             offset = 1;
         }
 
-        StringBuilder paramNameBuf = new StringBuilder(PARAMETER_NAMESPACE_PREFIX.length() + origParameterName.length());
-        paramNameBuf.append(PARAMETER_NAMESPACE_PREFIX);
-        paramNameBuf.append(origParameterName.substring(offset));
+        StringBuilder paramNameBuf = new StringBuilder(1 + PARAMETER_NAMESPACE_PREFIX.length() + origParameterName.length());
+        paramNameBuf.append("@");
+        paramNameBuf.append(StringUtils.quoteIdentifier(PARAMETER_NAMESPACE_PREFIX + origParameterName.substring(offset),
+                this.session.getIdentifierQuoteString(), this.pedantic));
 
         return paramNameBuf.toString();
     }

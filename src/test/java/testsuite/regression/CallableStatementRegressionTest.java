@@ -1386,7 +1386,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
                         cstmt.getString(2);
                         return null;
                     });
-                    assertThrows(testCase, SQLException.class, "Column '@com_mysql_jdbc_outparam_oparam' not found\\.", () -> {
+                    assertThrows(testCase, SQLException.class, "Column '@`com_mysql_jdbc_outparam_oparam`' not found\\.", () -> {
                         cstmt.getString("oparam");
                         return null;
                     });
@@ -1983,6 +1983,22 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         testCstmt.registerOutParameter(1, java.sql.Types.VARCHAR);
         testCstmt.execute();
         assertEquals("data", testCstmt.getString(1));
+    }
+
+    /**
+     * Tests fix for Bug#20279671, PROCEDURE EXECUTION FAILS WHEN THE PARAMETER NAME CONTAINS ESCAPE CHARACTER.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug20279671() throws Exception {
+        createProcedure("testbug20279671p", "(IN `p``1` INT, INOUT `p``2` INT) BEGIN Set `p``2` = `p``1` +`p``2`; END");
+        CallableStatement testCstmt = this.conn.prepareCall("{ CALL testbug20279671p(?, ?) }");
+        testCstmt.setInt(1, 1);
+        testCstmt.setInt(2, 2);
+        testCstmt.registerOutParameter(2, java.sql.Types.INTEGER);
+        testCstmt.execute();
+        assertEquals(3, testCstmt.getInt("p`2"));
     }
 
 }
