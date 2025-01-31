@@ -20,6 +20,7 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
+import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
@@ -51,7 +52,6 @@ import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.NativePacketPayload;
-import com.mysql.cj.util.StringUtils;
 
 /**
  * MySQL 'authentication_kerberos_client' authentication plugin.
@@ -250,10 +250,22 @@ public class AuthenticationKerberosClient implements AuthenticationPlugin<Native
             return;
         }
 
-        // In-memory login configuration. Used only if system property 'java.security.auth.login.config' is not set.
-        String loginConfigFile = System.getProperty("java.security.auth.login.config");
+        // Validate JAAS login module configuration.
+        boolean validJaasLoginConfig = false;
+        Configuration config = java.security.AccessController.doPrivileged((PrivilegedAction<Configuration>) Configuration::getConfiguration);
+        AppConfigurationEntry[] cfgEntries = config.getAppConfigurationEntry(LOGIN_CONFIG_ENTRY);
+        if (cfgEntries != null && cfgEntries.length > 0) {
+            for (AppConfigurationEntry cfgEntry : cfgEntries) {
+                if (!"com.sun.security.auth.module.Krb5LoginModule".equals(cfgEntry.getLoginModuleName())) {
+                    throw ExceptionFactory.createException(Messages.getString("AuthenticationKerberosClientPlugin.InvalidLoginModuleDetected"));
+                }
+            }
+            validJaasLoginConfig = true;
+        }
+
+        // In-memory login configuration. Used only if no valid JAAS login config was specified by 'java.security.auth.login.config'.
         Configuration loginConfig = null;
-        if (StringUtils.isNullOrEmpty(loginConfigFile)) {
+        if (!validJaasLoginConfig) {
             final String localUser = this.userPrincipalName;
             final boolean debug = Boolean.getBoolean("sun.security.jgss.debug");
             loginConfig = new Configuration() {
