@@ -1072,29 +1072,27 @@ public class UpdatableResultSet extends ResultSetImpl {
         }
 
         for (int i = 0; i < numKeys; i++) {
-            byte[] dataFrom = null;
             int index = this.primaryKeyIndices.get(i).intValue();
-
             if (!this.doingUpdates && !this.onInsertRow) {
                 setParamValue(this.refresher, i + 1, this.thisRow, index, getMetadata().getFields()[index]);
                 continue;
             }
 
-            dataFrom = updateInsertStmt != null ? updateInsertStmt.getBytesRepresentation(index + 1) : null;
-
-            // Primary keys not set?
-            if (updateInsertStmt == null || updateInsertStmt.isNull(index + 1) || dataFrom.length == 0
-                    || this.doingUpdates && !this.columnsToUpdate.contains(index)) {
-                setParamValue(this.refresher, i + 1, this.thisRow, index, getMetadata().getFields()[index]);
-                continue;
-            }
-
             if (this.doingUpdates) {
+                // Primary keys not set?
+                if (this.columnsToUpdate == null || !this.columnsToUpdate.contains(index)) {
+                    setParamValue(this.refresher, i + 1, this.thisRow, index, getMetadata().getFields()[index]);
+                    continue;
+                }
                 this.refresher.getQueryBindings().setFromBindValue(i, updateInsertStmt.getQueryBindings().getBindValues()[updateColumnIndexes.get(index)]);
-
             } else {
+                byte[] dataFrom = updateInsertStmt.getBytesRepresentation(index + 1);
+                // Primary keys not set?
+                if (updateInsertStmt.isNull(index + 1) || dataFrom.length == 0) {
+                    setParamValue(this.refresher, i + 1, this.thisRow, index, getMetadata().getFields()[index]);
+                    continue;
+                }
                 this.refresher.getQueryBindings().setFromBindValue(i, updateInsertStmt.getQueryBindings().getBindValues()[index]);
-
             }
         }
 

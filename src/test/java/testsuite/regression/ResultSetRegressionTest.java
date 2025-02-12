@@ -8988,4 +8988,79 @@ public class ResultSetRegressionTest extends BaseTestCase {
         });
     }
 
+	/**
+     * Tests fix for Bug#117294 (Bug#37523180), Updatable ResultSet fails with 'Parameter index out of range'.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug117294() throws Exception {
+        createTable("testBug117294_1", "(id INT AUTO_INCREMENT PRIMARY KEY, c0 INT, c1 INT)");
+        this.stmt.execute("INSERT INTO testBug117294_1 VALUES (1, 2, 3)");
+
+        PreparedStatement pStmt = this.conn.prepareStatement("SELECT c0, c1, id FROM testBug117294_1", ResultSet.TYPE_SCROLL_INSENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+
+        this.rs = pStmt.executeQuery();
+        assertTrue(this.rs.next());
+        assertEquals(2, this.rs.getInt(1));
+        assertEquals(3, this.rs.getInt(2));
+        assertEquals(1, this.rs.getInt(3));
+        this.rs.updateInt(1, 4);
+        this.rs.updateRow();
+        assertEquals(4, this.rs.getInt(1));
+        assertEquals(3, this.rs.getInt(2));
+        assertEquals(1, this.rs.getInt(3));
+        this.rs.updateInt(3, 5);
+        this.rs.updateRow();
+        assertEquals(4, this.rs.getInt(1));
+        assertEquals(3, this.rs.getInt(2));
+        assertEquals(5, this.rs.getInt(3));
+
+        this.rs.moveToInsertRow();
+        this.rs.updateInt(1, 10);
+        this.rs.updateInt(2, 20);
+        this.rs.updateInt(3, 30);
+        this.rs.insertRow();
+        assertTrue(this.rs.next());
+        assertEquals(10, this.rs.getInt(1));
+        assertEquals(20, this.rs.getInt(2));
+        assertEquals(30, this.rs.getInt(3));
+        this.rs.moveToInsertRow();
+        this.rs.updateInt(1, 40);
+        this.rs.insertRow();
+        assertTrue(this.rs.next());
+        assertEquals(40, this.rs.getInt(1));
+        assertEquals(0, this.rs.getInt(2));
+        assertTrue(this.rs.wasNull());
+        assertEquals(31, this.rs.getInt(3));
+
+        this.stmt.execute("CREATE TRIGGER upd_sum BEFORE UPDATE ON testBug117294_1 FOR EACH ROW BEGIN SET NEW.c0 = NEW.c0 + 1000; END");
+        this.rs = pStmt.executeQuery();
+        assertTrue(this.rs.next());
+        this.rs.updateInt(1, 6);
+        this.rs.updateRow();
+        assertEquals(1006, this.rs.getInt(1));
+        assertEquals(3, this.rs.getInt(2));
+        assertEquals(5, this.rs.getInt(3));
+
+        createTable("testBug117294_2", "(id1 INT, id2 INT, c0 INT, c1 INT, PRIMARY KEY(id1, id2))");
+        this.stmt.execute("INSERT INTO testBug117294_2 VALUES (1, 2, 3, 4)");
+
+        pStmt = this.conn.prepareStatement("SELECT c0, c1, id1, id2 FROM testBug117294_2", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+
+        this.rs = pStmt.executeQuery();
+        assertTrue(this.rs.next());
+        assertEquals(3, this.rs.getInt(1));
+        assertEquals(4, this.rs.getInt(2));
+        assertEquals(1, this.rs.getInt(3));
+        assertEquals(2, this.rs.getInt(4));
+        this.rs.updateInt(3, 5);
+        this.rs.updateRow();
+        assertEquals(3, this.rs.getInt(1));
+        assertEquals(4, this.rs.getInt(2));
+        assertEquals(5, this.rs.getInt(3));
+        assertEquals(2, this.rs.getInt(4));
+    }
+
 }

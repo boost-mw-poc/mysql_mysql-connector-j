@@ -3,6 +3,8 @@
 
 Version 9.3.0
 
+  - Fix for Bug#117294 (Bug#37523180), Updatable ResultSet fails with 'Parameter index out of range'.
+
   - Fix for Bug#20802830, RESULTSET UPDATE METHODS NOT CHECKING VALIDITY OF RESULTSET.
 
   - WL#16723, DatabaseMetaData clean up.
