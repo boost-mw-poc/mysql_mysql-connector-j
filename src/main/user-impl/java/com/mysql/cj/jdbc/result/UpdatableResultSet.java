@@ -117,7 +117,7 @@ public class UpdatableResultSet extends ResultSetImpl {
     /** The binary data for the 'current' row */
     private Row savedCurrentRow;
 
-    /** PreparedStatement used to delete data */
+    /** PreparedStatement used to update data */
     protected ClientPreparedStatement updater = null;
 
     private boolean populateInserterWithDefaultValues = false;
@@ -201,7 +201,7 @@ public class UpdatableResultSet extends ResultSetImpl {
     public void cancelRowUpdates() throws SQLException {
         if (this.doingUpdates) {
             this.doingUpdates = false;
-            this.updater.clearParameters();
+            syncUpdate();
         }
     }
 
@@ -1197,6 +1197,7 @@ public class UpdatableResultSet extends ResultSetImpl {
             }
 
             if (this.doingUpdates) {
+                checkRowPos();
                 this.updater = (ClientPreparedStatement) getConnection().clientPrepareStatement(generateFilteredUpdateSQL());
 
                 int col = 1;
@@ -1245,6 +1246,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setAsciiStream(idx, x, length);
@@ -1273,6 +1275,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setBigDecimal(idx, x);
@@ -1301,6 +1304,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setBinaryStream(idx, x, length);
@@ -1329,6 +1333,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setBlob(idx, blob);
@@ -1357,6 +1362,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setBoolean(idx, x);
@@ -1385,6 +1391,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setByte(idx, x);
@@ -1413,6 +1420,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setBytes(idx, x);
@@ -1441,6 +1449,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setCharacterStream(idx, x, length);
@@ -1489,6 +1498,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setDate(idx, x);
@@ -1517,6 +1527,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setDouble(idx, x);
@@ -1545,6 +1556,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setFloat(idx, x);
@@ -1573,6 +1585,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setInt(idx, x);
@@ -1601,6 +1614,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setLong(idx, x);
@@ -1629,6 +1643,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setNull(idx, 0);
@@ -1711,6 +1726,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter;
@@ -1775,6 +1791,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setShort(idx, x);
@@ -1803,6 +1820,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setString(idx, x);
@@ -1831,6 +1849,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setTime(idx, x);
@@ -1859,6 +1878,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setTimestamp(idx, x);
@@ -1884,6 +1904,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setAsciiStream(idx, x);
@@ -1906,6 +1927,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setAsciiStream(idx, x, length);
@@ -1928,6 +1950,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setBinaryStream(idx, x);
@@ -1950,6 +1973,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setBinaryStream(idx, x, length);
@@ -1972,6 +1996,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setBlob(idx, inputStream);
@@ -1994,6 +2019,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setBlob(idx, inputStream, length);
@@ -2016,6 +2042,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setCharacterStream(idx, x);
@@ -2038,6 +2065,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setCharacterStream(idx, x, length);
@@ -2085,6 +2113,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 this.doingUpdates = true;
                 syncUpdate();
             }
+            checkRowPos();
 
             this.columnsToUpdate.add(columnIndex - 1);
             SetterWithException setter = idx -> this.updater.setNCharacterStream(idx, x);
@@ -2115,6 +2144,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setNCharacterStream(idx, x, length);
@@ -2211,6 +2241,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     this.doingUpdates = true;
                     syncUpdate();
                 }
+                checkRowPos();
 
                 this.columnsToUpdate.add(columnIndex - 1);
                 SetterWithException setter = idx -> this.updater.setNString(idx, x);

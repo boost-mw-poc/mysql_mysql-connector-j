@@ -8497,4 +8497,495 @@ public class ResultSetRegressionTest extends BaseTestCase {
 
     }
 
+    /**
+     * Tests fix for Bug#20802830, RESULTSET UPDATE METHODS NOT CHECKING VALIDITY OF RESULTSET.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug20802830() throws Exception {
+        createTable("testBug20802830", "(id INT PRIMARY KEY, c1 TINYTEXT CHARACTER SET utf8, c2 DECIMAL, c3 TINYBLOB, c4 BOOLEAN, c5 BIT, c6 VARBINARY(5), "
+                + "c7 DATE, c8 DOUBLE, c9 FLOAT, c10 INT, c11 BIGINT, c12 VARCHAR(10) CHARACTER SET utf8, c13 SMALLINT, c14 TIME, c15 DATETIME)");
+        this.stmt.executeUpdate(
+                "INSERT INTO testBug20802830 VALUES (1, 'a', '1', 'a', false, 1, 1, '2000-01-01', 1, 1, 1, 1, 'a', 1, '12:00:00', '2000-01-01 00:00:00')");
+
+        Statement updatableStmt = this.conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+        this.rs = updatableStmt.executeQuery("SELECT * FROM testBug20802830");
+        checkTestBug20802830("Before start of result set");
+
+        assertTrue(this.rs.next());
+
+        // updateAsciiStream
+        this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()));
+        this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()), 1);
+        this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()), 1L);
+        this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()));
+        this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()), 1);
+        this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()), 1L);
+        // updateBigDecimal
+        this.rs.updateBigDecimal(3, BigDecimal.valueOf(2));
+        this.rs.updateBigDecimal("c2", BigDecimal.valueOf(2));
+        // updateBigDecimal
+        this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }));
+        this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }), 1);
+        this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }), 1L);
+        this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }));
+        this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }), 1);
+        this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }), 1L);
+        // updateBlob
+        this.rs.updateBlob(4, new com.mysql.cj.jdbc.Blob("b".getBytes(), null));
+        this.rs.updateBlob(4, new ByteArrayInputStream(new byte[] { 98 }));
+        this.rs.updateBlob(4, new ByteArrayInputStream(new byte[] { 98 }), 1);
+        this.rs.updateBlob("c3", new com.mysql.cj.jdbc.Blob("b".getBytes(), null));
+        this.rs.updateBlob("c3", new ByteArrayInputStream(new byte[] { 98 }));
+        this.rs.updateBlob("c3", new ByteArrayInputStream(new byte[] { 98 }), 1);
+        // updateBoolean
+        this.rs.updateBoolean(5, true);
+        this.rs.updateBoolean("c4", true);
+        // updateByte
+        this.rs.updateByte(6, (byte) 0);
+        this.rs.updateByte("c5", (byte) 0);
+        // updateBytes
+        this.rs.updateBytes(7, new byte[] { 98 });
+        this.rs.updateBytes("c6", new byte[] { 98 });
+        // updateCharacterStream
+        this.rs.updateCharacterStream(2, new StringReader("b"));
+        this.rs.updateCharacterStream(2, new StringReader("b"), 1);
+        this.rs.updateCharacterStream(2, new StringReader("b"), 1L);
+        this.rs.updateCharacterStream("c1", new StringReader("b"));
+        this.rs.updateCharacterStream("c1", new StringReader("b"), 1);
+        this.rs.updateCharacterStream("c1", new StringReader("b"), 1L);
+        // updateClob
+        this.rs.updateClob(2, new com.mysql.cj.jdbc.Clob("b", null));
+        this.rs.updateClob(2, new StringReader("b"));
+        this.rs.updateClob(2, new StringReader("b"), 1);
+        this.rs.updateClob("c1", new com.mysql.cj.jdbc.Clob("b", null));
+        this.rs.updateClob("c1", new StringReader("b"));
+        this.rs.updateClob("c1", new StringReader("b"), 1);
+        // updateDate
+        Calendar cal = Calendar.getInstance();
+        cal.set(2002, 01, 02, 10, 30, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        this.rs.updateDate(8, new Date(cal.getTimeInMillis()));
+        this.rs.updateDate("c7", new Date(cal.getTimeInMillis()));
+        // updateDouble
+        this.rs.updateDouble(9, 2);
+        this.rs.updateDouble("c8", 2);
+        // updateFloat
+        this.rs.updateFloat(10, 2);
+        this.rs.updateFloat("c9", 2);
+        // updateInt
+        this.rs.updateInt(11, 2);
+        this.rs.updateInt("c10", 2);
+        // updateLong
+        this.rs.updateLong(12, 2);
+        this.rs.updateLong("c11", 2);
+        // updateNCharacterStream
+        this.rs.updateNCharacterStream(2, new StringReader("b"));
+        this.rs.updateNCharacterStream(2, new StringReader("b"), 1);
+        this.rs.updateNCharacterStream("c1", new StringReader("b"));
+        this.rs.updateNCharacterStream("c1", new StringReader("b"), 1);
+        // updateNClob
+        this.rs.updateNClob(2, new com.mysql.cj.jdbc.NClob("b", null));
+        this.rs.updateNClob(2, new StringReader("b"));
+        this.rs.updateNClob(2, new StringReader("b"), 1);
+        this.rs.updateNClob("c1", new com.mysql.cj.jdbc.NClob("b", null));
+        this.rs.updateNClob("c1", new StringReader("b"));
+        this.rs.updateNClob("c1", new StringReader("b"), 1);
+        // updateNString
+        this.rs.updateNString(13, "b");
+        this.rs.updateNString("c12", "b");
+        // updateNull
+        this.rs.updateNull(13);
+        this.rs.updateNull("c12");
+        // updateObject
+        this.rs.updateObject(4, "b");
+        this.rs.updateObject(4, "b", 1);
+        this.rs.updateObject(4, "b", MysqlType.BLOB);
+        this.rs.updateObject(4, "b", MysqlType.BLOB, 1);
+        this.rs.updateObject("c3", "b");
+        this.rs.updateObject("c3", "b", 1);
+        this.rs.updateObject("c3", "b", MysqlType.BLOB);
+        this.rs.updateObject("c3", "b", MysqlType.BLOB, 1);
+        // updateShort
+        this.rs.updateShort(14, (short) 2);
+        this.rs.updateShort("c13", (short) 2);
+        // updateSQLXML
+        SQLXML xml = new MysqlSQLXML(null);
+        xml.setString("<doc/>");
+        this.rs.updateSQLXML(13, xml);
+        this.rs.updateSQLXML("c12", xml);
+        // updateString
+        this.rs.updateString(13, "b");
+        this.rs.updateString("c12", "b");
+        // updateTime
+        this.rs.updateTime(15, new Time(cal.getTimeInMillis()));
+        this.rs.updateTime("c14", new Time(cal.getTimeInMillis()));
+        // updateTimestamp
+        this.rs.updateTimestamp(16, new Timestamp(cal.getTimeInMillis()));
+        this.rs.updateTimestamp("c15", new Timestamp(cal.getTimeInMillis()));
+
+        this.rs.cancelRowUpdates();
+
+        this.rs.afterLast();
+        checkTestBug20802830("After end of result set");
+    }
+
+    void checkTestBug20802830(String errMsg) throws Exception {
+        // updateAsciiStream
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream(2, new ByteArrayInputStream("b".getBytes()), 1L);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateAsciiStream("c1", new ByteArrayInputStream("b".getBytes()), 1L);
+            return null;
+        });
+        // updateBigDecimal
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBigDecimal(3, BigDecimal.valueOf(2));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBigDecimal("c2", BigDecimal.valueOf(2));
+            return null;
+        });
+        // updateBigDecimal
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream(4, new ByteArrayInputStream(new byte[] { 98 }), 1L);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBinaryStream("c3", new ByteArrayInputStream(new byte[] { 98 }), 1L);
+            return null;
+        });
+        // updateBlob
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob(4, new com.mysql.cj.jdbc.Blob("b".getBytes(), null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob(4, new ByteArrayInputStream(new byte[] { 98 }));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob(4, new ByteArrayInputStream(new byte[] { 98 }), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob("c3", new com.mysql.cj.jdbc.Blob("b".getBytes(), null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob("c3", new ByteArrayInputStream(new byte[] { 98 }));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBlob("c3", new ByteArrayInputStream(new byte[] { 98 }), 1);
+            return null;
+        });
+        // updateBoolean
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBoolean(5, true);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBoolean("c4", true);
+            return null;
+        });
+        // updateByte
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateByte(6, (byte) 0);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateByte("c5", (byte) 0);
+            return null;
+        });
+        // updateBytes
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBytes(7, new byte[] { 98 });
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateBytes("c6", new byte[] { 98 });
+            return null;
+        });
+        // updateCharacterStream
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream(2, new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream(2, new StringReader("b"), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream(2, new StringReader("b"), 1L);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream("c1", new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream("c1", new StringReader("b"), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateCharacterStream("c1", new StringReader("b"), 1L);
+            return null;
+        });
+        // updateClob
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob(2, new com.mysql.cj.jdbc.Clob("b", null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob(2, new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob(2, new StringReader("b"), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob("c1", new com.mysql.cj.jdbc.Clob("b", null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob("c1", new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateClob("c1", new StringReader("b"), 1);
+            return null;
+        });
+        // updateDate
+        Calendar cal = Calendar.getInstance();
+        cal.set(2002, 01, 02, 10, 30, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateDate(8, new Date(cal.getTimeInMillis()));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateDate("c7", new Date(cal.getTimeInMillis()));
+            return null;
+        });
+        // updateDouble
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateDouble(9, 2);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateDouble("c8", 2);
+            return null;
+        });
+        // updateFloat
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateFloat(10, 2);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateFloat("c9", 2);
+            return null;
+        });
+        // updateInt
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateInt(11, 2);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateInt("c10", 2);
+            return null;
+        });
+        // updateLong
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateLong(12, 2);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateLong("c11", 2);
+            return null;
+        });
+        // updateNCharacterStream
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNCharacterStream(2, new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNCharacterStream(2, new StringReader("b"), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNCharacterStream("c1", new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNCharacterStream("c1", new StringReader("b"), 1);
+            return null;
+        });
+        // updateNClob
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob(2, new com.mysql.cj.jdbc.NClob("b", null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob(2, new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob(2, new StringReader("b"), 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob("c1", new com.mysql.cj.jdbc.NClob("b", null));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob("c1", new StringReader("b"));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNClob("c1", new StringReader("b"), 1);
+            return null;
+        });
+        // updateNString
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNString(13, "b");
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNString("c12", "b");
+            return null;
+        });
+        // updateNull
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNull(13);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateNull("c12");
+            return null;
+        });
+        // updateObject
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject(4, "b");
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject(4, "b", 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject(4, "b", MysqlType.BLOB);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject(4, "b", MysqlType.BLOB, 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject("c3", "b");
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject("c3", "b", 1);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject("c3", "b", MysqlType.BLOB);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateObject("c3", "b", MysqlType.BLOB, 1);
+            return null;
+        });
+        // updateShort
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateShort(14, (short) 2);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateShort("c13", (short) 2);
+            return null;
+        });
+        // updateSQLXML
+        SQLXML xml = new MysqlSQLXML(null);
+        xml.setString("<doc/>");
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateSQLXML(13, xml);
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateSQLXML("c12", xml);
+            return null;
+        });
+        // updateString
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateString(13, "b");
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateString("c12", "b");
+            return null;
+        });
+        // updateTime
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateTime(15, new Time(cal.getTimeInMillis()));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateTime("c14", new Time(cal.getTimeInMillis()));
+            return null;
+        });
+        // updateTimestamp
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateTimestamp(16, new Timestamp(cal.getTimeInMillis()));
+            return null;
+        });
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateTimestamp("c15", new Timestamp(cal.getTimeInMillis()));
+            return null;
+        });
+        // updateRow
+        assertThrows(SQLException.class, errMsg, () -> {
+            this.rs.updateRow();
+            return null;
+        });
+    }
+
 }
