@@ -733,10 +733,10 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiersQuotedNonPedantic[n] --> identifiersUnQuoted[n]
         // * identifiersQuotedPedantic[n] --> identifiers[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersUnQuoted[i], StringUtils.unQuoteIdentifier(identifiers[i], "`"), i + 1 + ". " + identifiers[i] + ". unquoting");
-            assertEquals(identifiersUnQuoted[i], StringUtils.unQuoteIdentifier(identifiersQuotedNonPedantic[i], "`"),
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], "`"), i + 1 + ". " + identifiers[i] + ". unquoting");
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], "`"),
                     i + 1 + ". " + identifiersQuotedNonPedantic[i] + ". non-pedantic unquoting");
-            assertEquals(identifiers[i], StringUtils.unQuoteIdentifier(identifiersQuotedPedantic[i], "`"),
+            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], "`"),
                     i + 1 + ". " + identifiersQuotedPedantic[i] + ". pedantic unquoting");
         }
     }
@@ -825,10 +825,10 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiersQuotedNonPedantic[n] --> identifiersUnQuoted[n]
         // * identifiersQuotedPedantic[n] --> identifiers[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersUnQuoted[i], StringUtils.unQuoteIdentifier(identifiers[i], "\""), i + 1 + ". " + identifiers[i] + ". unquoting");
-            assertEquals(identifiersUnQuoted[i], StringUtils.unQuoteIdentifier(identifiersQuotedNonPedantic[i], "\""),
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], "\""), i + 1 + ". " + identifiers[i] + ". unquoting");
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], "\""),
                     i + 1 + ". " + identifiersQuotedNonPedantic[i] + ". non-pedantic unquoting");
-            assertEquals(identifiers[i], StringUtils.unQuoteIdentifier(identifiersQuotedPedantic[i], "\""),
+            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], "\""),
                     i + 1 + ". " + identifiersQuotedPedantic[i] + ". pedantic unquoting");
         }
     }

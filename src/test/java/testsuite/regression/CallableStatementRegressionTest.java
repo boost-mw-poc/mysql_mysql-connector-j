@@ -304,7 +304,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
             assertEquals(Types.INTEGER, cStmt.getParameterMetaData().getParameterType(1));
             java.sql.DatabaseMetaData dbmd = this.conn.getMetaData();
 
-            this.rs = ((com.mysql.cj.jdbc.DatabaseMetaData) dbmd).getFunctionColumns(this.conn.getCatalog(), null, "testBug10310", "%");
+            this.rs = dbmd.getFunctionColumns(this.conn.getCatalog(), null, "testBug10310", "%");
             ResultSetMetaData rsmd = this.rs.getMetaData();
 
             assertEquals(17, rsmd.getColumnCount());
@@ -1646,11 +1646,12 @@ public class CallableStatementRegressionTest extends BaseTestCase {
                 "(INOUT p1 VARCHAR(20), IN p2 VARCHAR(20), IN pX INT, OUT p3 VARCHAR(20)) BEGIN SELECT CONCAT(p1, p2) INTO p1; SELECT CONCAT(p1, p2) INTO p3;  END");
         createFunction("testBug73774_2", "(p1 VARCHAR(20), pX INT, p2 VARCHAR(20)) RETURNS VARCHAR(40) DETERMINISTIC RETURN CONCAT(p1, p2)");
 
+        boolean useIS = false;
         boolean getPRF = false;
         boolean useSPS = false;
 
         do {
-            final String testCase = String.format("Case [getPRF: %s, useSPS: %s]", getPRF ? "Y" : "N", useSPS ? "Y" : "N");
+            final String testCase = String.format("Case [useIS: %s, getPRF: %s, useSPS: %s]", useIS ? "Y" : "N", getPRF ? "Y" : "N", useSPS ? "Y" : "N");
 
             Properties props = new Properties();
             props.setProperty("getProceduresReturnsFunctions", Boolean.toString(getPRF));
@@ -1800,7 +1801,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
             });
             cstmtF2.close();
             testConn.close();
-        } while ((useSPS = !useSPS) || (getPRF = !getPRF));
+        } while ((useIS = !useIS) || (useSPS = !useSPS) || (getPRF = !getPRF));
     }
 
     /**

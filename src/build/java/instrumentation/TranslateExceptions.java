@@ -41,8 +41,8 @@ import com.mysql.cj.jdbc.Clob;
 import com.mysql.cj.jdbc.CloseOption;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.ConnectionWrapper;
-import com.mysql.cj.jdbc.DatabaseMetaData;
-import com.mysql.cj.jdbc.DatabaseMetaDataUsingInfoSchema;
+import com.mysql.cj.jdbc.DatabaseMetaDataInformationSchema;
+import com.mysql.cj.jdbc.DatabaseMetaDataMysqlSchema;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcStatement;
 import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
@@ -201,8 +201,7 @@ public class TranslateExceptions {
                 clazz.getDeclaredMethod("clientPrepareStatement", new CtClass[] { ctString, CtClass.intType, CtClass.intType, CtClass.booleanType }),
                 EXCEPTION_INTERCEPTOR_GETTER);
         catchRuntimeException(clazz, clazz.getDeclaredMethod("createNewIO", new CtClass[] { CtClass.booleanType }), EXCEPTION_INTERCEPTOR_GETTER);
-        catchRuntimeException(clazz, clazz.getDeclaredMethod("getMetaData", new CtClass[] { CtClass.booleanType, CtClass.booleanType }),
-                EXCEPTION_INTERCEPTOR_GETTER);
+        catchRuntimeException(clazz, clazz.getDeclaredMethod("getMetaData", new CtClass[] { CtClass.booleanType }), EXCEPTION_INTERCEPTOR_GETTER);
         catchRuntimeException(clazz, clazz.getDeclaredMethod("handleAutoCommitDefaults", new CtClass[] {}), EXCEPTION_INTERCEPTOR_GETTER);
         catchRuntimeException(clazz, clazz.getDeclaredMethod("setSavepoint", new CtClass[] { ctMysqlSavepoint }), EXCEPTION_INTERCEPTOR_GETTER);
         catchRuntimeException(clazz, clazz.getDeclaredMethod("versionMeetsMinimum", new CtClass[] { CtClass.intType, CtClass.intType, CtClass.intType }),
@@ -241,12 +240,12 @@ public class TranslateExceptions {
          * java.sql.DatabaseMetaData extends java.sql.Wrapper
          */
         // com.mysql.cj.jdbc.DatabaseMetaData implements java.sql.DatabaseMetaData
-        clazz = pool.get(DatabaseMetaData.class.getName());
+        clazz = pool.get(DatabaseMetaDataMysqlSchema.class.getName());
         instrumentJdbcMethods(clazz, java.sql.DatabaseMetaData.class, false, EXCEPTION_INTERCEPTOR_GETTER);
         clazz.writeFile(args[0]);
 
-        // com.mysql.cj.jdbc.DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData
-        clazz = pool.get(DatabaseMetaDataUsingInfoSchema.class.getName());
+        // com.mysql.cj.jdbc.DatabaseMetaDataInformationSchema extends DatabaseMetaData
+        clazz = pool.get(DatabaseMetaDataInformationSchema.class.getName());
         instrumentJdbcMethods(clazz, java.sql.DatabaseMetaData.class, false, EXCEPTION_INTERCEPTOR_GETTER);
         clazz.writeFile(args[0]);
 

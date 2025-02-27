@@ -1109,8 +1109,8 @@ public class ConnectionWrapper extends WrapperBase implements JdbcConnection {
     }
 
     @Override
-    public Statement getMetadataSafeStatement() throws SQLException {
-        return this.mc.getMetadataSafeStatement();
+    public Statement getMetaDataSafeStatement() throws SQLException {
+        return this.mc.getMetaDataSafeStatement();
     }
 
     @Override

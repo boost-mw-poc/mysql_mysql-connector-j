@@ -1270,19 +1270,72 @@ public class StringUtils {
      * @param quoteChar
      *            ` or "
      * @return
-     *         <ul>
-     *         <li>null {@code ->} null</li>
-     *         <li>abc {@code ->} abc</li>
-     *         <li>`abc` {@code ->} abc</li>
-     *         <li>`ab``c` {@code ->} ab`c</li>
-     *         <li>`"ab`c"` {@code ->} "ab`c"</li>
-     *         <li>`ab"c` {@code ->} ab"c</li>
-     *         <li>"abc" {@code ->} abc</li>
-     *         <li>"`ab""c`" {@code ->} `ab"c`</li>
-     *         <li>"ab`c" {@code ->} ab`c</li>
-     *         </ul>
+     *         <table>
+     *         <tr>
+     *         <td>Input</td>
+     *         <td>|</td>
+     *         <td>Quote '`'</td>
+     *         <td>|</td>
+     *         <td>Quote '"'</td>
+     *         </tr>
+     *         <tr>
+     *         <td>abc</td>
+     *         <td>|</td>
+     *         <td>abc</td>
+     *         <td>|</td>
+     *         <td>abc</td>
+     *         </tr>
+     *         <tr>
+     *         <td>`abc`</td>
+     *         <td>|</td>
+     *         <td>abc</td>
+     *         <td>|</td>
+     *         <td>`abc`</td>
+     *         </tr>
+     *         <tr>
+     *         <td>`ab``c`</td>
+     *         <td>|</td>
+     *         <td>ab`c</td>
+     *         <td>|</td>
+     *         <td>`ab``c`</td>
+     *         </tr>
+     *         <tr>
+     *         <td>`"ab`c"`</td>
+     *         <td>|</td>
+     *         <td>`"ab`c"`</td>
+     *         <td>|</td>
+     *         <td>`"ab`c"`</td>
+     *         </tr>
+     *         <tr>
+     *         <td>`ab"c`</td>
+     *         <td>|</td>
+     *         <td>ab"c</td>
+     *         <td>|</td>
+     *         <td>`ab"c`</td>
+     *         </tr>
+     *         <tr>
+     *         <td>"abc"</td>
+     *         <td>|</td>
+     *         <td>"abc"</td>
+     *         <td>|</td>
+     *         <td>abc</td>
+     *         </tr>
+     *         <tr>
+     *         <td>"`ab""c`"</td>
+     *         <td>|</td>
+     *         <td>"`ab""c`"</td>
+     *         <td>|</td>
+     *         <td>`ab"c`</td>
+     *         </tr>
+     *         <tr>
+     *         <td>"ab`c"</td>
+     *         <td>|</td>
+     *         <td>"ab`c"</td>
+     *         <td>|</td>
+     *         <td>ab`c</td>
+     *         </table>
      */
-    public static String unQuoteIdentifier(String identifier, String quoteChar) {
+    public static String unquoteIdentifier(String identifier, String quoteChar) {
         if (identifier == null) {
             return null;
         }

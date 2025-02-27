@@ -55,7 +55,6 @@ import com.mysql.cj.ServerVersion;
 import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
 import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.jdbc.DatabaseMetaDataUsingInfoSchema;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.protocol.Resultset;
 import com.mysql.cj.util.StringUtils;
@@ -67,7 +66,7 @@ import testsuite.BaseTestCase;
 /**
  * Tests DatabaseMetaData methods.
  */
-public class MetadataTest extends BaseTestCase {
+public class MetaDataTest extends BaseTestCase {
 
     @Test
     public void testSupports() throws SQLException {
@@ -216,7 +215,7 @@ public class MetadataTest extends BaseTestCase {
     public void testForeignKeys() throws SQLException {
         String refDb = "test_cross_reference_db";
         try {
-            //Needed for previous runs that did not clean-up
+            // Needed for previous runs that did not clean-up.
             this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
             this.stmt.executeUpdate("DROP TABLE IF EXISTS parent");
             this.stmt.executeUpdate("DROP TABLE IF EXISTS multikey");
@@ -698,7 +697,7 @@ public class MetadataTest extends BaseTestCase {
             @SuppressWarnings("synthetic-access")
             @Override
             public Void call() throws Exception {
-                MetadataTest.this.rs.getMetaData().getColumnType(0);
+                MetaDataTest.this.rs.getMetaData().getColumnType(0);
                 return null;
             }
 
@@ -708,7 +707,7 @@ public class MetadataTest extends BaseTestCase {
             @SuppressWarnings("synthetic-access")
             @Override
             public Void call() throws Exception {
-                MetadataTest.this.rs.getMetaData().getColumnType(100);
+                MetaDataTest.this.rs.getMetaData().getColumnType(100);
                 return null;
             }
 
@@ -1395,59 +1394,75 @@ public class MetadataTest extends BaseTestCase {
     @Test
     public void testGetCrossReferenceUsingInfoSchema() throws Exception {
         boolean runningOnWindows = Util.isRunningOnWindows();
-        createTable("testGetCrossReferenceParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        createTable("testGetCrossReferenceChild",
-                "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetCrossReferenceParent(id) ON DELETE SET NULL) ENGINE=INNODB");
+        try {
+            // Needed for previous runs that did not clean-up.
+            this.stmt.execute("DROP TABLE IF EXISTS testGetCrossReferenceChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetCrossReferenceParent");
+            createTable("testGetCrossReferenceParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
+            createTable("testGetCrossReferenceChild",
+                    "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetCrossReferenceParent(id) ON DELETE SET NULL) ENGINE=INNODB");
 
-        Properties props = new Properties();
-        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
-        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
-        Connection conn1 = null;
-        conn1 = getConnectionWithProps(props);
-        DatabaseMetaData metaData = conn1.getMetaData();
-        this.rs = metaData.getCrossReference(null, null, "testGetCrossReferenceParent", null, null, "testGetCrossReferenceChild");
-        assertTrue(this.rs.next());
-        assertEquals(runningOnWindows ? "testgetcrossreferenceparent" : "testGetCrossReferenceParent", this.rs.getString("PKTABLE_NAME"));
-        assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
-        assertEquals(runningOnWindows ? "testgetcrossreferencechild" : "testGetCrossReferenceChild", this.rs.getString("FKTABLE_NAME"));
-        assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
-        assertFalse(this.rs.next());
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
+            Connection conn1 = null;
+            conn1 = getConnectionWithProps(props);
+            DatabaseMetaData metaData = conn1.getMetaData();
+            this.rs = metaData.getCrossReference(null, null, "testGetCrossReferenceParent", null, null, "testGetCrossReferenceChild");
+            assertTrue(this.rs.next());
+            assertEquals(runningOnWindows ? "testgetcrossreferenceparent" : "testGetCrossReferenceParent", this.rs.getString("PKTABLE_NAME"));
+            assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
+            assertEquals(runningOnWindows ? "testgetcrossreferencechild" : "testGetCrossReferenceChild", this.rs.getString("FKTABLE_NAME"));
+            assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
+            assertFalse(this.rs.next());
+        } finally {
+            this.stmt.execute("DROP TABLE IF EXISTS testGetCrossReferenceChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetCrossReferenceParent");
+        }
     }
 
     @Test
     public void testGetExportedKeys() throws Exception {
-        createTable("testGetExportedKeysParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        createTable("testGetExportedKeysChild",
-                "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetExportedKeysParent(id) ON DELETE SET NULL) ENGINE=INNODB");
+        try {
+            // Needed for previous runs that did not clean-up.
+            this.stmt.execute("DROP TABLE IF EXISTS testGetExportedKeysChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetExportedKeysParent");
+            createTable("testGetExportedKeysParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
+            createTable("testGetExportedKeysChild",
+                    "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetExportedKeysParent(id) ON DELETE SET NULL) ENGINE=INNODB");
 
-        Properties props = new Properties();
-        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
-        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        for (boolean useIS : new boolean[] { false, true }) {
-            for (boolean dbMapsToSchema : new boolean[] { false, true }) {
-                props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
-                props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            for (boolean useIS : new boolean[] { false, true }) {
+                for (boolean dbMapsToSchema : new boolean[] { false, true }) {
+                    props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
+                    props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
 
-                Connection testConn = null;
-                try {
-                    testConn = getConnectionWithProps(props);
-                    DatabaseMetaData metaData = testConn.getMetaData();
+                    Connection testConn = null;
+                    try {
+                        testConn = getConnectionWithProps(props);
+                        DatabaseMetaData metaData = testConn.getMetaData();
 
-                    this.rs = metaData.getExportedKeys(null, null, "testGetExportedKeysParent");
-                    testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
+                        this.rs = metaData.getExportedKeys(null, null, "testGetExportedKeysParent");
+                        testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getExportedKeys(null, this.dbName, "testGetExportedKeysParent");
-                    testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
+                        this.rs = metaData.getExportedKeys(null, this.dbName, "testGetExportedKeysParent");
+                        testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getExportedKeys(this.dbName, null, "testGetExportedKeysParent");
-                    testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
-                } finally {
-                    if (testConn != null) {
-                        testConn.close();
+                        this.rs = metaData.getExportedKeys(this.dbName, null, "testGetExportedKeysParent");
+                        testGetExportedKeys_checkResult(useIS, dbMapsToSchema);
+                    } finally {
+                        if (testConn != null) {
+                            testConn.close();
+                        }
                     }
                 }
             }
+        } finally {
+            this.stmt.execute("DROP TABLE IF EXISTS testGetExportedKeysChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetExportedKeysParent");
         }
     }
 
@@ -1479,37 +1494,45 @@ public class MetadataTest extends BaseTestCase {
 
     @Test
     public void testGetImportedKeys() throws Exception {
-        createTable("testGetImportedKeysParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        createTable("testGetImportedKeysChild",
-                "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetImportedKeysParent(id) ON DELETE SET NULL) ENGINE=INNODB");
+        try {
+            // Needed for previous runs that did not clean-up.
+            this.stmt.execute("DROP TABLE IF EXISTS testGetImportedKeysChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetImportedKeysParent");
+            createTable("testGetImportedKeysParent", "(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
+            createTable("testGetImportedKeysChild",
+                    "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testGetImportedKeysParent(id) ON DELETE SET NULL) ENGINE=INNODB");
 
-        Properties props = new Properties();
-        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
-        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        for (boolean useIS : new boolean[] { false, true }) {
-            for (boolean dbMapsToSchema : new boolean[] { false, true }) {
-                props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
-                props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            for (boolean useIS : new boolean[] { false, true }) {
+                for (boolean dbMapsToSchema : new boolean[] { false, true }) {
+                    props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
+                    props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
 
-                Connection testConn = null;
-                try {
-                    testConn = getConnectionWithProps(props);
-                    DatabaseMetaData metaData = testConn.getMetaData();
+                    Connection testConn = null;
+                    try {
+                        testConn = getConnectionWithProps(props);
+                        DatabaseMetaData metaData = testConn.getMetaData();
 
-                    this.rs = metaData.getImportedKeys(null, null, "testGetImportedKeysChild");
-                    testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
+                        this.rs = metaData.getImportedKeys(null, null, "testGetImportedKeysChild");
+                        testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getImportedKeys(null, this.dbName, "testGetImportedKeysChild");
-                    testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
+                        this.rs = metaData.getImportedKeys(null, this.dbName, "testGetImportedKeysChild");
+                        testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getImportedKeys(this.dbName, null, "testGetImportedKeysChild");
-                    testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
-                } finally {
-                    if (testConn != null) {
-                        testConn.close();
+                        this.rs = metaData.getImportedKeys(this.dbName, null, "testGetImportedKeysChild");
+                        testGetImportedKeys_checkResult(useIS, dbMapsToSchema);
+                    } finally {
+                        if (testConn != null) {
+                            testConn.close();
+                        }
                     }
                 }
             }
+        } finally {
+            this.stmt.execute("DROP TABLE IF EXISTS testGetImportedKeysChild");
+            this.stmt.execute("DROP TABLE IF EXISTS testGetImportedKeysParent");
         }
     }
 
@@ -1689,7 +1712,7 @@ public class MetadataTest extends BaseTestCase {
                 "Failed to get field SQL2003_KEYWORDS from com.mysql.cj.jdbc.DatabaseMetaData");
 
         // 2. Retrieve list of reserved words from server.
-        final String keywordsQuery = "SELECT WORD FROM INFORMATION_SCHEMA.KEYWORDS WHERE RESERVED=1 ORDER BY WORD";
+        final String keywordsQuery = "SELECT WORD FROM INFORMATION_SCHEMA.KEYWORDS WHERE RESERVED = 1 ORDER BY WORD";
         List<String> mysqlReservedWords = new ArrayList<>();
         this.rs = this.stmt.executeQuery(keywordsQuery);
         while (this.rs.next()) {
@@ -1701,14 +1724,14 @@ public class MetadataTest extends BaseTestCase {
         mysqlReservedWords.removeAll(sql2003ReservedWords);
         String expectedSqlKeywords = String.join(",", mysqlReservedWords);
 
-        // Make sure the keywords cache is empty in DatabaseMetaDataUsingInfoSchema.
-        Field dbmduisKeywordsCacheField = DatabaseMetaDataUsingInfoSchema.class.getDeclaredField("keywordsCache");
-        dbmduisKeywordsCacheField.setAccessible(true);
+        // Make sure the keywords cache is empty in DatabaseMetaData.
+        Field dbmdisKeywordsCacheField = com.mysql.cj.jdbc.DatabaseMetaData.class.getDeclaredField("keywordsCache");
+        dbmdisKeywordsCacheField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<ServerVersion, String> dbmduisKeywordsCache = (Map<ServerVersion, String>) dbmduisKeywordsCacheField.get(null);
-        assertNotNull(dbmduisKeywordsCache, "Failed to retrieve the field keywordsCache from com.mysql.cj.jdbc.DatabaseMetaDataUsingInfoSchema.");
-        dbmduisKeywordsCache.clear();
-        assertTrue(dbmduisKeywordsCache.isEmpty(), "Failed to clear the DatabaseMetaDataUsingInfoSchema keywords cache.");
+        Map<ServerVersion, String> dbmdisKeywordsCache = (Map<ServerVersion, String>) dbmdisKeywordsCacheField.get(null);
+        assertNotNull(dbmdisKeywordsCache, "Failed to retrieve the field keywordsCache from com.mysql.cj.jdbc.DatabaseMetaData.");
+        dbmdisKeywordsCache.clear();
+        assertTrue(dbmdisKeywordsCache.isEmpty(), "Failed to clear the DatabaseMetaData keywords cache.");
 
         /*
          * Check that keywords are retrieved from database and cached.
@@ -1721,14 +1744,14 @@ public class MetadataTest extends BaseTestCase {
         Connection testConn = getConnectionWithProps(props);
         assertEquals(expectedSqlKeywords, testConn.getMetaData().getSQLKeywords(), "MySQL keywords don't match expected.");
         assertTrue(TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.contains(keywordsQuery), "MySQL keywords weren't obtained from database.");
-        assertTrue(dbmduisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
+        assertTrue(dbmdisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
 
         TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.clear();
 
         // Second call to DatabaseMetaData.getSQLKeywords(), using same connection -> keywords are retrieved from internal cache.
         assertEquals(expectedSqlKeywords, testConn.getMetaData().getSQLKeywords(), "MySQL keywords don't match expected.");
         assertFalse(TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.contains(keywordsQuery), "MySQL keywords weren't obtained from cache.");
-        assertTrue(dbmduisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
+        assertTrue(dbmdisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
         testConn.close();
 
         TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.clear();
@@ -1737,7 +1760,7 @@ public class MetadataTest extends BaseTestCase {
         testConn = getConnectionWithProps(props);
         assertEquals(expectedSqlKeywords, testConn.getMetaData().getSQLKeywords(), "MySQL keywords don't match expected.");
         assertFalse(TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.contains(keywordsQuery), "MySQL keywords weren't obtained from cache.");
-        assertTrue(dbmduisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
+        assertTrue(dbmdisKeywordsCache.containsKey(((JdbcConnection) testConn).getServerVersion()), "Keywords for current server weren't properly cached.");
         testConn.close();
 
         TestGetSqlKeywordsDynamicQueryInterceptor.interceptedQueries.clear();

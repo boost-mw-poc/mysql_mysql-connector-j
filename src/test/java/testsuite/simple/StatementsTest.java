@@ -1472,7 +1472,7 @@ public class StatementsTest extends BaseTestCase {
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "false");
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "5725");
+        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "5776");
         props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
         Connection multiConn = null;
 
@@ -1496,9 +1496,9 @@ public class StatementsTest extends BaseTestCase {
 
             try {
                 this.pstmt.executeBatch();
-            } catch (BatchUpdateException bUpE) {
-                int[] counts = bUpE.getUpdateCounts();
-                for (int i = 3555; i < counts.length; i++) {
+            } catch (BatchUpdateException e) {
+                int[] counts = e.getUpdateCounts();
+                for (int i = 3585; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
 
@@ -1510,8 +1510,8 @@ public class StatementsTest extends BaseTestCase {
 
             try {
                 multiStmt.executeBatch();
-            } catch (BatchUpdateException bUpE) {
-                int[] counts = bUpE.getUpdateCounts();
+            } catch (BatchUpdateException e) {
+                int[] counts = e.getUpdateCounts();
                 for (int i = 4095; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
@@ -1536,9 +1536,9 @@ public class StatementsTest extends BaseTestCase {
 
             try {
                 cStmt.executeBatch();
-            } catch (BatchUpdateException bUpE) {
-                int[] counts = bUpE.getUpdateCounts();
-                for (int i = 3991; i < counts.length; i++) {
+            } catch (BatchUpdateException e) {
+                int[] counts = e.getUpdateCounts();
+                for (int i = 4012; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
 

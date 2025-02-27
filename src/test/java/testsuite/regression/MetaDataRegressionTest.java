@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -1071,25 +1072,13 @@ public class MetaDataRegressionTest extends BaseTestCase {
                 props.setProperty(PropertyKey.databaseTerm.getKeyName(), databaseTerm);
 
                 Connection con = getConnectionWithProps(props);
-
-                String db = databaseTerm.contentEquals("SCHEMA") ? con.getSchema() : con.getCatalog();
-                this.rs = ((com.mysql.cj.jdbc.DatabaseMetaData) con.getMetaData()).extractForeignKeyFromCreateTable(db, "app tab");
-                assertTrue(this.rs.next(), "must return a row");
-
-                assertEquals(("Key info; APPFK(`C2`) REFER `" + db + "`/`app tab`(`C1`)").toUpperCase(), this.rs.getString(3).toUpperCase());
-
-                this.rs.close();
-
                 this.rs = databaseTerm.contentEquals("SCHEMA") ? con.getMetaData().getImportedKeys(null, con.getSchema(), "app tab")
                         : con.getMetaData().getImportedKeys(con.getCatalog(), null, "app tab");
-
                 assertTrue(this.rs.next());
 
                 this.rs = databaseTerm.contentEquals("SCHEMA") ? con.getMetaData().getExportedKeys(null, con.getSchema(), "app tab")
                         : con.getMetaData().getExportedKeys(con.getCatalog(), null, "app tab");
-
                 assertTrue(this.rs.next());
-
             }
         }
     }
@@ -2490,14 +2479,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug52167() throws Exception {
-        // DatabaseMetaData.java (~LN 1730)
-        // + //Bug#52167, tokenizer will break if declaration contains special
-        // characters like \n
-        // + declaration = declaration.replaceAll("[\\t\\n\\x0B\\f\\r]", " ");
-        // StringTokenizer declarationTok = new StringTokenizer(
-        // declaration, " \t");
         createProcedure("testBug52167", "(in _par1 decimal( 10 , 2 ) , in _par2\n varchar( 4 )) BEGIN select 1; END");
-
         this.conn.prepareCall("{call testBug52167(?,?)}").close();
     }
 
@@ -3289,14 +3271,18 @@ public class MetaDataRegressionTest extends BaseTestCase {
                 failedTests.append(sql + "\n");
             }
 
-            // 2. extractForeignKeyFromCreateTable(...)
-            try {
-                this.rs = ((com.mysql.cj.jdbc.DatabaseMetaData) conn1.getMetaData()).extractForeignKeyFromCreateTable(unquotedDbName, unquotedTableName);
-                if (!this.rs.next()) {
+            // 2. extractForeignKeysForTable(...)
+            if (!((JdbcConnection) st1.getConnection()).getPropertySet().getBooleanProperty(PropertyKey.useInformationSchema).getValue()) {
+                try {
+                    Method method = conn1.getMetaData().getClass().getDeclaredMethod("extractForeignKeysForTable", String.class, String.class);
+                    method.setAccessible(true);
+                    List<?> foreignKeys = (List<?>) method.invoke(conn1.getMetaData(), unquotedDbName, unquotedTableName);
+                    if (foreignKeys.size() != 2) {
+                        failedTests.append("conn.getMetaData.extractForeignKeyFromCreateTable(unquotedDbName, unquotedTableName);\n");
+                    }
+                } catch (Exception e) {
                     failedTests.append("conn.getMetaData.extractForeignKeyFromCreateTable(unquotedDbName, unquotedTableName);\n");
                 }
-            } catch (Exception e) {
-                failedTests.append("conn.getMetaData.extractForeignKeyFromCreateTable(unquotedDbName, unquotedTableName);\n");
             }
 
             // 3. getColumns(...)

@@ -517,12 +517,9 @@ public abstract class BaseTestCase {
 
     protected int getRowCount(String tableName) throws SQLException {
         ResultSet countRs = null;
-
         try {
             countRs = this.stmt.executeQuery("SELECT COUNT(*) FROM " + tableName);
-
             countRs.next();
-
             return countRs.getInt(1);
         } finally {
             if (countRs != null) {

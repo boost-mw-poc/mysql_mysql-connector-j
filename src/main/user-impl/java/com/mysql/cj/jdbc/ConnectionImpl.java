@@ -244,9 +244,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     /** The database we're currently using. */
     private String database = null;
 
-    /** Internal DBMD to use for various database-version specific features */
-    private DatabaseMetaData dbmd = null;
-
     private NativeSession session = null;
 
     /** Is this connection associated with a global tx? */
@@ -410,7 +407,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                     this.propertySet.getProperty(PropertyKey.socketFactory).setValue(SocksProxySocketFactory.class.getName());
                 }
 
-                this.dbmd = getMetaData(false, false);
                 initializeSafeQueryInterceptors();
             } catch (CJException e) {
                 throw SQLExceptionsMapping.translateException(e, getExceptionInterceptor());
@@ -1170,19 +1166,19 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public java.sql.DatabaseMetaData getMetaData() throws SQLException {
-        return getMetaData(true, true);
+        return getMetaData(true);
     }
 
-    private java.sql.DatabaseMetaData getMetaData(boolean checkClosed, boolean checkForInfoSchema) throws SQLException {
+    private java.sql.DatabaseMetaData getMetaData(boolean checkClosed) throws SQLException {
         if (checkClosed) {
             checkClosed();
         }
 
-        com.mysql.cj.jdbc.DatabaseMetaData dbmeta = com.mysql.cj.jdbc.DatabaseMetaData.getInstance(getMultiHostSafeProxy(), this.database, checkForInfoSchema,
+        com.mysql.cj.jdbc.DatabaseMetaData dbmeta = com.mysql.cj.jdbc.DatabaseMetaData.getInstance(getMultiHostSafeProxy(), this.database,
                 this.nullStatementResultSetFactory);
 
         if (getSession() != null && getSession().getProtocol() != null) {
-            dbmeta.setMetadataEncoding(getSession().getServerSession().getCharsetSettings().getMetadataEncoding());
+            dbmeta.setMetaDataEncoding(getSession().getServerSession().getCharsetSettings().getMetadataEncoding());
             dbmeta.setMetadataCollationIndex(getSession().getServerSession().getCharsetSettings().getMetadataCollationIndex());
         }
 
@@ -1190,7 +1186,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     @Override
-    public java.sql.Statement getMetadataSafeStatement() throws SQLException {
+    public java.sql.Statement getMetaDataSafeStatement() throws SQLException {
         return getMetadataSafeStatement(0);
     }
 
@@ -1303,9 +1299,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             }
         }
 
+        DatabaseMetaData dbmd = getMetaData(false);
         this.session.setSessionVariables();
 
-        this.session.loadServerVariables(getConnectionLock(), this.dbmd.getDriverVersion());
+        this.session.loadServerVariables(getConnectionLock(), dbmd.getDriverVersion());
 
         this.autoIncrementIncrement = this.session.getServerSession().getServerVariable("auto_increment_increment", 1);
 
@@ -1321,10 +1318,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         checkTransactionIsolationLevel();
 
         handleAutoCommitDefaults();
-
-        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd).setMetadataEncoding(this.session.getServerSession().getCharsetSettings().getMetadataEncoding());
-        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd)
-                .setMetadataCollationIndex(this.session.getServerSession().getCharsetSettings().getMetadataCollationIndex());
 
         //
         // Server can do this more efficiently for us
@@ -1879,7 +1872,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                     .append(StringUtils.quoteIdentifier(savepoint.getSavepointName(), this.session.getIdentifierQuoteString(), this.pedantic.getValue()));
             java.sql.Statement stmt = null;
             try {
-                stmt = getMetadataSafeStatement();
+                stmt = getMetaDataSafeStatement();
                 stmt.executeUpdate(releaseSavepointQuery.toString());
             } finally {
                 closeStatement(stmt);
@@ -2006,7 +1999,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                         .append(StringUtils.quoteIdentifier(savepoint.getSavepointName(), this.session.getIdentifierQuoteString(), this.pedantic.getValue()));
                 java.sql.Statement stmt = null;
                 try {
-                    stmt = getMetadataSafeStatement();
+                    stmt = getMetaDataSafeStatement();
                     stmt.executeUpdate(rollbackQuery.toString());
                 } catch (SQLException sqlEx) {
                     int errno = sqlEx.getErrorCode();
@@ -2379,7 +2372,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             savePointQuery.append(StringUtils.quoteIdentifier(savepoint.getSavepointName(), this.session.getIdentifierQuoteString(), this.pedantic.getValue()));
             java.sql.Statement stmt = null;
             try {
-                stmt = getMetadataSafeStatement();
+                stmt = getMetaDataSafeStatement();
                 stmt.executeUpdate(savePointQuery.toString());
             } finally {
                 closeStatement(stmt);

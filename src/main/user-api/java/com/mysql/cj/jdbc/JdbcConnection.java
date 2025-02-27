@@ -430,7 +430,7 @@ public interface JdbcConnection extends java.sql.Connection, MysqlConnection, Tr
      */
     String getCharacterSetMetadata();
 
-    java.sql.Statement getMetadataSafeStatement() throws SQLException;
+    java.sql.Statement getMetaDataSafeStatement() throws SQLException;
 
     ServerVersion getServerVersion();
 

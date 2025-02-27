@@ -57,8 +57,8 @@ import com.mysql.cj.jdbc.Clob;
 import com.mysql.cj.jdbc.CommentClientInfoProvider;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.ConnectionWrapper;
-import com.mysql.cj.jdbc.DatabaseMetaData;
-import com.mysql.cj.jdbc.DatabaseMetaDataUsingInfoSchema;
+import com.mysql.cj.jdbc.DatabaseMetaDataMysqlSchema;
+import com.mysql.cj.jdbc.DatabaseMetaDataInformationSchema;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
@@ -502,7 +502,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         assertTrue(cw.isSameResource((JdbcConnection) this.conn));
         assertEquals(((JdbcConnection) this.conn).nativeSQL("SELECT 1"), cw.nativeSQL("SELECT 1"));
 
-        assertEquals(cw.getServerVersion().meetsMinimum(new ServerVersion(8, 0, 3)) ? DatabaseMetaDataUsingInfoSchema.class : DatabaseMetaData.class,
+        assertEquals(cw.getServerVersion().meetsMinimum(new ServerVersion(8, 0, 3)) ? DatabaseMetaDataInformationSchema.class : DatabaseMetaDataMysqlSchema.class,
                 cw.getMetaData().getClass());
 
         // TODO find a way to test following methods

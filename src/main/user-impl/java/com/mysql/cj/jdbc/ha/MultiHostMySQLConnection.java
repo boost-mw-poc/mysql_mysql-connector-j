@@ -253,8 +253,8 @@ public class MultiHostMySQLConnection implements JdbcConnection {
     }
 
     @Override
-    public Statement getMetadataSafeStatement() throws SQLException {
-        return getActiveMySQLConnection().getMetadataSafeStatement();
+    public Statement getMetaDataSafeStatement() throws SQLException {
+        return getActiveMySQLConnection().getMetaDataSafeStatement();
     }
 
     @Override

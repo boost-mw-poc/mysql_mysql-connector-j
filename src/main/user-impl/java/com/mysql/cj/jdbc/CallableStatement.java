@@ -708,8 +708,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
     }
 
     /**
-     * Used to fake up some metadata when we don't have access to
-     * SHOW CREATE PROCEDURE or mysql.proc.
+     * Used to fake up some metadata when we don't have access to SHOW CREATE PROCEDURE.
      *
      * @param isReallyProcedure
      *            is it a procedure or function
@@ -802,8 +801,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                     objectName = objectNameParts.get(1);
                 }
                 if (this.pedantic) {
-                    dbName = StringUtils.unQuoteIdentifier(dbName, quotedId);
-                    objectName = StringUtils.unQuoteIdentifier(objectName, quotedId);
+                    dbName = StringUtils.unquoteIdentifier(dbName, quotedId);
+                    objectName = StringUtils.unquoteIdentifier(objectName, quotedId);
                 }
 
                 if (dbName.isEmpty()) {

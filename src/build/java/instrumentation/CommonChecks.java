@@ -71,7 +71,7 @@ public class CommonChecks {
         addClosedCheck(clazz.getDeclaredMethod("clientPrepareStatement", new CtClass[] { ctString, ctInt, ctInt, ctBool }));
         // addClosedCheck(clazz.getDeclaredMethod("commit", new CtClass[] {}));
         addClosedCheck(clazz.getDeclaredMethod("createStatement", new CtClass[] { ctInt, ctInt }));
-        // addClosedCheck(clazz.getDeclaredMethod("getMetaData", new CtClass[] { ctBool, ctBool }));
+        // addClosedCheck(clazz.getDeclaredMethod("getMetaData", new CtClass[] { ctBool }));
         // addClosedCheck(clazz.getDeclaredMethod("getNetworkTimeout", new CtClass[] {}));
         // addClosedCheck(clazz.getDeclaredMethod("getSchema", new CtClass[] {}));
         // addClosedCheck(clazz.getDeclaredMethod("isAutoCommitNonDefaultOnServer", new CtClass[] {}));

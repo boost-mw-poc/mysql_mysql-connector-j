@@ -3,6 +3,8 @@
 
 Version 9.3.0
 
+  - WL#16723, DatabaseMetaData clean up.
+
   - WL#16756, Implement missing methods in DatabaseMetaDataUsingInfoSchema.
 
   - Fix for Bug#20279671, PROCEDURE EXECUTION FAILS WHEN THE PARAMETER NAME CONTAINS ESCAPE CHARACTER.
