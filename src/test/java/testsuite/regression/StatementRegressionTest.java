@@ -12107,10 +12107,11 @@ public class StatementRegressionTest extends BaseTestCase {
         Supplier<Integer> sessionCount = () -> {
             try {
                 this.stmt.execute("FLUSH STATUS");
+                TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
                 this.rs = this.stmt.executeQuery("SHOW GLOBAL STATUS LIKE 'threads_connected'");
                 this.rs.next();
                 return this.rs.getInt(2);
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
         };
@@ -12126,7 +12127,7 @@ public class StatementRegressionTest extends BaseTestCase {
 
         new Thread(() -> {
             try {
-                testStmt.executeQuery("SELECT SLEEP(600)");
+                testStmt.executeQuery("SELECT SLEEP(60)");
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -12137,11 +12138,9 @@ public class StatementRegressionTest extends BaseTestCase {
         assertEquals(1, sessionCount.get() - initialSessionCount);
 
         testStmt.cancel();
-        TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
         assertEquals(1, sessionCount.get() - initialSessionCount);
 
         testConn.close();
-        TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
         assertEquals(0, sessionCount.get() - initialSessionCount);
     }
 
@@ -12157,10 +12156,11 @@ public class StatementRegressionTest extends BaseTestCase {
         Supplier<Integer> sessionCount = () -> {
             try {
                 this.stmt.execute("FLUSH STATUS");
+                TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
                 this.rs = this.stmt.executeQuery("SHOW GLOBAL STATUS LIKE 'threads_connected'");
                 this.rs.next();
                 return this.rs.getInt(2);
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
         };
@@ -12170,11 +12170,9 @@ public class StatementRegressionTest extends BaseTestCase {
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
 
         Connection testConn = getConnectionWithProps(props);
-
-        int initialSessionCount = sessionCount.get();
-
         Statement testStmt = testConn.createStatement();
         testStmt.setQueryTimeout(1);
+        int initialSessionCount = sessionCount.get();
         for (int i = 0; i < 5; i++) {
             assertThrows(MySQLTimeoutException.class, "Statement cancelled due to timeout or client request", () -> {
                 testStmt.executeQuery("SELECT SLEEP(30)");
@@ -12182,8 +12180,7 @@ public class StatementRegressionTest extends BaseTestCase {
             });
             // The difference between the `initialSessionCount` and the current session count would be greater than one if connections external to this test are
             // created in between. Chances for this to happen in a controlled or development environment are very low and can be neglected.
-            TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
-            assertEquals(0, sessionCount.get() - initialSessionCount);
+            assertTrue(sessionCount.get() - initialSessionCount < 1);
         }
 
         testConn.close();

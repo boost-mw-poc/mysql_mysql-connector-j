@@ -3044,7 +3044,8 @@ public class CollectionFindTest extends BaseCollectionTestCase {
             doc = docs.next();
             assertEquals((long) (i + 1), (long) ((JsonNumber) doc.get("f3")).getInteger());
             assertEquals(((JsonNumber) doc.get("f3")).getInteger(), ((JsonNumber) doc.get("tmp1")).getInteger());
-            assertEquals(new BigDecimal("0.500000000"), ((JsonNumber) doc.get("tmp2")).getBigDecimal());
+            assertEquals(new BigDecimal(mysqlVersionMeetsMinimum(ServerVersion.parseVersion("9.3.0")) ? "0.5000" : "0.500000000"),
+                    ((JsonNumber) doc.get("tmp2")).getBigDecimal());
 
             i++;
         }
