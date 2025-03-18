@@ -1466,84 +1466,77 @@ public class StatementsTest extends BaseTestCase {
 
     @Test
     public void testBatchRewriteErrors() throws Exception {
-        createTable("rewriteErrors", "(field1 int not null primary key) ENGINE=MyISAM");
+        createTable("rewriteErrors", "(id INT NOT NULL PRIMARY KEY)");
+        createProcedure("sp_rewriteErrors", "(param1 INT)\nBEGIN\nINSERT INTO rewriteErrors VALUES (param1);\nEND");
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "false");
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "5776");
+        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "6000"); // Big enough to run DatabaseMetaData#getProcedureColumns() queries.
         props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
         Connection multiConn = null;
 
         for (boolean continueBatchOnError : new boolean[] { false, true }) {
             props.setProperty(PropertyKey.continueBatchOnError.getKeyName(), Boolean.toString(continueBatchOnError));
-
             multiConn = getConnectionWithProps(props);
+
             this.pstmt = multiConn.prepareStatement("INSERT INTO rewriteErrors VALUES (?)");
             Statement multiStmt = multiConn.createStatement();
-
-            for (int i = 0; i < 4096; i++) {
-                multiStmt.addBatch("INSERT INTO rewriteErrors VALUES (" + i + ")");
+            for (int i = 0; i < 2048; i++) {
                 this.pstmt.setInt(1, i);
                 this.pstmt.addBatch();
+                multiStmt.addBatch("INSERT INTO rewriteErrors VALUES (" + i + ")");
             }
-
-            multiStmt.addBatch("INSERT INTO rewriteErrors VALUES (2048)");
-
-            this.pstmt.setInt(1, 2048);
+            // Force duplicate key error.
+            this.pstmt.setInt(1, 1);
             this.pstmt.addBatch();
+            multiStmt.addBatch("INSERT INTO rewriteErrors VALUES (1)");
 
             try {
                 this.pstmt.executeBatch();
+                fail("BatchUpdateException expected.");
             } catch (BatchUpdateException e) {
                 int[] counts = e.getUpdateCounts();
-                for (int i = 3585; i < counts.length; i++) {
+                // This depends on max_allowed_packet.
+                for (int i = 1490; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
-
-                // this depends on max_allowed_packet, only a sanity check
-                assertTrue(getRowCount("rewriteErrors") >= 4000);
+                assertTrue(getRowCount("rewriteErrors") == 1490);
             }
 
             this.stmt.execute("TRUNCATE TABLE rewriteErrors");
-
             try {
                 multiStmt.executeBatch();
+                fail("BatchUpdateException expected.");
             } catch (BatchUpdateException e) {
                 int[] counts = e.getUpdateCounts();
-                for (int i = 4095; i < counts.length; i++) {
+                // This depends on max_allowed_packet.
+                for (int i = 2037; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
-
-                // this depends on max_allowed_packet, only a sanity check
-                assertTrue(getRowCount("rewriteErrors") >= 4000);
+                assertTrue(getRowCount("rewriteErrors") >= 2037);
             }
 
             this.stmt.execute("TRUNCATE TABLE rewriteErrors");
-
-            createProcedure("sp_rewriteErrors", "(param1 INT)\nBEGIN\nINSERT INTO rewriteErrors VALUES (param1);\nEND");
-
             CallableStatement cStmt = multiConn.prepareCall("{ CALL sp_rewriteErrors(?) }");
-
-            for (int i = 0; i < 4096; i++) {
+            for (int i = 0; i < 2048; i++) {
                 cStmt.setInt(1, i);
                 cStmt.addBatch();
             }
-
-            cStmt.setInt(1, 2048);
+            // Force duplicate key error.
+            cStmt.setInt(1, 1);
             cStmt.addBatch();
 
             try {
                 cStmt.executeBatch();
             } catch (BatchUpdateException e) {
                 int[] counts = e.getUpdateCounts();
-                for (int i = 4012; i < counts.length; i++) {
+                // This depends on max_allowed_packet.
+                for (int i = 1991; i < counts.length; i++) {
                     assertEquals(Statement.EXECUTE_FAILED, counts[i]);
                 }
-
-                // this depends on max_allowed_packet, only a sanity check
-                assertTrue(getRowCount("rewriteErrors") >= 4000);
+                assertTrue(getRowCount("rewriteErrors") >= 1991);
             }
 
             this.stmt.execute("TRUNCATE TABLE rewriteErrors");

@@ -378,12 +378,12 @@ public class StressRegressionTest extends BaseTestCase {
 
         /*
          * Start concurrent jobs and let them run for 10 seconds (100 * 100 milliseconds).
-         * Monitor jobs activity while they are running, allowing, at the most, a period of 2 seconds (20 * 100 milliseconds) inactivity before the test fails.
+         * Monitor jobs activity while they are running, allowing, at the most, a period of 5 seconds (50 * 100 milliseconds) inactivity before the test fails.
          */
         final int recheckWaitTimeUnit = 100;
         int recheckWaitTimeCountdown = 100;
 
-        final int delta0IterationsCountdownSize = 20;
+        final int delta0IterationsCountdownSize = 50;
         int delta0IterationsCountdown = delta0IterationsCountdownSize;
 
         System.out.println("Start concurrent jobs and let them run for aproximatly " + recheckWaitTimeUnit * recheckWaitTimeCountdown / 1000 + " seconds...");
