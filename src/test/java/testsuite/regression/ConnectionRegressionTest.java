@@ -12326,4 +12326,31 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } while ((useSPS = !useSPS) || (useLTS = !useLTS) || (useLSS = !useLSS));
     }
 
+    /**
+     * Tests fix for Bug#19948601, UNEXPECTED BEHAVIOUR NOTICED WITH FEW OF THE MYSQL C/JAVA CONNECTION PARAMETERS.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug19948601() throws Exception {
+        Properties props = new Properties();
+        final String maxAllowedPacketErrorMessage = "The connection property 'maxAllowedPacket' only accepts integer values in the "
+                + "range of 0 - 2147483647, the value '-1' exceeds this range.";
+        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "-1");
+        assertThrows(SQLException.class, maxAllowedPacketErrorMessage, () -> {
+            this.getConnectionWithProps(props);
+            return null;
+        });
+
+        props.clear();
+        props.setProperty(PropertyKey.useUsageAdvisor.getKeyName(), "true");
+        props.setProperty(PropertyKey.resultSetSizeThreshold.getKeyName(), "-1");
+        final String resultSetSizeThresholdErrorMessage = "The connection property 'resultSetSizeThreshold' only accepts integer values "
+                + "in the range of 0 - 2147483647, the value '-1' exceeds this range.";
+        assertThrows(SQLException.class, resultSetSizeThresholdErrorMessage, () -> {
+            this.getConnectionWithProps(props);
+            return null;
+        });
+    }
+
 }

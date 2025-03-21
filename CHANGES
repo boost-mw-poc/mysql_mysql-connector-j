@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#19948601, UNEXPECTED BEHAVIOUR NOTICED WITH FEW OF THE MYSQL C/JAVA CONNECTION PARAMETERS.
+
 Version 9.3.0
 
   - Fix for Bug#117294 (Bug#37523180), Updatable ResultSet fails with 'Parameter index out of range'.

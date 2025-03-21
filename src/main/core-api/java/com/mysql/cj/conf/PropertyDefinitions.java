@@ -325,7 +325,7 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.useCompression"), "3.0.17", CATEGORY_NETWORK, Integer.MIN_VALUE),
 
                 new IntegerPropertyDefinition(PropertyKey.maxAllowedPacket, 65535, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.maxAllowedPacket"), "5.1.8", CATEGORY_NETWORK, Integer.MIN_VALUE),
+                        Messages.getString("ConnectionProperties.maxAllowedPacket"), "5.1.8", CATEGORY_NETWORK, Integer.MIN_VALUE, 0, Integer.MAX_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.dnsSrv, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.dnsSrv"), "8.0.19", CATEGORY_NETWORK, Integer.MIN_VALUE),
@@ -804,7 +804,7 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.useUsageAdvisor"), "3.1.1", CATEGORY_DEBUGING_PROFILING, 16),
 
                 new IntegerPropertyDefinition(PropertyKey.resultSetSizeThreshold, 100, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.resultSetSizeThreshold"), "5.0.5", CATEGORY_DEBUGING_PROFILING, 17),
+                        Messages.getString("ConnectionProperties.resultSetSizeThreshold"), "5.0.5", CATEGORY_DEBUGING_PROFILING, 17, 0, Integer.MAX_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.autoGenerateTestcaseScript, DEFAULT_VALUE_FALSE, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.autoGenerateTestcaseScript"), "3.1.9", CATEGORY_DEBUGING_PROFILING, 18),
