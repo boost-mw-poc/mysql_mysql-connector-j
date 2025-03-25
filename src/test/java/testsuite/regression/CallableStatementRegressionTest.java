@@ -2002,4 +2002,27 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         assertEquals(3, testCstmt.getInt("p`2"));
     }
 
+    /**
+     * Tests fix for Bug#75441 (Bug#20344798), com.mysql.jdbc.CallableStatement.extractProcedureName fragile.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testbug75441() throws Exception {
+        createProcedure("testBug75441proc", "(IN p INT) BEGIN SELECT p + 1; END");
+        CallableStatement cstmt = this.conn.prepareCall("CALL\ntestBug75441proc(?)");
+        cstmt.setInt(1, 1);
+        cstmt.execute();
+        this.rs = cstmt.getResultSet();
+        assertTrue(this.rs.next());
+        assertEquals(2, this.rs.getInt(1));
+
+        cstmt = this.conn.prepareCall("-- comment 1\n  CALL/* comment 2 */testBug75441proc(?)#comment-3");
+        cstmt.setInt(1, 2);
+        cstmt.execute();
+        this.rs = cstmt.getResultSet();
+        assertTrue(this.rs.next());
+        assertEquals(3, this.rs.getInt(1));
+    }
+
 }

@@ -77,6 +77,9 @@ import com.mysql.cj.util.Util;
  */
 public class CallableStatement extends ClientPreparedStatement implements java.sql.CallableStatement {
 
+    private static final String CALL_STATEMENT = "CALL";
+    private static final String SELECT_STATEMENT = "SELECT";
+
     protected static class CallableStatementParam {
 
         int index;
@@ -516,8 +519,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                     startIndex = 1;
                 }
 
-                int startPos = this.callingStoredFunction ? StringUtils.indexOfIgnoreCase(q.getOriginalSql(), "SELECT")
-                        : StringUtils.indexOfIgnoreCase(q.getOriginalSql(), "CALL");
+                int startPos = this.callingStoredFunction ? StringUtils.indexOfIgnoreCase(q.getOriginalSql(), SELECT_STATEMENT)
+                        : StringUtils.indexOfIgnoreCase(q.getOriginalSql(), CALL_STATEMENT);
 
                 if (startPos != -1) {
                     int parenOpenPos = q.getOriginalSql().indexOf('(', startPos + 4);
@@ -585,7 +588,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         this.callingStoredFunction = isFunctionCall;
 
         if (!this.callingStoredFunction) {
-            if (!StringUtils.startsWithIgnoreCaseAndWs(sql, "CALL")) {
+            if (!getQueryInfo().getStatementKeyword().equalsIgnoreCase(CALL_STATEMENT)) {
                 // not really a stored procedure call
                 fakeParameterTypes(false);
             } else {
@@ -738,7 +741,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
             fields[11] = new Field("", "NULLABLE", collationIndex, encoding, MysqlType.SMALLINT, 0);
             fields[12] = new Field("", "REMARKS", collationIndex, encoding, MysqlType.CHAR, 0);
 
-            String procName = isReallyProcedure ? extractProcedureName() : null;
+            String procName = isReallyProcedure ? extractRoutineName() : null;
 
             byte[] procNameAsBytes = null;
 
@@ -793,7 +796,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
             try {
                 //Bug#57022, we need to check for db.SPname notation first and pass on only SPname
                 String dbName = "";
-                String objectName = extractProcedureName();
+                String objectName = extractRoutineName();
                 String quotedId = this.session.getIdentifierQuoteString();
                 List<String> objectNameParts = StringUtils.splitDBdotName(objectName, "", quotedId, this.session.getServerSession().isNoBackslashEscapesSet());
                 if (objectNameParts.size() == 2) {
@@ -974,39 +977,33 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         return Util.truncateAndConvertToInt(executeLargeUpdate());
     }
 
-    private String extractProcedureName() throws SQLException {
-        String sanitizedSql = StringUtils.stripCommentsAndHints(((PreparedQuery) this.query).getOriginalSql(), "`'\"", "`'\"",
-                !this.session.getServerSession().isNoBackslashEscapesSet());
-
-        int endCallIndex = StringUtils.indexOfIgnoreCase(sanitizedSql, "CALL ");
-        int offset = 5;
-
-        if (endCallIndex == -1) {
-            endCallIndex = StringUtils.indexOfIgnoreCase(sanitizedSql, "SELECT ");
-            offset = 7;
+    private String extractRoutineName() throws SQLException {
+        String statementKeyword = getQueryInfo().getStatementKeyword();
+        if (!statementKeyword.equalsIgnoreCase(CALL_STATEMENT) && !statementKeyword.equalsIgnoreCase(SELECT_STATEMENT)) {
+            throw SQLError.createSQLException(Messages.getString("CallableStatement.1"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
+                    getExceptionInterceptor());
         }
 
-        if (endCallIndex != -1) {
-            StringBuilder nameBuf = new StringBuilder();
+        String sql = ((PreparedQuery) this.query).getOriginalSql();
+        int keywordPos = StringUtils.indexOfIgnoreCase(sql, statementKeyword);
+        boolean noBackslashEscapes = this.session.getServerSession().isNoBackslashEscapesSet();
+        StringInspector strInspector = new StringInspector(sql, keywordPos + statementKeyword.length(), "'\"(", "'\")", "",
+                noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
-            String trimmedStatement = sanitizedSql.substring(endCallIndex + offset).trim();
-
-            int statementLength = trimmedStatement.length();
-
-            for (int i = 0; i < statementLength; i++) {
-                char c = trimmedStatement.charAt(i);
-
-                if (Character.isWhitespace(c) || c == '(' || c == '?') {
-                    break;
-                }
-                nameBuf.append(c);
-
-            }
-
-            return nameBuf.toString();
+        strInspector.indexOfNextNonWsChar(); // Moves to the beginning of the routine name.
+        int routineNameIndex = strInspector.getPosition();
+        StringBuilder routineName = new StringBuilder();
+        while (strInspector.indexOfNextChar() != -1 && strInspector.getPosition() - routineNameIndex <= 1) {
+            routineName.append(strInspector.getChar());
+            routineNameIndex = strInspector.getPosition();
+            strInspector.incrementPosition();
         }
 
-        throw SQLError.createSQLException(Messages.getString("CallableStatement.1"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR, getExceptionInterceptor());
+        if (routineName.length() == 0) {
+            throw SQLError.createSQLException(Messages.getString("CallableStatement.1"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
+                    getExceptionInterceptor());
+        }
+        return routineName.toString();
     }
 
     /**
@@ -2562,7 +2559,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
             java.sql.PreparedStatement ps = null;
 
             try {
-                String procName = extractProcedureName();
+                String procName = extractRoutineName();
 
                 String db = getCurrentDatabase();
 
@@ -2615,8 +2612,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         if (QueryInfo.isReadOnlySafeQuery(((PreparedQuery) this.query).getOriginalSql(), this.session.getServerSession().isNoBackslashEscapesSet())) {
             String sql = ((PreparedQuery) this.query).getOriginalSql();
             int statementKeywordPos = QueryInfo.indexOfStatementKeyword(sql, this.session.getServerSession().isNoBackslashEscapesSet());
-            if (StringUtils.startsWithIgnoreCaseAndWs(sql, "CALL", statementKeywordPos)
-                    || StringUtils.startsWithIgnoreCaseAndWs(sql, "SELECT", statementKeywordPos)) {
+            if (StringUtils.startsWithIgnoreCaseAndWs(sql, CALL_STATEMENT, statementKeywordPos)
+                    || StringUtils.startsWithIgnoreCaseAndWs(sql, SELECT_STATEMENT, statementKeywordPos)) {
                 // "CALL" and "SELECT" are read-only safe but the routine they call may not be.
                 if (!this.connection.isReadOnly()) { // Only proceed with checking the routine body if really needed.
                     return true;
