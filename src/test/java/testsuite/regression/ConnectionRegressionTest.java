@@ -95,6 +95,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -2987,7 +2988,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
         varConn.close();
     }
 
-    @SuppressWarnings("resource")
     @Test
     public void testChangeUser() throws Exception {
         Properties props = getPropertiesFromTestsuiteUrl();
@@ -9259,50 +9259,51 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } while (useLocTransSt = !useLocTransSt);
     }
 
-    Future<?> testBug75615Future = null;
-
     /**
      * Tests fix for Bug#75615 - Incorrect implementation of Connection.setNetworkTimeout().
      *
-     * Note: this test exploits a non deterministic race condition. Usually the failure was observed under 10 consecutive executions, as such the siginficant
-     * part of the test is run up to 25 times.
+     * Note: this test exploits a non deterministic race condition. The failure was observed usually under 10 consecutive executions, as such the test is run up
+     * to 25 times.
      *
      * @throws Exception
      */
     @Test
     public void testBug75615() throws Exception {
-        // Main use case: although this could cause an exception due to a race condition in MysqlIO.mysqlConnection it is silently swallowed within the running
-        // thread.
+        // The following simulates the reported issue by capturing any exception thrown within the thread created by the specified executor, which is where the
+        // problem resides. The possible race condition happens when Connection.close() runs before the executor task. This is repeated multiple times to
+        // increase the chance of hitting the reported bug.
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        final Connection testConn1 = getConnectionWithProps(props);
-        testConn1.setNetworkTimeout(Executors.newSingleThreadExecutor(), 1000);
-        testConn1.close();
+        props.setProperty(PropertyKey.socketTimeout.getKeyName(), "2000");
 
-        // Main use case simulation: this simulates the above by capturing an eventual exeption in the main thread. This is where this test would actually fail.
-        // This part is repeated several times to increase the chance of hitting the reported bug.
+        final AtomicReference<Future<?>> testBug75615FutureRef = new AtomicReference<>();
         for (int i = 0; i < 25; i++) {
-            final ExecutorService execService = Executors.newSingleThreadExecutor();
-            final Connection testConn2 = getConnectionWithProps(props);
-            testConn2.setNetworkTimeout(command -> ConnectionRegressionTest.this.testBug75615Future = execService.submit(command), 1000);
-            testConn2.close();
+            ExecutorService execService = Executors.newSingleThreadExecutor();
+            Connection testConn = getConnectionWithProps(props);
+            assertEquals(2000, testConn.getNetworkTimeout());
+            testConn.setNetworkTimeout(command -> testBug75615FutureRef.set(execService.submit(command)), 1000);
+            assertEquals(1000, testConn.getNetworkTimeout());
+            testConn.close();
             try {
-                this.testBug75615Future.get();
+                if (testBug75615FutureRef.get() != null) {
+                    testBug75615FutureRef.get().get();
+                }
             } catch (ExecutionException e) {
-                e.getCause().printStackTrace();
                 fail("Exception thrown in the thread that was setting the network timeout: " + e.getCause());
             }
+
+            // The specified executor is not used after the reimplementation of Connection.setNetworkTimeout() in 9.4.0.
+            assertNull(testBug75615FutureRef.get());
             execService.shutdownNow();
         }
 
-        // Test the expected exception on null executor.
-        assertThrows(SQLException.class, "Executor can not be null", () -> {
-            Connection testConn = getConnectionWithProps(props);
-            testConn.setNetworkTimeout(null, 1000);
-            testConn.close();
+        Connection testConn = getConnectionWithProps(props);
+        assertThrows(SQLException.class, "Network timeout value must be greater than or equal to 0\\.", () -> {
+            testConn.setNetworkTimeout(null, -1);
             return null;
         });
+        testConn.close();
     }
 
     /**

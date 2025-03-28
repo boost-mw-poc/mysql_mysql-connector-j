@@ -21,7 +21,6 @@
 package com.mysql.cj.jdbc;
 
 import java.io.Serializable;
-import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.sql.Blob;
@@ -2728,7 +2727,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public void abort(Executor executor) throws SQLException {
         SecurityManager sec = System.getSecurityManager();
-
         if (sec != null) {
             sec.checkPermission(ABORT_PERM);
         }
@@ -2737,7 +2735,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             throw SQLError.createSQLException(Messages.getString("Connection.26"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
                     getExceptionInterceptor());
         }
-
         executor.execute(() -> {
             try {
                 abortInternal();
@@ -2748,53 +2745,25 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     @Override
-    public void setNetworkTimeout(Executor executor, final int milliseconds) throws SQLException {
+    public void setNetworkTimeout(Executor executor /* not used */, int milliseconds) throws SQLException {
+        SecurityManager sec = System.getSecurityManager();
+        if (sec != null) {
+            sec.checkPermission(SET_NETWORK_TIMEOUT_PERM);
+        }
+
+        if (milliseconds < 0) {
+            throw SQLError.createSQLException(Messages.getString("Connection.27"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
+                    getExceptionInterceptor());
+        }
+
         Lock connectionLock = getConnectionLock();
         connectionLock.lock();
         try {
-            SecurityManager sec = System.getSecurityManager();
-
-            if (sec != null) {
-                sec.checkPermission(SET_NETWORK_TIMEOUT_PERM);
-            }
-
-            if (executor == null) {
-                throw SQLError.createSQLException(Messages.getString("Connection.26"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-            }
-
             checkClosed();
-
-            executor.execute(new NetworkTimeoutSetter(this, milliseconds));
+            getSession().setSocketTimeout(milliseconds);
         } finally {
             connectionLock.unlock();
         }
-    }
-
-    private static class NetworkTimeoutSetter implements Runnable {
-
-        private final WeakReference<JdbcConnection> connRef;
-        private final int milliseconds;
-
-        public NetworkTimeoutSetter(JdbcConnection conn, int milliseconds) {
-            this.connRef = new WeakReference<>(conn);
-            this.milliseconds = milliseconds;
-        }
-
-        @Override
-        public void run() {
-            JdbcConnection conn = this.connRef.get();
-            if (conn != null) {
-                Lock connectionLock = conn.getConnectionLock();
-                connectionLock.lock();
-                try {
-                    ((NativeSession) conn.getSession()).setSocketTimeout(this.milliseconds);
-                } finally {
-                    connectionLock.unlock();
-                }
-            }
-        }
-
     }
 
     @Override
