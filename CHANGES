@@ -3,6 +3,9 @@
 
 Version 9.4.0
 
+  - Fix for Bug#115845 (Bug#36954268), Contribution: Set correct OTel Span name for transaction commits.
+    Thanks to Willem Fibbe for his contribution.
+
   - Fix for Bug#75615 (Bug#21181249), Incorrect implementation of Connection.setNetworkTimeout().
 
   - Fix for Bug#75441 (Bug#20344798), com.mysql.jdbc.CallableStatement.extractProcedureName fragile.

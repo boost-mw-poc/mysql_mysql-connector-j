@@ -773,11 +773,11 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                     }
                 }
 
-                TelemetrySpan span = this.session.getTelemetryHandler().startSpan(TelemetrySpanName.ROLLBACK);
+                TelemetrySpan span = this.session.getTelemetryHandler().startSpan(TelemetrySpanName.COMMIT);
                 try (TelemetryScope scope = span.makeCurrent()) {
                     span.setAttribute(TelemetryAttribute.DB_NAME, this::getDatabase);
-                    span.setAttribute(TelemetryAttribute.DB_OPERATION, TelemetryAttribute.OPERATION_ROLLBACK);
-                    span.setAttribute(TelemetryAttribute.DB_STATEMENT, TelemetryAttribute.OPERATION_ROLLBACK);
+                    span.setAttribute(TelemetryAttribute.DB_OPERATION, TelemetryAttribute.OPERATION_COMMIT);
+                    span.setAttribute(TelemetryAttribute.DB_STATEMENT, TelemetryAttribute.OPERATION_COMMIT);
                     span.setAttribute(TelemetryAttribute.DB_SYSTEM, TelemetryAttribute.DB_SYSTEM_DEFAULT);
                     span.setAttribute(TelemetryAttribute.DB_USER, this::getUser);
                     span.setAttribute(TelemetryAttribute.THREAD_ID, () -> Thread.currentThread().getId());
