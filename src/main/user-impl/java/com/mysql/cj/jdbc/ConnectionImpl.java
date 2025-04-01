@@ -745,22 +745,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
             try {
                 if (this.connectionLifecycleInterceptors != null) {
-                    IterateBlock<ConnectionLifecycleInterceptor> iter = new IterateBlock<ConnectionLifecycleInterceptor>(
-                            this.connectionLifecycleInterceptors.iterator()) {
-
-                        @Override
-                        void forEach(ConnectionLifecycleInterceptor each) throws SQLException {
-                            if (!each.commit()) {
-                                this.stopIterating = true;
-                            }
+                    for (ConnectionLifecycleInterceptor connectionLifecycleInterceptor : this.connectionLifecycleInterceptors) {
+                        if (!connectionLifecycleInterceptor.commit()) {
+                            return;
                         }
-
-                    };
-
-                    iter.doForAll();
-
-                    if (!iter.fullIteration()) {
-                        return;
                     }
                 }
 
@@ -1918,22 +1906,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
             try {
                 if (this.connectionLifecycleInterceptors != null) {
-                    IterateBlock<ConnectionLifecycleInterceptor> iter = new IterateBlock<ConnectionLifecycleInterceptor>(
-                            this.connectionLifecycleInterceptors.iterator()) {
-
-                        @Override
-                        void forEach(ConnectionLifecycleInterceptor each) throws SQLException {
-                            if (!each.rollback()) {
-                                this.stopIterating = true;
-                            }
+                    for (ConnectionLifecycleInterceptor connectionLifecycleInterceptor : this.connectionLifecycleInterceptors) {
+                        if (!connectionLifecycleInterceptor.rollback()) {
+                            return;
                         }
-
-                    };
-
-                    iter.doForAll();
-
-                    if (!iter.fullIteration()) {
-                        return;
                     }
                 }
                 if (this.session.getServerSession().isAutoCommit()) {
@@ -1974,22 +1950,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
             try {
                 if (this.connectionLifecycleInterceptors != null) {
-                    IterateBlock<ConnectionLifecycleInterceptor> iter = new IterateBlock<ConnectionLifecycleInterceptor>(
-                            this.connectionLifecycleInterceptors.iterator()) {
-
-                        @Override
-                        void forEach(ConnectionLifecycleInterceptor each) throws SQLException {
-                            if (!each.rollback(savepoint)) {
-                                this.stopIterating = true;
-                            }
+                    for (ConnectionLifecycleInterceptor connectionLifecycleInterceptor : this.connectionLifecycleInterceptors) {
+                        if (!connectionLifecycleInterceptor.rollback(savepoint)) {
+                            return;
                         }
-
-                    };
-
-                    iter.doForAll();
-
-                    if (!iter.fullIteration()) {
-                        return;
                     }
                 }
 
@@ -2133,22 +2097,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             checkClosed();
 
             if (this.connectionLifecycleInterceptors != null) {
-                IterateBlock<ConnectionLifecycleInterceptor> iter = new IterateBlock<ConnectionLifecycleInterceptor>(
-                        this.connectionLifecycleInterceptors.iterator()) {
-
-                    @Override
-                    void forEach(ConnectionLifecycleInterceptor each) throws SQLException {
-                        if (!each.setAutoCommit(autoCommitFlag)) {
-                            this.stopIterating = true;
-                        }
+                for (ConnectionLifecycleInterceptor connectionLifecycleInterceptor : this.connectionLifecycleInterceptors) {
+                    if (!connectionLifecycleInterceptor.setAutoCommit(autoCommitFlag)) {
+                        return;
                     }
-
-                };
-
-                iter.doForAll();
-
-                if (!iter.fullIteration()) {
-                    return;
                 }
             }
 
@@ -2228,22 +2180,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             }
 
             if (this.connectionLifecycleInterceptors != null) {
-                IterateBlock<ConnectionLifecycleInterceptor> iter = new IterateBlock<ConnectionLifecycleInterceptor>(
-                        this.connectionLifecycleInterceptors.iterator()) {
-
-                    @Override
-                    void forEach(ConnectionLifecycleInterceptor each) throws SQLException {
-                        if (!each.setDatabase(db)) {
-                            this.stopIterating = true;
-                        }
+                for (ConnectionLifecycleInterceptor connectionLifecycleInterceptor : this.connectionLifecycleInterceptors) {
+                    if (!connectionLifecycleInterceptor.setDatabase(db)) {
+                        return;
                     }
-
-                };
-
-                iter.doForAll();
-
-                if (!iter.fullIteration()) {
-                    return;
                 }
             }
 

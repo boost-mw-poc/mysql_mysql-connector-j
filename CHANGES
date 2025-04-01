@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - WL#16917, Remove IterateBlock class.
+
   - Fix for Bug#117873 (Bug#37785888), Time instances created from negative milliseconds are encoded without fractional seconds.
 
   - Fix for Bug#115845 (Bug#36954268), Contribution: Set correct OTel Span name for transaction commits.
