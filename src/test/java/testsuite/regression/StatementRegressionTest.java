@@ -14052,4 +14052,37 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(this.stmt.isClosed());
     }
 
+    /**
+     * Tests fix for Bug#117873 (Bug#37785888), Time instances created from negative milliseconds are encoded without fractional seconds.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug117873() throws Exception {
+        boolean useSPS = false;
+        do {
+            final String testCase = String.format("Case [SPS: %s]", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            try (Connection testConn = getConnectionWithProps(props)) {
+                this.stmt = testConn.createStatement();
+                this.stmt.execute("CREATE TEMPORARY TABLE testBug117873 (t TIME(3))");
+
+                this.pstmt = testConn.prepareStatement("INSERT INTO testBug117873 VALUES (?);");
+                this.pstmt.setTime(1, new Time(-1500));
+                this.pstmt.executeUpdate();
+                this.pstmt.setTime(1, new Time(1500));
+                this.pstmt.executeUpdate();
+
+                this.rs = this.stmt.executeQuery("SELECT * FROM testBug117873");
+                while (this.rs.next()) {
+                    assertTrue(this.rs.getString(1).endsWith(".500"), testCase);
+                    assertEquals(500, Math.abs(this.rs.getTime(1).getTime() % 1000), testCase);
+                    assertEquals(500000000, this.rs.getObject(1, LocalTime.class).getNano(), testCase);
+                }
+            }
+        } while (useSPS = !useSPS);
+    }
+
 }
