@@ -2025,4 +2025,23 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         assertEquals(3, this.rs.getInt(1));
     }
 
+    /**
+     * Tests fix for Bug#77766 (Bug#21503942), CallableStatement.getObject have inconsistent behavior.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testbug77766() throws Exception {
+        createProcedure("testBug77766", "(IN a INT, OUT b INT) BEGIN SET b = a; END");
+        CallableStatement cstmt = this.conn.prepareCall("{CALL testBug77766(?, ?)}");
+        cstmt.setInt("a", 1);
+        cstmt.registerOutParameter("b", Types.INTEGER);
+        cstmt.execute();
+
+        assertEquals(Integer.class, cstmt.getObject(2).getClass());
+        assertEquals(1, cstmt.getObject(2));
+        assertEquals(Integer.class, cstmt.getObject("b").getClass());
+        assertEquals(1, cstmt.getObject("b"));
+    }
+
 }

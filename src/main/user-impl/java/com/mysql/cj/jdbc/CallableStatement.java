@@ -1579,9 +1579,11 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
+            CallableStatementParam paramDescriptor = this.paramInfo.getParameter(parameterName);
+
             ResultSetInternalMethods rs = getOutputParameters(0); // definitely not going to be from ?=
 
-            Object retValue = rs.getObject(fixParameterName(parameterName));
+            Object retValue = rs.getObjectStoredProc(fixParameterName(parameterName), paramDescriptor.desiredMysqlType.getJdbcType());
 
             this.outputParamWasNull = rs.wasNull();
 

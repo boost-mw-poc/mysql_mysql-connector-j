@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#77766 (Bug#21503942), CallableStatement.getObject have inconsistent behavior.
+
   - WL#16917, Remove IterateBlock class.
 
   - Fix for Bug#117873 (Bug#37785888), Time instances created from negative milliseconds are encoded without fractional seconds.
