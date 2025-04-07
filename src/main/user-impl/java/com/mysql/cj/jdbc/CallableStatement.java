@@ -519,11 +519,12 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                     startIndex = 1;
                 }
 
-                int startPos = this.callingStoredFunction ? StringUtils.indexOfIgnoreCase(q.getOriginalSql(), SELECT_STATEMENT)
-                        : StringUtils.indexOfIgnoreCase(q.getOriginalSql(), CALL_STATEMENT);
+                int startPos = StringUtils.indexOfIgnoreCase(0, q.getOriginalSql(), this.callingStoredFunction ? SELECT_STATEMENT : CALL_STATEMENT, "`\"",
+                        "`\"", SearchMode.__FULL);
 
                 if (startPos != -1) {
-                    int parenOpenPos = q.getOriginalSql().indexOf('(', startPos + 4);
+                    final String quoteId = this.session.getServerSession().useAnsiQuotedIdentifiers() ? "`\"" : "`";
+                    int parenOpenPos = StringUtils.indexOfIgnoreCase(startPos + 4, q.getOriginalSql(), "(", quoteId, quoteId, SearchMode.__FULL);
 
                     if (parenOpenPos != -1) {
                         int parenClosePos = StringUtils.indexOfIgnoreCase(parenOpenPos, q.getOriginalSql(), ")", "'\"", "'\"", SearchMode.__FULL);
@@ -985,25 +986,21 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
         }
 
         String sql = ((PreparedQuery) this.query).getOriginalSql();
-        int keywordPos = StringUtils.indexOfIgnoreCase(sql, statementKeyword);
         boolean noBackslashEscapes = this.session.getServerSession().isNoBackslashEscapesSet();
-        StringInspector strInspector = new StringInspector(sql, keywordPos + statementKeyword.length(), "'\"(", "'\")", "",
+        StringInspector strInspector = new StringInspector(sql, "'\"`", "'\"`", "",
                 noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
-
-        strInspector.indexOfNextNonWsChar(); // Moves to the beginning of the routine name.
-        int routineNameIndex = strInspector.getPosition();
-        StringBuilder routineName = new StringBuilder();
-        while (strInspector.indexOfNextChar() != -1 && strInspector.getPosition() - routineNameIndex <= 1) {
-            routineName.append(strInspector.getChar());
-            routineNameIndex = strInspector.getPosition();
-            strInspector.incrementPosition();
-        }
+        int keywordPos = strInspector.indexOfIgnoreCase(statementKeyword);
+        int routineNameIndex = keywordPos + statementKeyword.length();
+        int openParenIndex = strInspector.indexOfIgnoreCase("(");
+        String routineName = "";
+        routineName = sql.substring(routineNameIndex, openParenIndex == -1 ? sql.length() : openParenIndex);
+        routineName = StringUtils.stripCommentsAndHints(routineName, "'\"`", "'\"`", !noBackslashEscapes).trim();
 
         if (routineName.length() == 0) {
             throw SQLError.createSQLException(Messages.getString("CallableStatement.1"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                     getExceptionInterceptor());
         }
-        return routineName.toString();
+        return routineName;
     }
 
     /**

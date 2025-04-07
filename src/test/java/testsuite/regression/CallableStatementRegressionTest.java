@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayInputStream;
@@ -42,6 +43,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Properties;
+import java.util.function.BiConsumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -2008,7 +2010,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
-    void testbug75441() throws Exception {
+    void testBug75441() throws Exception {
         createProcedure("testBug75441proc", "(IN p INT) BEGIN SELECT p + 1; END");
         CallableStatement cstmt = this.conn.prepareCall("CALL\ntestBug75441proc(?)");
         cstmt.setInt(1, 1);
@@ -2031,7 +2033,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
-    void testbug77766() throws Exception {
+    void testBug77766() throws Exception {
         createProcedure("testBug77766", "(IN a INT, OUT b INT) BEGIN SET b = a; END");
         CallableStatement cstmt = this.conn.prepareCall("{CALL testBug77766(?, ?)}");
         cstmt.setInt("a", 1);
@@ -2042,6 +2044,65 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         assertEquals(1, cstmt.getObject(2));
         assertEquals(Integer.class, cstmt.getObject("b").getClass());
         assertEquals(1, cstmt.getObject("b"));
+    }
+
+    /**
+     * Tests fix for Bug#20279578, REGISTEROUTPARAMETER() FAILS WHEN PROCEDURE NAME CONTAINS SOME SPECIAL CHARACTER.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug20279578() throws Exception {
+        BiConsumer<String, Connection> testRun = (sql, testConn) -> {
+            try {
+                CallableStatement cstmt = testConn.prepareCall(sql);
+                cstmt.setString(1, "a");
+                cstmt.setInt(2, 1);
+                cstmt.registerOutParameter(2, java.sql.Types.INTEGER);
+                cstmt.execute();
+                this.rs = cstmt.getResultSet();
+                assertTrue(this.rs.next());
+                assertEquals(2, this.rs.getInt(1));
+            } catch (Exception e) {
+                fail(e.getMessage());
+            }
+        };
+
+        final String procName1 = "`testBug(``'\"20279578`";
+        final String procName2 = "`testBug(20279578_df`.`testBug\"(\"20279578`";
+        final String procName3 = "\"testBug(20279578_aq\".\"testBug`(`20279578\"";
+        final String procedureDefn = "(IN p1 VARCHAR(5), INOUT p2 INT) BEGIN SET p2=2; SELECT p2; END";
+
+        createDatabase("`testBug(20279578_df`");
+        createProcedure(procName1, procedureDefn);
+        createProcedure(procName2, procedureDefn);
+
+        testRun.accept("{CALL " + procName1 + "(?, ?)}", this.conn);
+        testRun.accept("{CALL " + procName2 + "(?, ?)}", this.conn);
+
+        testRun.accept("/*CALL (ME)*/{CALL /*test*/" + procName1 + "/*bug*/(/*20279578*/?, ?)}", this.conn);
+
+        Properties props = new Properties();
+        String sqlMode = getMysqlVariable("sql_mode");
+        sqlMode = removeSqlMode("ANSI_QUOTES", sqlMode);
+        if (sqlMode.length() > 0) {
+            sqlMode += ",";
+        }
+        sqlMode += "ANSI_QUOTES";
+
+        props.setProperty(PropertyKey.sessionVariables.getKeyName(), "sql_mode='" + sqlMode + "'");
+        Connection connAnsiQuotes = getConnectionWithProps(props);
+        Statement stmtAnsiQuotes = connAnsiQuotes.createStatement();
+        try {
+            stmtAnsiQuotes.execute("CREATE DATABASE IF NOT EXISTS \"testBug(20279578_aq\"");
+            stmtAnsiQuotes.execute("CREATE PROCEDURE IF NOT EXISTS " + procName3 + procedureDefn);
+
+            testRun.accept("{CALL " + procName3 + "(?, ?)}", connAnsiQuotes);
+        } finally {
+            // BaseTestCase.tearDownBase() doesn't work with ANSI_QUOTES.
+            stmtAnsiQuotes.execute("DROP PROCEDURE IF EXISTS " + procName3);
+            stmtAnsiQuotes.execute("DROP DATABASE IF EXISTS \"testBug(20279578_aq\"");
+        }
     }
 
 }

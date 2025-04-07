@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#20279578, REGISTEROUTPARAMETER() FAILS WHEN PROCEDURE NAME CONTAINS SOME SPECIAL CHARACTER.
+
   - Fix for Bug#109339 (Bug#34898663), Failed to insert bignums due to overflow.
     Thanks to Yohei Ueki for his contribution.
 
