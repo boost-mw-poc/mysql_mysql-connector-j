@@ -421,7 +421,10 @@ public class NativeMessageBuilder implements MessageBuilder<NativePacketPayload>
 
                 // Store types of parameters in the first packet that is sent to the server.
                 for (int i = 0; i < parameterCount; i++) {
-                    packet.writeInteger(IntegerDataType.INT2, parameterBindings[i].getFieldType());
+                    packet.writeInteger(IntegerDataType.INT1, parameterBindings[i].getFieldType());
+                    packet.writeInteger(IntegerDataType.INT1,
+                            parameterBindings[i].getMysqlType().isAllowed(MysqlType.FIELD_FLAG_UNSIGNED) ? MysqlType.PARAM_FLAG_UNSIGNED
+                                    : MysqlType.PARAM_FLAG_NONE);
                     if (this.supportsQueryAttributes) {
                         packet.writeBytes(StringSelfDataType.STRING_LENENC, "".getBytes()); // Parameters have no names.
                     }

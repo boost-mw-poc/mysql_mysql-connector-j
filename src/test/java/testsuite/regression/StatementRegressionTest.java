@@ -9159,18 +9159,17 @@ public class StatementRegressionTest extends BaseTestCase {
         createTable("testBug77449_time", "(id INT PRIMARY KEY, t_short TIME, t_long TIME(6))");
         createProcedure("testBug77449_time", "(t_short TIME, t_long TIME(6)) BEGIN SELECT t_short, t_long; END");
 
-        for (int tst = 0; tst < 8; tst++) {
-            boolean useServerPrepStmts = (tst & 0x2) != 0;
-            boolean sendFractionalSeconds = (tst & 0x4) != 0;
-
-            String testCase = String.format("Case: %d [ useSSPS=%s | sendFracSecs=%s ]", tst, useServerPrepStmts, sendFractionalSeconds);
+        boolean useSPS = false;
+        boolean sendFS = false;
+        do {
+            String testCase = String.format("Case [ useSSPS; %s,  sendFracSecs: %s ]", useSPS ? "Y" : "N", sendFS ? "Y" : "N");
 
             Properties props = new Properties();
             props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
             props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
             props.setProperty(PropertyKey.queryInterceptors.getKeyName(), TestBug77449QueryInterceptor.class.getName());
-            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useServerPrepStmts));
-            props.setProperty(PropertyKey.sendFractionalSeconds.getKeyName(), Boolean.toString(sendFractionalSeconds));
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            props.setProperty(PropertyKey.sendFractionalSeconds.getKeyName(), Boolean.toString(sendFS));
             props.setProperty(PropertyKey.preserveInstants.getKeyName(), "false");
 
             Connection testConn = getConnectionWithProps(props);
@@ -9234,15 +9233,15 @@ public class StatementRegressionTest extends BaseTestCase {
             for (int i = 2; i <= 4; i++) {
                 assertTrue(this.rs.next(), testCase);
                 assertEquals(i, this.rs.getInt(1), testCase);
-                assertEquals(sendFractionalSeconds ? roundedTs : truncatedTs, this.rs.getTimestamp(2), testCase);
-                assertEquals(sendFractionalSeconds ? originalTs : truncatedTs, this.rs.getTimestamp(3), testCase);
+                assertEquals(sendFS ? roundedTs : truncatedTs, this.rs.getTimestamp(2), testCase);
+                assertEquals(sendFS ? originalTs : truncatedTs, this.rs.getTimestamp(3), testCase);
             }
             // 5th row: from PreparedStatement; 6th row: from UpdatableResultSet.updateRow(); 7th row: from UpdatableResultSet.insertRow()
             for (int i = 5; i <= 7; i++) {
                 assertTrue(this.rs.next(), testCase);
                 assertEquals(i, this.rs.getInt(1), testCase);
-                assertEquals(sendFractionalSeconds ? roundedLdt : truncatedLdt, this.rs.getObject(2, LocalDateTime.class), testCase);
-                assertEquals(sendFractionalSeconds ? originalLdt : truncatedLdt, this.rs.getObject(3, LocalDateTime.class), testCase);
+                assertEquals(sendFS ? roundedLdt : truncatedLdt, this.rs.getObject(2, LocalDateTime.class), testCase);
+                assertEquals(sendFS ? originalLdt : truncatedLdt, this.rs.getObject(3, LocalDateTime.class), testCase);
             }
 
             this.stmt.execute("DELETE FROM testBug77449");
@@ -9271,8 +9270,8 @@ public class StatementRegressionTest extends BaseTestCase {
             for (int i = 1; i <= 3; i++) {
                 assertTrue(this.rs.next(), testCase);
                 assertEquals(i, this.rs.getInt(1), testCase);
-                assertEquals(sendFractionalSeconds ? roundedLt : truncatedLt, this.rs.getObject(2, LocalTime.class), testCase);
-                assertEquals(sendFractionalSeconds ? originalLt : truncatedLt, this.rs.getObject(3, LocalTime.class), testCase);
+                assertEquals(sendFS ? roundedLt : truncatedLt, this.rs.getObject(2, LocalTime.class), testCase);
+                assertEquals(sendFS ? originalLt : truncatedLt, this.rs.getObject(3, LocalTime.class), testCase);
             }
 
             this.stmt.execute("DELETE FROM testBug77449_time");
@@ -9283,7 +9282,7 @@ public class StatementRegressionTest extends BaseTestCase {
             testPStmt.setTimestamp(2, truncatedTs);
             this.rs = testPStmt.executeQuery();
             assertTrue(this.rs.next(), testCase);
-            if (sendFractionalSeconds) {
+            if (sendFS) {
                 assertFalse(this.rs.getBoolean(1), testCase);
             } else {
                 assertTrue(this.rs.getBoolean(1), testCase);
@@ -9295,7 +9294,7 @@ public class StatementRegressionTest extends BaseTestCase {
             testPStmt.setObject(2, truncatedLdt);
             this.rs = testPStmt.executeQuery();
             assertTrue(this.rs.next(), testCase);
-            if (sendFractionalSeconds) {
+            if (sendFS) {
                 assertFalse(this.rs.getBoolean(1), testCase);
             } else {
                 assertTrue(this.rs.getBoolean(1), testCase);
@@ -9307,7 +9306,7 @@ public class StatementRegressionTest extends BaseTestCase {
             testPStmt.setObject(2, truncatedLt);
             this.rs = testPStmt.executeQuery();
             assertTrue(this.rs.next(), testCase);
-            if (sendFractionalSeconds) {
+            if (sendFS) {
                 assertFalse(this.rs.getBoolean(1), testCase);
             } else {
                 assertTrue(this.rs.getBoolean(1), testCase);
@@ -9321,8 +9320,8 @@ public class StatementRegressionTest extends BaseTestCase {
             cstmt.execute();
             this.rs = cstmt.getResultSet();
             assertTrue(this.rs.next(), testCase);
-            assertEquals(sendFractionalSeconds ? roundedTs : truncatedTs, this.rs.getTimestamp(1), testCase);
-            assertEquals(sendFractionalSeconds ? originalTs : truncatedTs, this.rs.getTimestamp(2), testCase);
+            assertEquals(sendFS ? roundedTs : truncatedTs, this.rs.getTimestamp(1), testCase);
+            assertEquals(sendFS ? originalTs : truncatedTs, this.rs.getTimestamp(2), testCase);
             cstmt.close();
             // Same test with LocalDateTime
             cstmt = testConn.prepareCall("{call testBug77449(?, ?)}");
@@ -9331,8 +9330,8 @@ public class StatementRegressionTest extends BaseTestCase {
             cstmt.execute();
             this.rs = cstmt.getResultSet();
             assertTrue(this.rs.next(), testCase);
-            assertEquals(sendFractionalSeconds ? roundedLdt : truncatedLdt, this.rs.getObject(1, LocalDateTime.class), testCase);
-            assertEquals(sendFractionalSeconds ? originalLdt : truncatedLdt, this.rs.getObject(2, LocalDateTime.class), testCase);
+            assertEquals(sendFS ? roundedLdt : truncatedLdt, this.rs.getObject(1, LocalDateTime.class), testCase);
+            assertEquals(sendFS ? originalLdt : truncatedLdt, this.rs.getObject(2, LocalDateTime.class), testCase);
             cstmt.close();
             // Same test with LocalTime
             cstmt = testConn.prepareCall("{call testBug77449_time(?, ?)}");
@@ -9341,12 +9340,12 @@ public class StatementRegressionTest extends BaseTestCase {
             cstmt.execute();
             this.rs = cstmt.getResultSet();
             assertTrue(this.rs.next(), testCase);
-            assertEquals(sendFractionalSeconds ? roundedLt : truncatedLt, this.rs.getObject(1, LocalTime.class), testCase);
-            assertEquals(sendFractionalSeconds ? originalLt : truncatedLt, this.rs.getObject(2, LocalTime.class), testCase);
+            assertEquals(sendFS ? roundedLt : truncatedLt, this.rs.getObject(1, LocalTime.class), testCase);
+            assertEquals(sendFS ? originalLt : truncatedLt, this.rs.getObject(2, LocalTime.class), testCase);
             cstmt.close();
 
             testConn.close();
-        }
+        } while ((useSPS = !useSPS) || (sendFS = !sendFS));
     }
 
     public static class TestBug77449QueryInterceptor extends BaseQueryInterceptor {
@@ -14083,6 +14082,37 @@ public class StatementRegressionTest extends BaseTestCase {
                 }
             }
         } while (useSPS = !useSPS);
+    }
+
+    /**
+     * Tests fix for Bug#109339 (Bug#34898663), Failed to insert bignums due to overflow.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug109339() throws Exception {
+        createTable("testBug109339", "(value BIGINT UNSIGNED)");
+
+        BigInteger value = new BigInteger("18446744073709551615"); // 2^64-1 - maximum value supported by BIGINT UNSIGNED
+        assertEquals(1, this.stmt.executeUpdate("INSERT INTO testBug109339 VALUES (" + value + ")"));
+
+        boolean useSPS = false;
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            try (Connection testConn = getConnectionWithProps(props)) {
+                PreparedStatement ps = testConn.prepareStatement("INSERT INTO testBug109339 VALUES (?)");
+                ps.setObject(1, value);
+                ps.executeUpdate();
+            }
+        } while (useSPS = !useSPS);
+
+        this.rs = this.stmt.executeQuery("SELECT * FROM testBug109339");
+        while (this.rs.next()) {
+            assertEquals(value, this.rs.getObject(1));
+        }
+        assertTrue(this.rs.last());
+        assertEquals(3, this.rs.getRow());
     }
 
 }

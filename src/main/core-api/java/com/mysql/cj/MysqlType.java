@@ -990,6 +990,9 @@ public enum MysqlType implements SQLType {
     public static final int FIELD_FLAG_BINARY = 128;
     public static final int FIELD_FLAG_AUTO_INCREMENT = 512;
 
+    public static final int PARAM_FLAG_NONE = 0x00;
+    public static final int PARAM_FLAG_UNSIGNED = 0x80;
+
     private static final boolean IS_DECIMAL = true;
     private static final boolean IS_NOT_DECIMAL = false;
 

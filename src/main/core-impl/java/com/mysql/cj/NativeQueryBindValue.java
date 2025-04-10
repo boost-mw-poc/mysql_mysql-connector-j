@@ -117,11 +117,9 @@ public class NativeQueryBindValue implements BindValue {
 
         if (newTargetType == MysqlType.NULL) {
             // preserve the previous type to (possibly) avoid sending types at execution time
-        } else if (this.targetType != newTargetType) {
-            return true;
+            return false;
         }
-
-        return false;
+        return this.targetType != newTargetType;
     }
 
     @Override

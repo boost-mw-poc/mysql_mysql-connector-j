@@ -59,6 +59,50 @@ import com.mysql.cj.util.StringUtils;
 
 public class NativeQueryBindings implements QueryBindings {
 
+    private static final Map<Class<?>, MysqlType> DEFAULT_MYSQL_TYPES = new HashMap<>();
+    static {
+        DEFAULT_MYSQL_TYPES.put(BigDecimal.class, MysqlType.DECIMAL);
+        DEFAULT_MYSQL_TYPES.put(BigInteger.class, MysqlType.BIGINT);
+        DEFAULT_MYSQL_TYPES.put(Blob.class, MysqlType.BLOB);
+        DEFAULT_MYSQL_TYPES.put(Boolean.class, MysqlType.BOOLEAN);
+        DEFAULT_MYSQL_TYPES.put(Byte.class, MysqlType.TINYINT);
+        DEFAULT_MYSQL_TYPES.put(byte[].class, MysqlType.BINARY);
+        DEFAULT_MYSQL_TYPES.put(Calendar.class, MysqlType.TIMESTAMP);
+        DEFAULT_MYSQL_TYPES.put(Clob.class, MysqlType.TEXT);
+        DEFAULT_MYSQL_TYPES.put(Date.class, MysqlType.DATE);
+        DEFAULT_MYSQL_TYPES.put(java.util.Date.class, MysqlType.TIMESTAMP);
+        DEFAULT_MYSQL_TYPES.put(Double.class, MysqlType.DOUBLE);
+        DEFAULT_MYSQL_TYPES.put(Duration.class, MysqlType.TIME);
+        DEFAULT_MYSQL_TYPES.put(Float.class, MysqlType.FLOAT);
+        DEFAULT_MYSQL_TYPES.put(InputStream.class, MysqlType.BLOB);
+        DEFAULT_MYSQL_TYPES.put(Instant.class, MysqlType.TIMESTAMP);
+        DEFAULT_MYSQL_TYPES.put(Integer.class, MysqlType.INT);
+        DEFAULT_MYSQL_TYPES.put(LocalDate.class, MysqlType.DATE);
+        DEFAULT_MYSQL_TYPES.put(LocalDateTime.class, MysqlType.DATETIME); // default JDBC mapping is TIMESTAMP, see B-4
+        DEFAULT_MYSQL_TYPES.put(LocalTime.class, MysqlType.TIME);
+        DEFAULT_MYSQL_TYPES.put(Long.class, MysqlType.BIGINT);
+        DEFAULT_MYSQL_TYPES.put(OffsetDateTime.class, MysqlType.TIMESTAMP); // default JDBC mapping is TIMESTAMP_WITH_TIMEZONE, see B-4
+        DEFAULT_MYSQL_TYPES.put(OffsetTime.class, MysqlType.TIME); // default JDBC mapping is TIME_WITH_TIMEZONE, see B-4
+        DEFAULT_MYSQL_TYPES.put(Reader.class, MysqlType.TEXT);
+        DEFAULT_MYSQL_TYPES.put(Short.class, MysqlType.SMALLINT);
+        DEFAULT_MYSQL_TYPES.put(String.class, MysqlType.VARCHAR);
+        DEFAULT_MYSQL_TYPES.put(Time.class, MysqlType.TIME);
+        DEFAULT_MYSQL_TYPES.put(Timestamp.class, MysqlType.TIMESTAMP);
+        DEFAULT_MYSQL_TYPES.put(ZonedDateTime.class, MysqlType.TIMESTAMP); // no JDBC mapping is defined
+    }
+
+    private static final Map<MysqlType, MysqlType> UNSIGNED_MYSQL_TYPES = new HashMap<>();
+    static {
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.BIGINT, MysqlType.BIGINT_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.DECIMAL, MysqlType.DECIMAL_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.DOUBLE, MysqlType.DOUBLE_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.FLOAT, MysqlType.FLOAT_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.INT, MysqlType.INT_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.MEDIUMINT, MysqlType.MEDIUMINT_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.SMALLINT, MysqlType.SMALLINT_UNSIGNED);
+        UNSIGNED_MYSQL_TYPES.put(MysqlType.TINYINT, MysqlType.TINYINT_UNSIGNED);
+    }
+
     private Session session;
 
     /** Bind values for individual fields */
@@ -204,38 +248,6 @@ public class NativeQueryBindings implements QueryBindings {
         binding.setIsNational(bv.isNational());
         binding.setField(bv.getField());
         binding.setScaleOrLength(bv.getScaleOrLength());
-    }
-
-    private static final Map<Class<?>, MysqlType> DEFAULT_MYSQL_TYPES = new HashMap<>();
-    static {
-        DEFAULT_MYSQL_TYPES.put(BigDecimal.class, MysqlType.DECIMAL);
-        DEFAULT_MYSQL_TYPES.put(BigInteger.class, MysqlType.BIGINT);
-        DEFAULT_MYSQL_TYPES.put(Blob.class, MysqlType.BLOB);
-        DEFAULT_MYSQL_TYPES.put(Boolean.class, MysqlType.BOOLEAN);
-        DEFAULT_MYSQL_TYPES.put(Byte.class, MysqlType.TINYINT);
-        DEFAULT_MYSQL_TYPES.put(byte[].class, MysqlType.BINARY);
-        DEFAULT_MYSQL_TYPES.put(Calendar.class, MysqlType.TIMESTAMP);
-        DEFAULT_MYSQL_TYPES.put(Clob.class, MysqlType.TEXT);
-        DEFAULT_MYSQL_TYPES.put(Date.class, MysqlType.DATE);
-        DEFAULT_MYSQL_TYPES.put(java.util.Date.class, MysqlType.TIMESTAMP);
-        DEFAULT_MYSQL_TYPES.put(Double.class, MysqlType.DOUBLE);
-        DEFAULT_MYSQL_TYPES.put(Duration.class, MysqlType.TIME);
-        DEFAULT_MYSQL_TYPES.put(Float.class, MysqlType.FLOAT);
-        DEFAULT_MYSQL_TYPES.put(InputStream.class, MysqlType.BLOB);
-        DEFAULT_MYSQL_TYPES.put(Instant.class, MysqlType.TIMESTAMP);
-        DEFAULT_MYSQL_TYPES.put(Integer.class, MysqlType.INT);
-        DEFAULT_MYSQL_TYPES.put(LocalDate.class, MysqlType.DATE);
-        DEFAULT_MYSQL_TYPES.put(LocalDateTime.class, MysqlType.DATETIME); // default JDBC mapping is TIMESTAMP, see B-4
-        DEFAULT_MYSQL_TYPES.put(LocalTime.class, MysqlType.TIME);
-        DEFAULT_MYSQL_TYPES.put(Long.class, MysqlType.BIGINT);
-        DEFAULT_MYSQL_TYPES.put(OffsetDateTime.class, MysqlType.TIMESTAMP); // default JDBC mapping is TIMESTAMP_WITH_TIMEZONE, see B-4
-        DEFAULT_MYSQL_TYPES.put(OffsetTime.class, MysqlType.TIME); // default JDBC mapping is TIME_WITH_TIMEZONE, see B-4
-        DEFAULT_MYSQL_TYPES.put(Reader.class, MysqlType.TEXT);
-        DEFAULT_MYSQL_TYPES.put(Short.class, MysqlType.SMALLINT);
-        DEFAULT_MYSQL_TYPES.put(String.class, MysqlType.VARCHAR);
-        DEFAULT_MYSQL_TYPES.put(Time.class, MysqlType.TIME);
-        DEFAULT_MYSQL_TYPES.put(Timestamp.class, MysqlType.TIMESTAMP);
-        DEFAULT_MYSQL_TYPES.put(ZonedDateTime.class, MysqlType.TIMESTAMP); // no JDBC mapping is defined
     }
 
     @Override
@@ -441,25 +453,52 @@ public class NativeQueryBindings implements QueryBindings {
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar targetCalendar, Field field, MysqlType targetMysqlType) {
+    public void setTimestamp(int parameterIndex, Timestamp x, Calendar targetCalendar) {
         if (x == null) {
             setNull(parameterIndex);
             return;
         }
 
-        if (field == null) {
-            if (this.columnDefinition != null && parameterIndex <= this.columnDefinition.getFields().length && parameterIndex >= 0
-                    && this.columnDefinition.getFields()[parameterIndex].getDecimals() > 0) {
-                field = this.columnDefinition.getFields()[parameterIndex];
+        BindValue binding = getBinding(parameterIndex, false);
+        binding.setBinding(x, MysqlType.TIMESTAMP, this.numberOfExecutions, this.sendTypesToServer);
+        binding.setCalendar(targetCalendar == null ? null : (Calendar) targetCalendar.clone());
+    }
+
+    /**
+     * Determines the default MySQL type for the specified object type, with special consideration for cases where an unsigned integral value is required.
+     *
+     * @param parameterIndex
+     *            The index of the parameter for which the MySQL type is being determined.
+     * @param clazz
+     *            The Java class representing the type of the bound value (e.g., {@code Integer.class}, {@code Long.class}).
+     * @return
+     *         The default MySQL column type that matches the specified Java type.
+     */
+    private MysqlType getTargetMysqlType(int parameterIndex, Class<?> clazz) {
+        MysqlType targetMysqlType = DEFAULT_MYSQL_TYPES.get(clazz);
+        if (targetMysqlType == null) {
+            Optional<MysqlType> mysqlType = DEFAULT_MYSQL_TYPES.entrySet().stream().filter(m -> m.getKey().isAssignableFrom(clazz)).map(Entry::getValue)
+                    .findFirst();
+            if (mysqlType.isPresent()) {
+                targetMysqlType = mysqlType.get();
             }
         }
 
-        BindValue binding = getBinding(parameterIndex, false);
-        if (field == null) {
-            binding.setField(field);
+        if (targetMysqlType == null || !targetMysqlType.isDecimal()) {
+            return targetMysqlType;
         }
-        binding.setBinding(x, targetMysqlType, this.numberOfExecutions, this.sendTypesToServer);
-        binding.setCalendar(targetCalendar == null ? null : (Calendar) targetCalendar.clone());
+
+        if (this.columnDefinition != null && parameterIndex <= this.columnDefinition.getFields().length && parameterIndex >= 0) {
+            Field field = this.columnDefinition.getFields()[parameterIndex];
+            if (field.isUnsigned()) {
+                MysqlType unsignedMysqlType = UNSIGNED_MYSQL_TYPES.get(targetMysqlType);
+                if (unsignedMysqlType != null) {
+                    return unsignedMysqlType;
+                }
+            }
+        }
+
+        return targetMysqlType;
     }
 
     @Override
@@ -468,14 +507,7 @@ public class NativeQueryBindings implements QueryBindings {
             setNull(parameterIndex);
             return;
         }
-        MysqlType defaultMysqlType = DEFAULT_MYSQL_TYPES.get(parameterObj.getClass());
-        if (defaultMysqlType == null) {
-            Optional<MysqlType> mysqlType = DEFAULT_MYSQL_TYPES.entrySet().stream().filter(m -> m.getKey().isAssignableFrom(parameterObj.getClass()))
-                    .map(Entry::getValue).findFirst();
-            if (mysqlType.isPresent()) {
-                defaultMysqlType = mysqlType.get();
-            }
-        }
+        MysqlType defaultMysqlType = getTargetMysqlType(parameterIndex, parameterObj.getClass());
         setObject(parameterIndex, parameterObj, defaultMysqlType, -1);
     }
 
@@ -511,13 +543,12 @@ public class NativeQueryBindings implements QueryBindings {
             }
 
             BindValue binding = getBinding(parameterIndex, false);
+            binding.setBinding(parameterObj, targetMysqlType, this.numberOfExecutions, this.sendTypesToServer);
+            binding.setScaleOrLength(scaleOrLength);
             if (this.columnDefinition != null && parameterIndex <= this.columnDefinition.getFields().length && parameterIndex >= 0) {
                 // use the column definition if available
                 binding.setField(this.columnDefinition.getFields()[parameterIndex]);
             }
-            binding.setBinding(parameterObj, targetMysqlType, this.numberOfExecutions, this.sendTypesToServer);
-            binding.setScaleOrLength(scaleOrLength);
-
         } catch (Exception ex) {
             throw ExceptionFactory.createException(
                     Messages.getString("PreparedStatement.17") + parameterObj.getClass().toString() + Messages.getString("PreparedStatement.18")

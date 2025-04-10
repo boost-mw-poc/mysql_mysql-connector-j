@@ -38,7 +38,6 @@ import java.sql.SQLType;
 import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.sql.Wrapper;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -534,10 +533,9 @@ public class ClientPreparedStatement extends com.mysql.cj.jdbc.StatementImpl imp
                     }
 
                     batchedStatement = this.retrieveGeneratedKeys
-                            ? ((Wrapper) locallyScopedConn.prepareStatement(generateMultiStatementForBatch(numValuesPerBatch), RETURN_GENERATED_KEYS))
+                            ? locallyScopedConn.prepareStatement(generateMultiStatementForBatch(numValuesPerBatch), RETURN_GENERATED_KEYS)
                                     .unwrap(java.sql.PreparedStatement.class)
-                            : ((Wrapper) locallyScopedConn.prepareStatement(generateMultiStatementForBatch(numValuesPerBatch)))
-                                    .unwrap(java.sql.PreparedStatement.class);
+                            : locallyScopedConn.prepareStatement(generateMultiStatementForBatch(numValuesPerBatch)).unwrap(java.sql.PreparedStatement.class);
 
                     timeoutTask = startQueryTimer((StatementImpl) batchedStatement, batchTimeout);
 
@@ -1223,7 +1221,7 @@ public class ClientPreparedStatement extends com.mysql.cj.jdbc.StatementImpl imp
             pstmt.setRetrieveGeneratedKeys(this.retrieveGeneratedKeys);
             pstmt.rewrittenBatchSize = numBatches;
 
-            getQueryAttributesBindings().runThroughAll(a -> ((JdbcStatement) pstmt).setAttribute(a.getName(), a.getValue()));
+            getQueryAttributesBindings().runThroughAll(a -> pstmt.setAttribute(a.getName(), a.getValue()));
 
             return pstmt;
         } finally {
@@ -2045,7 +2043,7 @@ public class ClientPreparedStatement extends com.mysql.cj.jdbc.StatementImpl imp
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
-            ((PreparedQuery) this.query).getQueryBindings().setTimestamp(getCoreParameterIndex(parameterIndex), x, null, null, MysqlType.TIMESTAMP);
+            ((PreparedQuery) this.query).getQueryBindings().setTimestamp(getCoreParameterIndex(parameterIndex), x, null);
         } finally {
             connectionLock.unlock();
         }
@@ -2056,7 +2054,7 @@ public class ClientPreparedStatement extends com.mysql.cj.jdbc.StatementImpl imp
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
-            ((PreparedQuery) this.query).getQueryBindings().setTimestamp(getCoreParameterIndex(parameterIndex), x, cal, null, MysqlType.TIMESTAMP);
+            ((PreparedQuery) this.query).getQueryBindings().setTimestamp(getCoreParameterIndex(parameterIndex), x, cal);
         } finally {
             connectionLock.unlock();
         }

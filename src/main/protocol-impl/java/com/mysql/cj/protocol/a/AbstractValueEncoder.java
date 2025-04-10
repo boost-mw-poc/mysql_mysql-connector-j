@@ -115,7 +115,11 @@ public abstract class AbstractValueEncoder implements ValueEncoder {
             }
             return x;
         }
-        return TimeUtil.adjustNanosPrecision(x, f == null ? 6 : f.getDecimals(), !this.serverSession.isServerTruncatesFracSecs());
+        int decimals = 6;
+        if (f != null && f.getMysqlType() == MysqlType.TIME) {
+            decimals = f.getDecimals();
+        }
+        return TimeUtil.adjustNanosPrecision(x, decimals, !this.serverSession.isServerTruncatesFracSecs());
     }
 
     protected LocalDateTime adjustLocalDateTime(LocalDateTime x, Field f) {
@@ -125,7 +129,11 @@ public abstract class AbstractValueEncoder implements ValueEncoder {
             }
             return x;
         }
-        return TimeUtil.adjustNanosPrecision(x, f == null ? 6 : f.getDecimals(), !this.serverSession.isServerTruncatesFracSecs());
+        int decimals = 6;
+        if (f != null && (f.getMysqlType() == MysqlType.DATETIME || f.getMysqlType() == MysqlType.TIMESTAMP)) {
+            decimals = f.getDecimals();
+        }
+        return TimeUtil.adjustNanosPrecision(x, decimals, !this.serverSession.isServerTruncatesFracSecs());
     }
 
     protected Duration adjustDuration(Duration x, Field f) {
@@ -135,7 +143,11 @@ public abstract class AbstractValueEncoder implements ValueEncoder {
             }
             return x;
         }
-        return TimeUtil.adjustNanosPrecision(x, f == null ? 6 : f.getDecimals(), !this.serverSession.isServerTruncatesFracSecs());
+        int decimals = 6;
+        if (f != null && f.getMysqlType() == MysqlType.TIME) {
+            decimals = f.getDecimals();
+        }
+        return TimeUtil.adjustNanosPrecision(x, decimals, !this.serverSession.isServerTruncatesFracSecs());
     }
 
     protected Timestamp adjustTimestamp(Timestamp x, Field f, boolean keepOrigNanos) {
@@ -145,7 +157,11 @@ public abstract class AbstractValueEncoder implements ValueEncoder {
         if (!this.serverSession.getCapabilities().serverSupportsFracSecs() || !this.sendFractionalSeconds.getValue()) {
             return TimeUtil.truncateFractionalSeconds(x);
         }
-        return TimeUtil.adjustNanosPrecision(x, f == null ? 6 : f.getDecimals(), !this.serverSession.isServerTruncatesFracSecs());
+        int decimals = 6;
+        if (f != null && (f.getMysqlType() == MysqlType.DATETIME || f.getMysqlType() == MysqlType.TIMESTAMP)) {
+            decimals = f.getDecimals();
+        }
+        return TimeUtil.adjustNanosPrecision(x, decimals, !this.serverSession.isServerTruncatesFracSecs());
     }
 
     protected Time adjustTime(Time x) {

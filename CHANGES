@@ -3,6 +3,9 @@
 
 Version 9.4.0
 
+  - Fix for Bug#109339 (Bug#34898663), Failed to insert bignums due to overflow.
+    Thanks to Yohei Ueki for his contribution.
+
   - Fix for Bug#77766 (Bug#21503942), CallableStatement.getObject have inconsistent behavior.
 
   - WL#16917, Remove IterateBlock class.

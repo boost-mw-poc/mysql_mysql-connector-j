@@ -33,7 +33,6 @@ import java.util.Calendar;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.mysql.cj.protocol.ColumnDefinition;
-import com.mysql.cj.result.Field;
 
 public interface QueryBindings {
 
@@ -119,7 +118,7 @@ public interface QueryBindings {
 
     void setTime(int parameterIndex, Time x, Calendar cal);
 
-    void setTimestamp(int parameterIndex, Timestamp x, Calendar targetCalendar, Field field, MysqlType targetMysqlType);
+    void setTimestamp(int parameterIndex, Timestamp x, Calendar targetCalendar);
 
     byte[] getBytesRepresentation(int parameterIndex);
 
