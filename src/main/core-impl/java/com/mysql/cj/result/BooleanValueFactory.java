@@ -34,7 +34,7 @@ import com.mysql.cj.util.DataTypeUtil;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * A value factory for creating {@link java.lang.Boolean} values.
+ * A {@link ValueFactory} to create {@link java.lang.Boolean} instances.
  */
 public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
 
@@ -43,6 +43,11 @@ public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
 
     public BooleanValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Boolean createFromYear(long l) {
+        return createFromLong(l);
     }
 
     @Override
@@ -75,16 +80,6 @@ public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
     }
 
     @Override
-    public Boolean createFromYear(long l) {
-        return createFromLong(l);
-    }
-
-    @Override
-    public String getTargetTypeName() {
-        return Boolean.class.getName();
-    }
-
-    @Override
     public Boolean createFromBytes(byte[] bytes, int offset, int length, Field f) {
         if (length == 0 && this.pset.getBooleanProperty(PropertyKey.emptyStringsConvertToZero).getValue()) {
             return createFromLong(0);
@@ -109,6 +104,11 @@ public class BooleanValueFactory extends DefaultValueFactory<Boolean> {
             return createFromBigInteger(MysqlTextValueDecoder.getBigInteger(newBytes, 0, newBytes.length));
         }
         throw new DataConversionException(Messages.getString("ResultSet.UnableToInterpretString", new Object[] { s }));
+    }
+
+    @Override
+    public String getTargetTypeName() {
+        return Boolean.class.getName();
     }
 
 }

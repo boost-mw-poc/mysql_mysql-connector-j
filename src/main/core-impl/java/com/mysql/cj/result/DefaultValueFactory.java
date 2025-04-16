@@ -32,13 +32,15 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * The default value factory provides a base class that can be used for value factories that do not support creation from every type. The default value factory
- * will thrown an UnsupportedOperationException for every method and individual methods must be overridden by subclasses.
+ * The {@link DefaultValueFactory} provides a base class that can be used for {@link ValueFactory} implementations that do not support creating from every type.
+ * The default implementation throws an {@link UnsupportedOperationException} for every type and individual methods must be overridden by subclasses.
  *
  * @param <T>
  *            value type
  */
 public abstract class DefaultValueFactory<T> implements ValueFactory<T> {
+
+    protected PropertySet pset = null;
 
     protected boolean jdbcCompliantTruncationForReads = true;
 
@@ -50,20 +52,13 @@ public abstract class DefaultValueFactory<T> implements ValueFactory<T> {
         this.jdbcCompliantTruncationForReads = this.pset.getBooleanProperty(PropertyKey.jdbcCompliantTruncation).getInitialValue();
     }
 
-    protected PropertySet pset = null;
-
     @Override
     public void setPropertySet(PropertySet pset) {
         this.pset = pset;
     }
 
-    protected T unsupported(String sourceType) {
+    T unsupported(String sourceType) {
         throw new DataConversionException(Messages.getString("ResultSet.UnsupportedConversion", new Object[] { sourceType, getTargetTypeName() }));
-    }
-
-    @Override
-    public T createFromDate(InternalDate idate) {
-        return unsupported("DATE");
     }
 
     @Override
@@ -77,8 +72,18 @@ public abstract class DefaultValueFactory<T> implements ValueFactory<T> {
     }
 
     @Override
+    public T createFromDate(InternalDate idate) {
+        return unsupported("DATE");
+    }
+
+    @Override
     public T createFromDatetime(InternalTimestamp its) {
         return unsupported("DATETIME");
+    }
+
+    @Override
+    public T createFromYear(long l) {
+        return unsupported("YEAR");
     }
 
     @Override
@@ -104,11 +109,6 @@ public abstract class DefaultValueFactory<T> implements ValueFactory<T> {
     @Override
     public T createFromBit(byte[] bytes, int offset, int length) {
         return unsupported("BIT");
-    }
-
-    @Override
-    public T createFromYear(long l) {
-        return unsupported("YEAR");
     }
 
     @Override

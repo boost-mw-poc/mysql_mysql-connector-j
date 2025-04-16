@@ -30,12 +30,20 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.NumberOutOfRange;
 
 /**
- * A value factory for creating float values.
+ * A {@link ValueFactory} to create {@link Float} instances.
  */
 public class FloatValueFactory extends AbstractNumericValueFactory<Float> {
 
     public FloatValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Float createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < -Float.MAX_VALUE || l > Float.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { l, getTargetTypeName() }));
+        }
+        return (float) l;
     }
 
     @Override
@@ -48,11 +56,11 @@ public class FloatValueFactory extends AbstractNumericValueFactory<Float> {
     }
 
     @Override
-    public Float createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < -Float.MAX_VALUE || l > Float.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { l, getTargetTypeName() }));
+    public Float createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < -Float.MAX_VALUE || d > Float.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return (float) l;
+        return (float) d;
     }
 
     @Override
@@ -62,14 +70,6 @@ public class FloatValueFactory extends AbstractNumericValueFactory<Float> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
         return (float) d.doubleValue();
-    }
-
-    @Override
-    public Float createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < -Float.MAX_VALUE || d > Float.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return (float) d;
     }
 
     @Override

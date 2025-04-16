@@ -41,13 +41,15 @@ public interface ValueFactory<T> {
 
     void setPropertySet(PropertySet pset);
 
-    T createFromDate(InternalDate idate);
-
     T createFromTime(InternalTime it);
 
     T createFromTimestamp(InternalTimestamp its);
 
+    T createFromDate(InternalDate idate);
+
     T createFromDatetime(InternalTimestamp its);
+
+    T createFromYear(long l);
 
     T createFromLong(long l);
 
@@ -57,11 +59,9 @@ public interface ValueFactory<T> {
 
     T createFromBigDecimal(BigDecimal d);
 
-    T createFromBytes(byte[] bytes, int offset, int length, Field f);
-
     T createFromBit(byte[] bytes, int offset, int length);
 
-    T createFromYear(long l);
+    T createFromBytes(byte[] bytes, int offset, int length, Field f);
 
     /**
      * Create result value from intermediate null value.

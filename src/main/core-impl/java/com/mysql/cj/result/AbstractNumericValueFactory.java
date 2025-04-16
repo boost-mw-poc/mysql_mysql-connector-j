@@ -39,6 +39,11 @@ public abstract class AbstractNumericValueFactory<T> extends DefaultValueFactory
     }
 
     @Override
+    public T createFromYear(long l) {
+        return createFromLong(l);
+    }
+
+    @Override
     public T createFromBytes(byte[] bytes, int offset, int length, Field f) {
         if (length == 0 && this.pset.getBooleanProperty(PropertyKey.emptyStringsConvertToZero).getValue()) {
             return createFromLong(0);
@@ -59,11 +64,6 @@ public abstract class AbstractNumericValueFactory<T> extends DefaultValueFactory
             return createFromBigInteger(MysqlTextValueDecoder.getBigInteger(newBytes, 0, newBytes.length));
         }
         throw new DataConversionException(Messages.getString("ResultSet.UnableToInterpretString", new Object[] { s }));
-    }
-
-    @Override
-    public T createFromYear(long l) {
-        return createFromLong(l);
     }
 
 }

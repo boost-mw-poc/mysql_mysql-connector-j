@@ -30,12 +30,20 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.NumberOutOfRange;
 
 /**
- * A value factory for creating double values.
+ * A {@link ValueFactory} to create {@link Double} instances.
  */
 public class DoubleValueFactory extends AbstractNumericValueFactory<Double> {
 
     public DoubleValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Double createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < -Double.MAX_VALUE || l > Double.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { l, getTargetTypeName() }));
+        }
+        return (double) l;
     }
 
     @Override
@@ -48,11 +56,11 @@ public class DoubleValueFactory extends AbstractNumericValueFactory<Double> {
     }
 
     @Override
-    public Double createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < -Double.MAX_VALUE || l > Double.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { l, getTargetTypeName() }));
+    public Double createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < -Double.MAX_VALUE || d > Double.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return (double) l;
+        return d;
     }
 
     @Override
@@ -62,14 +70,6 @@ public class DoubleValueFactory extends AbstractNumericValueFactory<Double> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
         return d.doubleValue();
-    }
-
-    @Override
-    public Double createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < -Double.MAX_VALUE || d > Double.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return d;
     }
 
     @Override

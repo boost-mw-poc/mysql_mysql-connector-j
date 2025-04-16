@@ -28,17 +28,12 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * A value factory to create {@link Duration} instances.
+ * A {@link ValueFactory} to create {@link Duration} instances.
  */
 public class DurationValueFactory extends AbstractDateTimeValueFactory<Duration> {
 
     public DurationValueFactory(PropertySet pset) {
         super(pset);
-    }
-
-    @Override
-    Duration localCreateFromDate(InternalDate idate) {
-        return unsupported("DATE");
     }
 
     @Override
@@ -51,6 +46,11 @@ public class DurationValueFactory extends AbstractDateTimeValueFactory<Duration>
     @Override
     public Duration localCreateFromTimestamp(InternalTimestamp its) {
         return unsupported("TIMESTAMP");
+    }
+
+    @Override
+    public Duration localCreateFromDate(InternalDate idate) {
+        return unsupported("DATE");
     }
 
     @Override

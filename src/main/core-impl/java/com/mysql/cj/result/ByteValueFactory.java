@@ -32,12 +32,25 @@ import com.mysql.cj.util.DataTypeUtil;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * A value factory for creating byte values.
+ * A {@link ValueFactory} to create {@link Byte} instances.
  */
 public class ByteValueFactory extends DefaultValueFactory<Byte> {
 
     public ByteValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Byte createFromYear(long l) {
+        return createFromLong(l);
+    }
+
+    @Override
+    public Byte createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < Byte.MIN_VALUE || l > Byte.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+        }
+        return (byte) l;
     }
 
     @Override
@@ -50,11 +63,11 @@ public class ByteValueFactory extends DefaultValueFactory<Byte> {
     }
 
     @Override
-    public Byte createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < Byte.MIN_VALUE || l > Byte.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+    public Byte createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < Byte.MIN_VALUE || d > Byte.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return (byte) l;
+        return (byte) d;
     }
 
     @Override
@@ -67,30 +80,12 @@ public class ByteValueFactory extends DefaultValueFactory<Byte> {
     }
 
     @Override
-    public Byte createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < Byte.MIN_VALUE || d > Byte.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return (byte) d;
-    }
-
-    @Override
     public Byte createFromBit(byte[] bytes, int offset, int length) {
         long l = DataTypeUtil.bitToLong(bytes, offset, length);
         if (this.jdbcCompliantTruncationForReads && l >> 8 != 0) {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
         }
         return (byte) l;
-    }
-
-    @Override
-    public Byte createFromYear(long l) {
-        return createFromLong(l);
-    }
-
-    @Override
-    public String getTargetTypeName() {
-        return Byte.class.getName();
     }
 
     @Override
@@ -105,6 +100,11 @@ public class ByteValueFactory extends DefaultValueFactory<Byte> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { s, getTargetTypeName() }));
         }
         return newBytes[0];
+    }
+
+    @Override
+    public String getTargetTypeName() {
+        return Byte.class.getName();
     }
 
 }

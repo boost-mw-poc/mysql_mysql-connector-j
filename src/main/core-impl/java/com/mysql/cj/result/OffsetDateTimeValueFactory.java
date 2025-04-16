@@ -37,7 +37,7 @@ import com.mysql.cj.protocol.a.MysqlTextValueDecoder;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * Value factory to create {@link OffsetDateTime} instances.
+ * A {@link ValueFactory} to create {@link OffsetDateTime} instances.
  */
 public class OffsetDateTimeValueFactory extends AbstractDateTimeValueFactory<OffsetDateTime> {
 
@@ -48,19 +48,6 @@ public class OffsetDateTimeValueFactory extends AbstractDateTimeValueFactory<Off
         super(pset);
         this.defaultTimeZone = defaultTimeZone;
         this.connectionTimeZone = connectionTimeZone;
-    }
-
-    /**
-     * Create an OffsetDateTime from a DATE value.
-     *
-     * @return an OffsetDateTime at midnight on the day given by the DATE value
-     */
-    @Override
-    public OffsetDateTime localCreateFromDate(InternalDate idate) {
-        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
-            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
-        }
-        return LocalDateTime.of(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0).atZone(this.defaultTimeZone.toZoneId()).toOffsetDateTime();
     }
 
     /**
@@ -85,6 +72,19 @@ public class OffsetDateTimeValueFactory extends AbstractDateTimeValueFactory<Off
         return LocalDateTime.of(its.getYear(), its.getMonth(), its.getDay(), its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos())
                 .atZone((this.pset.getBooleanProperty(PropertyKey.preserveInstants).getValue() ? this.connectionTimeZone : this.defaultTimeZone).toZoneId())
                 .toOffsetDateTime();
+    }
+
+    /**
+     * Create an OffsetDateTime from a DATE value.
+     *
+     * @return an OffsetDateTime at midnight on the day given by the DATE value
+     */
+    @Override
+    public OffsetDateTime localCreateFromDate(InternalDate idate) {
+        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
+            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
+        }
+        return LocalDateTime.of(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0).atZone(this.defaultTimeZone.toZoneId()).toOffsetDateTime();
     }
 
     @Override

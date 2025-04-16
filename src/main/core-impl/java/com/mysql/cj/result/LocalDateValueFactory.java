@@ -31,7 +31,7 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * A value factory for creating {@link LocalDate} values.
+ * A {@link ValueFactory} to create {@link LocalDate} instances.
  */
 public class LocalDateValueFactory extends AbstractDateTimeValueFactory<LocalDate> {
 
@@ -47,11 +47,8 @@ public class LocalDateValueFactory extends AbstractDateTimeValueFactory<LocalDat
     }
 
     @Override
-    public LocalDate localCreateFromDate(InternalDate idate) {
-        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
-            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
-        }
-        return LocalDate.of(idate.getYear(), idate.getMonth(), idate.getDay());
+    LocalDate localCreateFromTime(InternalTime it) {
+        return LocalDate.of(1970, 1, 1);
     }
 
     @Override
@@ -64,17 +61,20 @@ public class LocalDateValueFactory extends AbstractDateTimeValueFactory<LocalDat
     }
 
     @Override
+    public LocalDate localCreateFromDate(InternalDate idate) {
+        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
+            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
+        }
+        return LocalDate.of(idate.getYear(), idate.getMonth(), idate.getDay());
+    }
+
+    @Override
     public LocalDate localCreateFromDatetime(InternalTimestamp its) {
         if (this.warningListener != null) {
             this.warningListener.warningEncountered(Messages.getString("ResultSet.PrecisionLostWarning", new Object[] { getTargetTypeName() }));
         }
         // truncate any time information
         return createFromDate(its);
-    }
-
-    @Override
-    LocalDate localCreateFromTime(InternalTime it) {
-        return LocalDate.of(1970, 1, 1);
     }
 
     @Override

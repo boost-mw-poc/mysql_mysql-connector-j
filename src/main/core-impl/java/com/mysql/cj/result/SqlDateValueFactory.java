@@ -39,7 +39,7 @@ import com.mysql.cj.protocol.InternalTimestamp;
 import com.mysql.cj.util.TimeUtil;
 
 /**
- * A value factory for creating {@link java.sql.Date} values.
+ * A {@link ValueFactory} to create {@link java.sql.Date} instances.
  */
 public class SqlDateValueFactory extends AbstractDateTimeValueFactory<Date> {
 
@@ -66,6 +66,26 @@ public class SqlDateValueFactory extends AbstractDateTimeValueFactory<Date> {
     }
 
     @Override
+    public Date localCreateFromTime(InternalTime it) {
+        if (this.warningListener != null) {
+            // TODO: need column context
+            this.warningListener.warningEncountered(Messages.getString("ResultSet.ImplicitDatePartWarning", new Object[] { "java.sql.Date" }));
+        }
+        return Date.valueOf(TimeUtil.DEFAULT_DATE);
+    }
+
+    @Override
+    public Date localCreateFromTimestamp(InternalTimestamp its) {
+        if (this.warningListener != null) {
+            // TODO: need column context
+            this.warningListener.warningEncountered(Messages.getString("ResultSet.PrecisionLostWarning", new Object[] { "java.sql.Date" }));
+        }
+
+        // truncate any time information
+        return createFromDate(its);
+    }
+
+    @Override
     public Date localCreateFromDate(InternalDate idate) {
         this.calLock.lock();
         try {
@@ -84,26 +104,6 @@ public class SqlDateValueFactory extends AbstractDateTimeValueFactory<Date> {
         } finally {
             this.calLock.unlock();
         }
-    }
-
-    @Override
-    public Date localCreateFromTime(InternalTime it) {
-        if (this.warningListener != null) {
-            // TODO: need column context
-            this.warningListener.warningEncountered(Messages.getString("ResultSet.ImplicitDatePartWarning", new Object[] { "java.sql.Date" }));
-        }
-        return Date.valueOf(TimeUtil.DEFAULT_DATE);
-    }
-
-    @Override
-    public Date localCreateFromTimestamp(InternalTimestamp its) {
-        if (this.warningListener != null) {
-            // TODO: need column context
-            this.warningListener.warningEncountered(Messages.getString("ResultSet.PrecisionLostWarning", new Object[] { "java.sql.Date" }));
-        }
-
-        // truncate any time information
-        return createFromDate(its);
     }
 
     @Override

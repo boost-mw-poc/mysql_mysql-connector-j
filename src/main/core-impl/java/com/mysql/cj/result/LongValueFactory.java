@@ -30,12 +30,20 @@ import com.mysql.cj.exceptions.NumberOutOfRange;
 import com.mysql.cj.util.DataTypeUtil;
 
 /**
- * A value factory for creating long values.
+ * A {@link ValueFactory} to create {@link Long} instances.
  */
 public class LongValueFactory extends AbstractNumericValueFactory<Long> {
 
     public LongValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Long createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < Long.MIN_VALUE || l > Long.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+        }
+        return l;
     }
 
     @Override
@@ -48,11 +56,11 @@ public class LongValueFactory extends AbstractNumericValueFactory<Long> {
     }
 
     @Override
-    public Long createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < Long.MIN_VALUE || l > Long.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+    public Long createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < Long.MIN_VALUE || d > Long.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return l;
+        return (long) d;
     }
 
     @Override
@@ -62,14 +70,6 @@ public class LongValueFactory extends AbstractNumericValueFactory<Long> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
         return d.longValue();
-    }
-
-    @Override
-    public Long createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < Long.MIN_VALUE || d > Long.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return (long) d;
     }
 
     @Override

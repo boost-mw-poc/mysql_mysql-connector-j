@@ -30,12 +30,20 @@ import com.mysql.cj.exceptions.NumberOutOfRange;
 import com.mysql.cj.util.DataTypeUtil;
 
 /**
- * A value factory for creating short values.
+ * A {@link ValueFactory} to create {@link Short} instances.
  */
 public class ShortValueFactory extends AbstractNumericValueFactory<Short> {
 
     public ShortValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Short createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < Short.MIN_VALUE || l > Short.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+        }
+        return (short) l;
     }
 
     @Override
@@ -48,11 +56,11 @@ public class ShortValueFactory extends AbstractNumericValueFactory<Short> {
     }
 
     @Override
-    public Short createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < Short.MIN_VALUE || l > Short.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+    public Short createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < Short.MIN_VALUE || d > Short.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return (short) l;
+        return (short) d;
     }
 
     @Override
@@ -62,14 +70,6 @@ public class ShortValueFactory extends AbstractNumericValueFactory<Short> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
         return (short) d.longValue();
-    }
-
-    @Override
-    public Short createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < Short.MIN_VALUE || d > Short.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return (short) d;
     }
 
     @Override

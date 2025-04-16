@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.InputStream;
@@ -36,6 +37,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.NClob;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -53,6 +55,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
+import java.util.UUID;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -1163,6 +1167,91 @@ public class ResultSetTest extends BaseTestCase {
         byte[] vectorBlobToBytes = vectorBlob.getBytes(1, (int) vectorBlob.length());
         assertEquals(vectorHexString.toUpperCase(), StringUtils.toHexString(vectorObject, vectorObject.length).toUpperCase());
         assertEquals(vectorHexString.toUpperCase(), StringUtils.toHexString(vectorBlobToBytes, vectorBlobToBytes.length).toUpperCase());
+    }
+
+    /**
+     * Tests fix for Bug#117579 (Bug#37639722), Contribution: Return UUID from ResultSet#getObject().
+     *
+     * This is a contributed new feature, tracked as a bug report.
+     *
+     * @throws SQLException
+     */
+    @Test
+    public void testUuidResultSet() throws SQLException {
+        Consumer<UUID> assertResult = u -> {
+            Properties props = new Properties();
+            boolean useSPS = false;
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            do {
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    PreparedStatement testPstmt = testConn.prepareStatement("SELECT * FROM testUuidResultSet");
+                    this.rs = testPstmt.executeQuery();
+                    assertTrue(this.rs.next());
+                    assertEquals(u, this.rs.getObject(1, UUID.class));
+                } catch (SQLException e) {
+                    fail(e.getMessage());
+                }
+            } while (useSPS = !useSPS);
+
+        };
+
+        Consumer<String> testBinary = t -> {
+            final UUID uuid = UUID.randomUUID();
+            try {
+                createTable("testUuidResultSet", "(uuid " + t + ")");
+                this.stmt.executeUpdate("INSERT INTO testUuidResultSet VALUES (UUID_TO_BIN('" + uuid.toString() + "'))");
+            } catch (SQLException e) {
+                fail(e.getMessage());
+            }
+            assertResult.accept(uuid);
+        };
+
+        Consumer<String> testChar = t -> {
+            final UUID uuid = UUID.randomUUID();
+            try {
+                createTable("testUuidResultSet", "(uuid " + t + ")");
+                this.stmt.executeUpdate("INSERT INTO testUuidResultSet VALUES ('" + uuid.toString() + "')");
+            } catch (SQLException e) {
+                fail(e.getMessage());
+            }
+            assertResult.accept(uuid);
+        };
+
+        // ResultSet.getObject() UUID from null.
+        try (ResultSet testrRs = this.stmt.executeQuery("SELECT NULL")) {
+            assertTrue(testrRs.next());
+            assertNull(testrRs.getObject(1, UUID.class));
+        }
+
+        // ResultSet.getObject() UUID from empty.
+        try (ResultSet testRs = this.stmt.executeQuery("SELECT ''")) {
+            assertTrue(testRs.next());
+            assertThrows(SQLException.class, "Cannot convert string '' to java.util.UUID value", () -> testRs.getObject(1, UUID.class));
+        }
+
+        // ResultSet.getObject() UUID from invalid value.
+        try (ResultSet testRs = this.stmt.executeQuery("SELECT 'invalid uuid'")) {
+            assertTrue(testRs.next());
+            assertThrows(SQLException.class, "Cannot convert string 'invalid uuid' to java.util.UUID value", () -> testRs.getObject(1, UUID.class));
+        }
+
+        // ResultSet.getObject() UUID from numeric value.
+        try (ResultSet testRs = this.stmt.executeQuery("SELECT 1")) {
+            assertTrue(testRs.next());
+            assertThrows(SQLException.class, "Unsupported conversion from LONG to java.util.UUID", () -> testRs.getObject(1, UUID.class));
+        }
+
+        // ResultSet.getObject() UUID from BINARY columns.
+        testBinary.accept("BINARY(16)");
+        testBinary.accept("VARBINARY(16)");
+
+        // ResultSet.getObject() UUID from CHAR columns.
+        testChar.accept("CHAR(36)");
+        testChar.accept("VARCHAR(36)");
+        testChar.accept("TEXT");
+        testChar.accept("TINYTEXT");
+        testChar.accept("MEDIUMTEXT");
+        testChar.accept("LONGTEXT");
     }
 
 }

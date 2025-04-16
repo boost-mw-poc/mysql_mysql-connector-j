@@ -30,12 +30,20 @@ import com.mysql.cj.exceptions.NumberOutOfRange;
 import com.mysql.cj.util.DataTypeUtil;
 
 /**
- * A value factory for creating int values.
+ * A {@link ValueFactory} to create {@link Integer} instances.
  */
 public class IntegerValueFactory extends AbstractNumericValueFactory<Integer> {
 
     public IntegerValueFactory(PropertySet pset) {
         super(pset);
+    }
+
+    @Override
+    public Integer createFromLong(long l) {
+        if (this.jdbcCompliantTruncationForReads && (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+        }
+        return (int) l;
     }
 
     @Override
@@ -48,11 +56,11 @@ public class IntegerValueFactory extends AbstractNumericValueFactory<Integer> {
     }
 
     @Override
-    public Integer createFromLong(long l) {
-        if (this.jdbcCompliantTruncationForReads && (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { Long.valueOf(l).toString(), getTargetTypeName() }));
+    public Integer createFromDouble(double d) {
+        if (this.jdbcCompliantTruncationForReads && (d < Integer.MIN_VALUE || d > Integer.MAX_VALUE)) {
+            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
-        return (int) l;
+        return (int) d;
     }
 
     @Override
@@ -62,14 +70,6 @@ public class IntegerValueFactory extends AbstractNumericValueFactory<Integer> {
             throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
         }
         return (int) d.longValue();
-    }
-
-    @Override
-    public Integer createFromDouble(double d) {
-        if (this.jdbcCompliantTruncationForReads && (d < Integer.MIN_VALUE || d > Integer.MAX_VALUE)) {
-            throw new NumberOutOfRange(Messages.getString("ResultSet.NumberOutOfRange", new Object[] { d, getTargetTypeName() }));
-        }
-        return (int) d;
     }
 
     @Override

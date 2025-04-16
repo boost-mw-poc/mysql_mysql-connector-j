@@ -31,7 +31,7 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * A value factory to create {@link LocalTime} instances.
+ * A {@link ValueFactory} to create {@link LocalTime} instances.
  */
 public class LocalTimeValueFactory extends AbstractDateTimeValueFactory<LocalTime> {
 
@@ -44,11 +44,6 @@ public class LocalTimeValueFactory extends AbstractDateTimeValueFactory<LocalTim
     public LocalTimeValueFactory(PropertySet pset, WarningListener warningListener) {
         this(pset);
         this.warningListener = warningListener;
-    }
-
-    @Override
-    LocalTime localCreateFromDate(InternalDate idate) {
-        return LocalTime.of(0, 0);
     }
 
     @Override
@@ -66,6 +61,11 @@ public class LocalTimeValueFactory extends AbstractDateTimeValueFactory<LocalTim
         }
         // truncate date information
         return createFromTime(new InternalTime(its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos(), its.getScale()));
+    }
+
+    @Override
+    LocalTime localCreateFromDate(InternalDate idate) {
+        return LocalTime.of(0, 0);
     }
 
     @Override

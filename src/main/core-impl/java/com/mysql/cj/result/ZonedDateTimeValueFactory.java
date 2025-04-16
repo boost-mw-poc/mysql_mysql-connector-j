@@ -37,7 +37,7 @@ import com.mysql.cj.protocol.a.MysqlTextValueDecoder;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * Value factory to create {@link ZonedDateTime} instances.
+ * A {@link ValueFactory} to create {@link ZonedDateTime} instances.
  */
 public class ZonedDateTimeValueFactory extends AbstractDateTimeValueFactory<ZonedDateTime> {
 
@@ -48,19 +48,6 @@ public class ZonedDateTimeValueFactory extends AbstractDateTimeValueFactory<Zone
         super(pset);
         this.defaultTimeZone = defaultTimeZone;
         this.connectionTimeZone = connectionTimeZone;
-    }
-
-    /**
-     * Create an ZonedDateTime from a DATE value.
-     *
-     * @return an ZonedDateTime at midnight on the day given by the DATE value
-     */
-    @Override
-    public ZonedDateTime localCreateFromDate(InternalDate idate) {
-        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
-            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
-        }
-        return LocalDateTime.of(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0).atZone(this.defaultTimeZone.toZoneId());
     }
 
     /**
@@ -83,6 +70,19 @@ public class ZonedDateTimeValueFactory extends AbstractDateTimeValueFactory<Zone
         }
         return LocalDateTime.of(its.getYear(), its.getMonth(), its.getDay(), its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos())
                 .atZone((this.pset.getBooleanProperty(PropertyKey.preserveInstants).getValue() ? this.connectionTimeZone : this.defaultTimeZone).toZoneId());
+    }
+
+    /**
+     * Create an ZonedDateTime from a DATE value.
+     *
+     * @return an ZonedDateTime at midnight on the day given by the DATE value
+     */
+    @Override
+    public ZonedDateTime localCreateFromDate(InternalDate idate) {
+        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
+            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
+        }
+        return LocalDateTime.of(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0).atZone(this.defaultTimeZone.toZoneId());
     }
 
     @Override

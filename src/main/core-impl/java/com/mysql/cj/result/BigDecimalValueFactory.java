@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 import com.mysql.cj.conf.PropertySet;
 
 /**
- * A value factory for creating {@link java.math.BigDecimal} values.
+ * A {@link ValueFactory} to create {@link java.math.BigDecimal} instances.
  */
 public class BigDecimalValueFactory extends AbstractNumericValueFactory<BigDecimal> {
 
@@ -42,6 +42,36 @@ public class BigDecimalValueFactory extends AbstractNumericValueFactory<BigDecim
         super(pset);
         this.scale = scale;
         this.hasScale = true;
+    }
+
+    @Override
+    public BigDecimal createFromLong(long l) {
+        return adjustResult(BigDecimal.valueOf(l));
+    }
+
+    @Override
+    public BigDecimal createFromBigInteger(BigInteger i) {
+        return adjustResult(new BigDecimal(i));
+    }
+
+    @Override
+    public BigDecimal createFromDouble(double d) {
+        return adjustResult(BigDecimal.valueOf(d));
+    }
+
+    @Override
+    public BigDecimal createFromBigDecimal(BigDecimal d) {
+        return adjustResult(d);
+    }
+
+    @Override
+    public BigDecimal createFromBit(byte[] bytes, int offset, int length) {
+        return new BigDecimal(new BigInteger(ByteBuffer.allocate(length + 1).put((byte) 0).put(bytes, offset, length).array()));
+    }
+
+    @Override
+    public String getTargetTypeName() {
+        return BigDecimal.class.getName();
     }
 
     /**
@@ -62,36 +92,6 @@ public class BigDecimalValueFactory extends AbstractNumericValueFactory<BigDecim
         }
 
         return d;
-    }
-
-    @Override
-    public BigDecimal createFromBigInteger(BigInteger i) {
-        return adjustResult(new BigDecimal(i));
-    }
-
-    @Override
-    public BigDecimal createFromLong(long l) {
-        return adjustResult(BigDecimal.valueOf(l));
-    }
-
-    @Override
-    public BigDecimal createFromBigDecimal(BigDecimal d) {
-        return adjustResult(d);
-    }
-
-    @Override
-    public BigDecimal createFromDouble(double d) {
-        return adjustResult(BigDecimal.valueOf(d));
-    }
-
-    @Override
-    public BigDecimal createFromBit(byte[] bytes, int offset, int length) {
-        return new BigDecimal(new BigInteger(ByteBuffer.allocate(length + 1).put((byte) 0).put(bytes, offset, length).array()));
-    }
-
-    @Override
-    public String getTargetTypeName() {
-        return BigDecimal.class.getName();
     }
 
 }

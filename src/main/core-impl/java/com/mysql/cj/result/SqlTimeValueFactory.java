@@ -38,8 +38,9 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * A value factory to create {@link java.sql.Time} instances. As with other date/time types, a time zone is necessary to interpret the
- * time values returned from the server.
+ * A {@link ValueFactory} to create {@link java.sql.Time} instances.
+ *
+ * As with other date/time types, a time zone is necessary to interpret the time values returned from the server.
  */
 public class SqlTimeValueFactory extends AbstractDateTimeValueFactory<Time> {
 
@@ -65,21 +66,6 @@ public class SqlTimeValueFactory extends AbstractDateTimeValueFactory<Time> {
     }
 
     @Override
-    Time localCreateFromDate(InternalDate idate) {
-        this.calLock.lock();
-        try {
-            try {
-                this.cal.clear();
-                return new Time(this.cal.getTimeInMillis());
-            } catch (IllegalArgumentException e) {
-                throw ExceptionFactory.createException(WrongArgumentException.class, e.getMessage(), e);
-            }
-        } finally {
-            this.calLock.unlock();
-        }
-    }
-
-    @Override
     public Time localCreateFromTime(InternalTime it) {
         if (it.getHours() < 0 || it.getHours() >= 24) {
             throw new DataReadException(Messages.getString("ResultSet.InvalidTimeValue", new Object[] { it.toString() }));
@@ -102,7 +88,7 @@ public class SqlTimeValueFactory extends AbstractDateTimeValueFactory<Time> {
     }
 
     @Override
-    public Time localCreateFromDatetime(InternalTimestamp its) {
+    public Time localCreateFromTimestamp(InternalTimestamp its) {
         if (this.warningListener != null) {
             // TODO: need column context
             this.warningListener.warningEncountered(Messages.getString("ResultSet.PrecisionLostWarning", new Object[] { "java.sql.Time" }));
@@ -113,7 +99,22 @@ public class SqlTimeValueFactory extends AbstractDateTimeValueFactory<Time> {
     }
 
     @Override
-    public Time localCreateFromTimestamp(InternalTimestamp its) {
+    Time localCreateFromDate(InternalDate idate) {
+        this.calLock.lock();
+        try {
+            try {
+                this.cal.clear();
+                return new Time(this.cal.getTimeInMillis());
+            } catch (IllegalArgumentException e) {
+                throw ExceptionFactory.createException(WrongArgumentException.class, e.getMessage(), e);
+            }
+        } finally {
+            this.calLock.unlock();
+        }
+    }
+
+    @Override
+    public Time localCreateFromDatetime(InternalTimestamp its) {
         if (this.warningListener != null) {
             // TODO: need column context
             this.warningListener.warningEncountered(Messages.getString("ResultSet.PrecisionLostWarning", new Object[] { "java.sql.Time" }));

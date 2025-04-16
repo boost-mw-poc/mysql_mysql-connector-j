@@ -30,22 +30,12 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * Value factory to create {@link LocalDateTime} instances.
+ * A {@link ValueFactory} to create {@link LocalDateTime} instances.
  */
 public class LocalDateTimeValueFactory extends AbstractDateTimeValueFactory<LocalDateTime> {
 
     public LocalDateTimeValueFactory(PropertySet pset) {
         super(pset);
-    }
-
-    /**
-     * Create a LocalDateTime from a DATE value.
-     *
-     * @return a LocalDateTime at midnight on the day given by the DATE value
-     */
-    @Override
-    public LocalDateTime localCreateFromDate(InternalDate idate) {
-        return createFromTimestamp(new InternalTimestamp(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0, 0));
     }
 
     /**
@@ -67,6 +57,16 @@ public class LocalDateTimeValueFactory extends AbstractDateTimeValueFactory<Loca
             throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
         }
         return LocalDateTime.of(its.getYear(), its.getMonth(), its.getDay(), its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos());
+    }
+
+    /**
+     * Create a LocalDateTime from a DATE value.
+     *
+     * @return a LocalDateTime at midnight on the day given by the DATE value
+     */
+    @Override
+    public LocalDateTime localCreateFromDate(InternalDate idate) {
+        return createFromTimestamp(new InternalTimestamp(idate.getYear(), idate.getMonth(), idate.getDay(), 0, 0, 0, 0, 0));
     }
 
     @Override

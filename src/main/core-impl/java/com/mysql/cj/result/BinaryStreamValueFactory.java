@@ -26,7 +26,7 @@ import java.io.InputStream;
 import com.mysql.cj.conf.PropertySet;
 
 /**
- * A value factory for a raw stream of bytes from the value.
+ * A {@link ValueFactory} to create raw streams of bytes.
  */
 public class BinaryStreamValueFactory extends DefaultValueFactory<InputStream> {
 

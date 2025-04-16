@@ -39,7 +39,7 @@ import com.mysql.cj.protocol.a.MysqlTextValueDecoder;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * A value factory to create {@link OffsetTime} instances.
+ * A {@link ValueFactory} to create {@link OffsetTime} instances.
  */
 public class OffsetTimeValueFactory extends AbstractDateTimeValueFactory<OffsetTime> {
 
@@ -57,11 +57,6 @@ public class OffsetTimeValueFactory extends AbstractDateTimeValueFactory<OffsetT
     }
 
     @Override
-    OffsetTime localCreateFromDate(InternalDate idate) {
-        return LocalTime.of(0, 0).atOffset(ZoneOffset.ofTotalSeconds(this.tz.getRawOffset() / 1000));
-    }
-
-    @Override
     public OffsetTime localCreateFromTime(InternalTime it) {
         if (it.getHours() < 0 || it.getHours() >= 24) {
             throw new DataReadException(Messages.getString("ResultSet.InvalidTimeValue", new Object[] { it.toString() }));
@@ -76,6 +71,11 @@ public class OffsetTimeValueFactory extends AbstractDateTimeValueFactory<OffsetT
         }
         // truncate date information
         return createFromTime(new InternalTime(its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos(), its.getScale()));
+    }
+
+    @Override
+    OffsetTime localCreateFromDate(InternalDate idate) {
+        return LocalTime.of(0, 0).atOffset(ZoneOffset.ofTotalSeconds(this.tz.getRawOffset() / 1000));
     }
 
     @Override

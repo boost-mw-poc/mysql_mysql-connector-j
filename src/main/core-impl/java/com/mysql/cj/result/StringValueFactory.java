@@ -33,32 +33,12 @@ import com.mysql.cj.util.DataTypeUtil;
 import com.mysql.cj.util.StringUtils;
 
 /**
- * A {@link com.mysql.cj.result.ValueFactory} implementation to create strings.
+ * A {@link ValueFactory} to create {@link String} instances.
  */
-public class StringValueFactory implements ValueFactory<String> {
-
-    protected PropertySet pset = null;
+public class StringValueFactory extends DefaultValueFactory<String> {
 
     public StringValueFactory(PropertySet pset) {
-        this.pset = pset;
-    }
-
-    @Override
-    public void setPropertySet(PropertySet pset) {
-        this.pset = pset;
-    }
-
-    /**
-     * Create a string from InternalDate. The fields are formatted in a YYYY-mm-dd format.
-     *
-     * @param idate
-     *            {@link InternalDate}
-     * @return string
-     */
-    @Override
-    public String createFromDate(InternalDate idate) {
-        // essentially the same string we received from the server, no TZ interpretation
-        return String.format("%04d-%02d-%02d", idate.getYear(), idate.getMonth(), idate.getDay());
+        super(pset);
     }
 
     /**
@@ -88,6 +68,19 @@ public class StringValueFactory implements ValueFactory<String> {
     }
 
     /**
+     * Create a string from InternalDate. The fields are formatted in a YYYY-mm-dd format.
+     *
+     * @param idate
+     *            {@link InternalDate}
+     * @return string
+     */
+    @Override
+    public String createFromDate(InternalDate idate) {
+        // essentially the same string we received from the server, no TZ interpretation
+        return String.format("%04d-%02d-%02d", idate.getYear(), idate.getMonth(), idate.getDay());
+    }
+
+    /**
      * Create a string from time fields. The fields are formatted by concatenating the result of {@link #createFromDate(InternalDate)} and {@link
      * #createFromTime(InternalTime)}.
      *
@@ -99,6 +92,20 @@ public class StringValueFactory implements ValueFactory<String> {
     public String createFromDatetime(InternalTimestamp its) {
         return String.format("%s %s", createFromDate(its),
                 createFromTime(new InternalTime(its.getHours(), its.getMinutes(), its.getSeconds(), its.getNanos(), its.getScale())));
+    }
+
+    @Override
+    public String createFromYear(long l) {
+        if (this.pset.getBooleanProperty(PropertyKey.yearIsDateType).getValue()) {
+            if (l < 100) {
+                if (l <= 69) {
+                    l += 100;
+                }
+                l += 1900;
+            }
+            return createFromDate(new InternalDate((int) l, 1, 1));
+        }
+        return createFromLong(l);
     }
 
     @Override
@@ -121,6 +128,11 @@ public class StringValueFactory implements ValueFactory<String> {
         return d.toString();
     }
 
+    @Override
+    public String createFromBit(byte[] bytes, int offset, int length) {
+        return createFromLong(DataTypeUtil.bitToLong(bytes, offset, length));
+    }
+
     /**
      * Interpret the given byte array as a string. This value factory needs to know the encoding to interpret the string. The default (null) will interpret the
      * byte array using the platform encoding.
@@ -140,30 +152,6 @@ public class StringValueFactory implements ValueFactory<String> {
         return StringUtils.toString(bytes, offset, length,
                 f.getCollationIndex() == CharsetMapping.MYSQL_COLLATION_INDEX_binary ? this.pset.getStringProperty(PropertyKey.characterEncoding).getValue()
                         : f.getEncoding());
-    }
-
-    @Override
-    public String createFromBit(byte[] bytes, int offset, int length) {
-        return createFromLong(DataTypeUtil.bitToLong(bytes, offset, length));
-    }
-
-    @Override
-    public String createFromYear(long l) {
-        if (this.pset.getBooleanProperty(PropertyKey.yearIsDateType).getValue()) {
-            if (l < 100) {
-                if (l <= 69) {
-                    l += 100;
-                }
-                l += 1900;
-            }
-            return createFromDate(new InternalDate((int) l, 1, 1));
-        }
-        return createFromLong(l);
-    }
-
-    @Override
-    public String createFromNull() {
-        return null;
     }
 
     @Override

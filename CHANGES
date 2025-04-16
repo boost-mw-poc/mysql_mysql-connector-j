@@ -2,6 +2,8 @@
 # https://dev.mysql.com/doc/relnotes/connector-j/en/
 
 Version 9.4.0
+  - Fix for Bug#117579 (Bug#37639722), Contribution: Return UUID from ResultSet#getObject().
+    Thanks to Iwao Abe for his contribution.
 
   - Fix for Bug#20279578, REGISTEROUTPARAMETER() FAILS WHEN PROCEDURE NAME CONTAINS SOME SPECIAL CHARACTER.
 

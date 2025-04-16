@@ -38,8 +38,10 @@ import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
 
 /**
- * Value factory to create {@link java.sql.Timestamp} instances. Timestamp instances are created from fields returned from the db without a timezone. In order
- * to create a <i>point-in-time</i>, a time zone must be provided to interpret the fields.
+ * A {@link ValueFactory} to create {@link java.sql.Timestamp} instances.
+ *
+ * {@link java.sql.Timestamp} instances are created from fields returned from the database without a time zone. In order to create a <i>point-in-time</i>, a
+ * time zone must be provided to interpret the fields.
  */
 public class SqlTimestampValueFactory extends AbstractDateTimeValueFactory<Timestamp> {
 
@@ -65,41 +67,6 @@ public class SqlTimestampValueFactory extends AbstractDateTimeValueFactory<Times
         this.defaultTimeZone = defaultTimeZone;
         this.connectionTimeZone = connectionTimeZone;
         this.cal = calendar != null ? (Calendar) calendar.clone() : null;
-    }
-
-    /**
-     * Create a Timestamp from a DATE value.
-     *
-     * @return a timestamp at midnight on the day given by the DATE value
-     */
-    @Override
-    public Timestamp localCreateFromDate(InternalDate idate) {
-        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
-            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
-        }
-
-        this.defaultTimeZoneLock.lock();
-        try {
-            Calendar c;
-
-            if (this.cal != null) {
-                c = this.cal;
-            } else {
-                // c.f. Bug#11540 for details on locale
-                c = Calendar.getInstance(this.defaultTimeZone, Locale.US);
-                c.setLenient(false);
-            }
-
-            try {
-                c.clear();
-                c.set(idate.getYear(), idate.getMonth() - 1, idate.getDay(), 0, 0, 0);
-                return new Timestamp(c.getTimeInMillis());
-            } catch (IllegalArgumentException e) {
-                throw ExceptionFactory.createException(WrongArgumentException.class, e.getMessage(), e);
-            }
-        } finally {
-            this.defaultTimeZoneLock.unlock();
-        }
     }
 
     /**
@@ -163,6 +130,41 @@ public class SqlTimestampValueFactory extends AbstractDateTimeValueFactory<Times
                 Timestamp ts = new Timestamp(c.getTimeInMillis());
                 ts.setNanos(its.getNanos());
                 return ts;
+            } catch (IllegalArgumentException e) {
+                throw ExceptionFactory.createException(WrongArgumentException.class, e.getMessage(), e);
+            }
+        } finally {
+            this.defaultTimeZoneLock.unlock();
+        }
+    }
+
+    /**
+     * Create a Timestamp from a DATE value.
+     *
+     * @return a timestamp at midnight on the day given by the DATE value
+     */
+    @Override
+    public Timestamp localCreateFromDate(InternalDate idate) {
+        if (idate.getYear() == 0 && idate.getMonth() == 0 && idate.getDay() == 0) {
+            throw new DataReadException(Messages.getString("ResultSet.InvalidZeroDate"));
+        }
+
+        this.defaultTimeZoneLock.lock();
+        try {
+            Calendar c;
+
+            if (this.cal != null) {
+                c = this.cal;
+            } else {
+                // c.f. Bug#11540 for details on locale
+                c = Calendar.getInstance(this.defaultTimeZone, Locale.US);
+                c.setLenient(false);
+            }
+
+            try {
+                c.clear();
+                c.set(idate.getYear(), idate.getMonth() - 1, idate.getDay(), 0, 0, 0);
+                return new Timestamp(c.getTimeInMillis());
             } catch (IllegalArgumentException e) {
                 throw ExceptionFactory.createException(WrongArgumentException.class, e.getMessage(), e);
             }
