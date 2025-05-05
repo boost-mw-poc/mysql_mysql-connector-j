@@ -14115,4 +14115,17 @@ public class StatementRegressionTest extends BaseTestCase {
         assertEquals(3, this.rs.getRow());
     }
 
+    /**
+     * Tests fix for Bug#118079 (Bug#37888527), An output message error.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug118079() throws Exception {
+        assertThrows(SQLException.class, "setMaxRows\\(\\) out of range. -1 < 0.", () -> {
+            this.conn.createStatement().setMaxRows(-1);
+            return null;
+        });
+    }
+
 }

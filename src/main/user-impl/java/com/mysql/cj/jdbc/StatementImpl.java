@@ -2364,7 +2364,7 @@ public class StatementImpl implements JdbcStatement {
         connectionLock.lock();
         try {
             if (max > MAX_ROWS || max < 0) {
-                throw SQLError.createSQLException(Messages.getString("Statement.15") + max + " > " + MAX_ROWS + ".",
+                throw SQLError.createSQLException(Messages.getString("Statement.15") + max + (max > MAX_ROWS ? " > " + MAX_ROWS : " < 0") + ".",
                         MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
             }
 

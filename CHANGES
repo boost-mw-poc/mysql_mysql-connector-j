@@ -5,6 +5,8 @@ Version 9.4.0
   - Fix for Bug#117579 (Bug#37639722), Contribution: Return UUID from ResultSet#getObject().
     Thanks to Iwao Abe for his contribution.
 
+  - Fix for Bug#118079 (Bug#37888527), An output message error.
+
   - Fix for Bug#20279578, REGISTEROUTPARAMETER() FAILS WHEN PROCEDURE NAME CONTAINS SOME SPECIAL CHARACTER.
 
   - Fix for Bug#109339 (Bug#34898663), Failed to insert bignums due to overflow.
