@@ -5949,4 +5949,19 @@ public class MetaDataRegressionTest extends BaseTestCase {
         } while ((pedantic = !pedantic) || (useIS = !useIS) || (dbIsSchema = !dbIsSchema));
     }
 
+    /**
+     * Tests fix for Bug#118100 (Bug#37900711), `You have an error in your SQL syntax` exception thrown after `mysql-connector-j` `9.2.0` -> `9.3.0` upgrade.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug118100() throws Exception {
+        boolean useIS = false;
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useInformationSchema.getKeyName(), Boolean.toString(useIS));
+            this.conn.getMetaData().getTables(null, null, null, new String[] { "TABLE", "VIEW" });
+        } while (useIS = !useIS);
+    }
+
 }

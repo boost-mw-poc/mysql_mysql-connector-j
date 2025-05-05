@@ -1063,7 +1063,10 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
             condition.append(StringUtils.hasWildcards(tableNameFilter) ? " TABLE_NAME LIKE ?" : " TABLE_NAME = ?");
         }
         if (types != null && types.length > 0) {
-            condition.append(" HAVING TABLE_TYPE IN (?,?,?,?,?)");
+            if (condition.length() > 0) {
+                condition.append(" AND");
+            }
+            condition.append(" TABLE_TYPE IN (?,?,?,?,?)");
         }
 
         if (condition.length() > 0) {
