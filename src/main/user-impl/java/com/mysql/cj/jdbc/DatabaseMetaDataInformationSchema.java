@@ -1051,6 +1051,10 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         query.append(" NULL AS REF_GENERATION");                                                                            // REF_GENERATION
         query.append(" FROM INFORMATION_SCHEMA.TABLES");
 
+        if (dbFilter != null || tableNameFilter != null) {
+            query.append(" WHERE");
+        }
+
         StringBuilder condition = new StringBuilder();
         if (dbFilter != null) {
             condition.append(chooseBasedOnDatabaseTerm(() -> " TABLE_SCHEMA = ?",
@@ -1063,14 +1067,10 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
             condition.append(StringUtils.hasWildcards(tableNameFilter) ? " TABLE_NAME LIKE ?" : " TABLE_NAME = ?");
         }
         if (types != null && types.length > 0) {
-            if (condition.length() > 0) {
-                condition.append(" AND");
-            }
-            condition.append(" TABLE_TYPE IN (?,?,?,?,?)");
+            condition.append(" HAVING TABLE_TYPE IN (?,?,?,?,?)");
         }
 
         if (condition.length() > 0) {
-            query.append(" WHERE");
             query.append(condition);
         }
         query.append(" ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME");
