@@ -8988,7 +8988,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         });
     }
 
-	/**
+    /**
      * Tests fix for Bug#117294 (Bug#37523180), Updatable ResultSet fails with 'Parameter index out of range'.
      *
      * @throws Exception

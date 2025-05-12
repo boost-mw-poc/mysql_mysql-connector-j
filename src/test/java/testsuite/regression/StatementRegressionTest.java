@@ -96,6 +96,7 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -139,6 +140,7 @@ import com.mysql.cj.jdbc.ParameterBindings;
 import com.mysql.cj.jdbc.ServerPreparedStatement;
 import com.mysql.cj.jdbc.StatementImpl;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
+import com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException;
 import com.mysql.cj.jdbc.exceptions.MySQLTimeoutException;
 import com.mysql.cj.jdbc.exceptions.MysqlDataTruncation;
 import com.mysql.cj.jdbc.ha.ReplicationConnection;
@@ -14126,6 +14128,118 @@ public class StatementRegressionTest extends BaseTestCase {
             this.conn.createStatement().setMaxRows(-1);
             return null;
         });
+    }
+
+    /**
+     * Tests fix for Bug#77658 (Bug#21946136), Incorrect java.sql.Statement.cancel() behavior.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug77658() throws Exception {
+        createTable("testBug77658", "(id INT)");
+        this.stmt.executeUpdate("INSERT INTO testBug77658 VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10)");
+
+        ScheduledExecutorService interruptorExecService = Executors.newSingleThreadScheduledExecutor();
+
+        boolean clobStRes = false;
+        boolean dontTrOpRes = false;
+        do {
+            final String testCase = String.format("Case [ClobberStreamRes: %s, DontTrackRes: %s]", clobStRes ? "Y" : "N", dontTrOpRes ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.clobberStreamingResults.getKeyName(), Boolean.toString(clobStRes));
+            props.setProperty(PropertyKey.dontTrackOpenResources.getKeyName(), Boolean.toString(dontTrOpRes));
+            Connection testConn = getConnectionWithProps(props);
+
+            /*
+             * Query cancellation detected while reading all rows.
+             */
+            Statement testStmt1 = testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            testStmt1.setFetchSize(Integer.MIN_VALUE); // Enable streaming results.
+            interruptorExecService.schedule(() -> {
+                testStmt1.cancel();
+                return null;
+            }, 2000, TimeUnit.MILLISECONDS);
+
+            this.rs = testStmt1.executeQuery("SELECT SLEEP(1) FROM testBug77658");
+            do {
+                assertTrue(this.rs.next(), testCase);
+            } while (this.rs.getInt(1) == 0); // A number of rows should have been sent before the query was canceled.
+            assertEquals(1, this.rs.getInt(1), testCase); // Row where the query was canceled.
+            assertThrows(testCase, MySQLQueryInterruptedException.class, () -> {
+                this.rs.next();
+                return null;
+            });
+            this.rs.close();
+
+            assertTrue(this.rs.isClosed(), testCase);
+            this.rs = testStmt1.executeQuery("SELECT 1");
+            assertTrue(this.rs.next(), testCase);
+            assertEquals(1, this.rs.getInt(1), testCase);
+            this.rs.close();
+
+            /*
+             * Query cancellation detected while closing the ResultSet, if 'clobberStreamingResults=false'.
+             */
+            Statement testStmt2 = testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            testStmt2.setFetchSize(Integer.MIN_VALUE); // Enable streaming results.
+            interruptorExecService.schedule(() -> {
+                testStmt2.cancel();
+                return null;
+            }, 2000, TimeUnit.MILLISECONDS);
+
+            this.rs = testStmt2.executeQuery("SELECT SLEEP(1) FROM testBug77658");
+            assertTrue(this.rs.next(), testCase); // At least one row should have been sent before the query was canceled.
+            if (clobStRes) {
+                this.rs.close();
+            } else {
+                assertThrows(testCase, MySQLQueryInterruptedException.class, () -> {
+                    this.rs.close();
+                    return null;
+                });
+            }
+
+            assertTrue(this.rs.isClosed(), testCase);
+            this.rs = testStmt2.executeQuery("SELECT 1");
+            assertTrue(this.rs.next(), testCase);
+            assertEquals(1, this.rs.getInt(1), testCase);
+            this.rs.close();
+
+            /*
+             * Query cancellation detected while implicitly closing the ResultSet, if 'clobberStreamingResults=false'.
+             */
+            Statement testStmt3 = testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            testStmt3.setFetchSize(Integer.MIN_VALUE); // Enable streaming results.
+            interruptorExecService.schedule(() -> {
+                testStmt3.cancel();
+                return null;
+            }, 2000, TimeUnit.MILLISECONDS);
+
+            this.rs = testStmt3.executeQuery("SELECT SLEEP(1) FROM testBug77658");
+            assertTrue(this.rs.next(), testCase); // At least one row should have been sent before the query was canceled.
+
+            assertFalse(this.rs.isClosed(), testCase);
+            if (clobStRes) {
+                this.rs = testStmt3.executeQuery("SELECT 1");
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(1, this.rs.getInt(1), testCase);
+                this.rs.close();
+            } else if (dontTrOpRes) {
+                assertThrows(testCase, SQLException.class,
+                        ".*No statements may be issued when any streaming result sets are open and in use on a given connection.*", () -> {
+                            testStmt3.executeQuery("SELECT 1");
+                            return null;
+                        });
+            } else {
+                assertThrows(testCase, MySQLQueryInterruptedException.class, "Query execution was interrupted", () -> {
+                    testStmt3.executeQuery("SELECT 1");
+                    return null;
+                });
+            }
+        } while ((clobStRes = !clobStRes) || (dontTrOpRes = !dontTrOpRes));
+
+        interruptorExecService.shutdown();
     }
 
 }

@@ -106,11 +106,19 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
         localLock.lock();
         try {
             // drain the rest of the records.
-            while (next() != null) {
-                hadMore = true;
-                howMuchMore++;
-                if (howMuchMore % 100 == 0) {
-                    Thread.yield();
+            try {
+                while (next() != null) {
+                    hadMore = true;
+                    howMuchMore++;
+                    if (howMuchMore % 100 == 0) {
+                        Thread.yield();
+                    }
+                }
+            } catch (CJException e) {
+                if (e.getCause() != null && !e.getCause().getClass().isInstance(CJException.class)
+                        || !this.protocol.getPropertySet().getBooleanProperty(PropertyKey.clobberStreamingResults).getValue()) {
+                    // clobberStreamingResults allows to drain all remaining data without processing it, thus MySQL errors can be ignored.
+                    throw e;
                 }
             }
 
@@ -209,7 +217,7 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
                     this.noMoreRows = true;
                     this.isAfterEnd = true;
 
-                    if (this.currentPositionInFetchedRows == -1) {
+                    if (this.currentPositionInFetchedRows == BEFORE_START_OF_ROWS) {
                         this.wasEmpty = true;
                     }
                 }
@@ -221,7 +229,6 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
             if (this.nextRow == null && !this.streamerClosed) {
                 if (this.protocol.getServerSession().hasMoreResults()) {
                     this.protocol.readNextResultset((T) this.owner, this.owner.getOwningStatementMaxRows(), true, this.isBinaryEncoded, this.resultSetFactory);
-
                 } else {
                     this.protocol.unsetStreamingData(this);
                     this.streamerClosed = true;
@@ -243,9 +250,14 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
             }
 
             // There won't be any more rows
+            this.nextRow = null;
             this.noMoreRows = true;
+            this.isAfterEnd = true;
+            if (!this.streamerClosed) {
+                this.protocol.unsetStreamingData(this);
+                this.streamerClosed = true;
+            }
 
-            // don't wrap SQLExceptions
             throw sqlEx;
         } catch (Exception ex) {
             CJException cjEx = ExceptionFactory.createException(
