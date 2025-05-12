@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#21294134, DBMD.GETPROCEDURECOLUMNS() IS UNABLE TO DEAL WITH PROCEDURE COLUMNS WITH SPACES.
+
   - Fix for Bug#77658 (Bug#21946136), Incorrect java.sql.Statement.cancel() behavior.
 
   - Fix for Bug#118100 (Bug#37900711), `You have an error in your SQL syntax` exception thrown after `mysql-connector-j` `9.2.0` -> `9.3.0` upgrade.

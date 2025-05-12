@@ -5964,4 +5964,57 @@ public class MetaDataRegressionTest extends BaseTestCase {
         } while (useIS = !useIS);
     }
 
+    /**
+     * Tests fix for Bug#21294134, DBMD.GETPROCEDURECOLUMNS() IS UNABLE TO DEAL WITH PROCEDURE COLUMNS WITH SPACES.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug21294134() throws Exception {
+        boolean useIS = false;
+        boolean useAnsiQuotes = false;
+        do {
+            String sqlMode = getMysqlVariable("sql_mode");
+            sqlMode = removeSqlMode("ANSI_QUOTES", sqlMode);
+            if (sqlMode.length() > 0) {
+                sqlMode += ",";
+            }
+            if (useAnsiQuotes) {
+                sqlMode += "ANSI_QUOTES";
+            }
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useInformationSchema.getKeyName(), Boolean.toString(useIS));
+            props.setProperty(PropertyKey.sessionVariables.getKeyName(), "sql_mode='" + sqlMode + "'");
+            this.conn = getConnectionWithProps(props);
+
+            String procDef = "(IN `a 1` ENUM ('a', 'b'), INOUT `a\n2` SET ('c', 'd')) BEGIN SELECT CONCAT(`a 1`, `a\n2`) INTO `a\n2`;  END";
+            String funcDef = "(`b 1` ENUM ('a', 'b'), `b\n2` SET ('c', 'd')) RETURNS INT DETERMINISTIC RETURN CONCAT(`b 1`, `b\n2`)";
+            if (useAnsiQuotes) {
+                procDef.replaceAll("`", "\"");
+                funcDef.replaceAll("`", "\"");
+            }
+
+            Statement testStmt = this.conn.createStatement();
+            createProcedure(testStmt, "testBug21294134p", procDef);
+            createFunction(testStmt, "testBug21294134f", funcDef);
+
+            final String testCase = String.format("Case: [useIS: %s, useAnsiQuotes: %s]", useIS ? "Y" : "N", useAnsiQuotes ? "Y" : "N");
+
+            DatabaseMetaData dbmd = this.conn.getMetaData();
+
+            this.rs = dbmd.getProcedureColumns(null, null, "testBug21294134p", null);
+            assertTrue(this.rs.next());
+            assertEquals("a 1", this.rs.getString("COLUMN_NAME"), testCase);
+            assertTrue(this.rs.next());
+            assertEquals("a\n2", this.rs.getString("COLUMN_NAME"), testCase);
+
+            this.rs = dbmd.getFunctionColumns(null, null, "testBug21294134f", null);
+            assertTrue(this.rs.next());
+            assertTrue(this.rs.next());
+            assertEquals("b 1", this.rs.getString("COLUMN_NAME"), testCase);
+            assertTrue(this.rs.next());
+            assertEquals("b\n2", this.rs.getString("COLUMN_NAME"), testCase);
+        } while (useIS = !useIS);
+    }
+
 }

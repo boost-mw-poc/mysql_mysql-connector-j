@@ -52,6 +52,7 @@ import com.mysql.cj.result.DefaultColumnDefinition;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.result.Row;
 import com.mysql.cj.util.SearchMode;
+import com.mysql.cj.util.StringInspector;
 import com.mysql.cj.util.StringUtils;
 
 /**
@@ -921,52 +922,52 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 boolean isOutParam = false;
                 boolean isInParam = false;
 
-                // Bug#52167, tokenizer will break if declaration contains special characters like '\n'.
-                declaration = declaration.replaceAll("[\\t\\n\\x0B\\f\\r]", " ");
-                StringTokenizer declarationTok = new StringTokenizer(declaration, " ");
-                if (declarationTok.hasMoreTokens()) {
-                    String possibleParamName = declarationTok.nextToken();
+                boolean noBackslashEscapes = getSession().getServerSession().isNoBackslashEscapesSet();
+                StringInspector strInspector = new StringInspector(declaration, openingDelimiters, closingDelimiters, "",
+                        noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
+
+                int endPos = strInspector.indexOfNextWsChar();
+                int startPos = 0;
+                if (endPos != -1) {
+                    String possibleParamName = declaration.substring(startPos, endPos);
+                    boolean firstStringWasParamType = false;
                     if (possibleParamName.equalsIgnoreCase("OUT")) {
                         isOutParam = true;
                         isInParam = false;
-                        if (declarationTok.hasMoreTokens()) {
-                            paramName = declarationTok.nextToken();
-                        } else {
-                            throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.6"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
-                                    getExceptionInterceptor());
-                        }
+                        firstStringWasParamType = true;
                     } else if (possibleParamName.equalsIgnoreCase("INOUT")) {
                         isOutParam = true;
                         isInParam = true;
-                        if (declarationTok.hasMoreTokens()) {
-                            paramName = declarationTok.nextToken();
-                        } else {
-                            throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.6"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
-                                    getExceptionInterceptor());
-                        }
+                        firstStringWasParamType = true;
                     } else if (possibleParamName.equalsIgnoreCase("IN")) {
                         isOutParam = false;
                         isInParam = true;
-                        if (declarationTok.hasMoreTokens()) {
-                            paramName = declarationTok.nextToken();
-                        } else {
-                            throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.6"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
-                                    getExceptionInterceptor());
-                        }
+                        firstStringWasParamType = true;
                     } else {
                         isOutParam = false;
                         isInParam = true;
                         paramName = possibleParamName;
                     }
 
-                    TypeDescriptor typeDesc = null;
-                    if (declarationTok.hasMoreTokens()) {
-                        StringBuilder typeInfo = new StringBuilder(declarationTok.nextToken());
-                        while (declarationTok.hasMoreTokens()) {
-                            typeInfo.append(" ");
-                            typeInfo.append(declarationTok.nextToken());
+                    if (firstStringWasParamType) {
+                        while (Character.isWhitespace(strInspector.getChar())) {
+                            strInspector.incrementPosition();
                         }
-                        typeDesc = new TypeDescriptor(typeInfo.toString(), "YES");
+                        startPos = strInspector.getPosition();
+                        endPos = strInspector.indexOfNextWsChar();
+                        if (endPos != -1) {
+                            paramName = declaration.substring(startPos, endPos);
+                        } else {
+                            throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.6"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
+                                    getExceptionInterceptor());
+                        }
+                    }
+
+                    TypeDescriptor typeDesc = null;
+                    if (strInspector.getPosition() != declaration.length()) {
+                        startPos = strInspector.indexOfNextNonWsChar();
+                        endPos = declaration.length();
+                        typeDesc = new TypeDescriptor(declaration.substring(startPos, endPos), "YES");
                     } else {
                         throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.7"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                                 getExceptionInterceptor());
