@@ -613,7 +613,28 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public void clearWarnings() throws SQLException {
-        // firstWarning = null;
+        // this.warningChain = null;
+    }
+
+    /**
+     * Validates the specified holdability value against the supported values.
+     *
+     * @param holdability
+     *            The holdability value to check.
+     * @throws SQLException
+     *             If the specified holdability value is unknown or not supported.
+     */
+    private void checkResultSetHoldability(int holdability) throws SQLException {
+        if (this.pedantic.getValue()) {
+            if (holdability == ResultSet.CLOSE_CURSORS_AT_COMMIT) {
+                throw SQLError.createSQLFeatureNotSupportedException(
+                        Messages.getString("Connection.17.1", new Object[] { "ResultSet.CLOSE_CURSORS_AT_COMMIT" }),
+                        MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
+            } else if (holdability != ResultSet.HOLD_CURSORS_OVER_COMMIT) {
+                throw SQLError.createSQLException(Messages.getString("Connection.17.2", new Object[] { holdability }),
+                        MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
+            }
+        }
     }
 
     @Override
@@ -682,6 +703,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public java.sql.PreparedStatement clientPrepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
+        checkResultSetHoldability(resultSetHoldability);
         return clientPrepareStatement(sql, resultSetType, resultSetConcurrency, true);
     }
 
@@ -1074,13 +1096,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public java.sql.Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        if (this.pedantic.getValue()) {
-            if (resultSetHoldability != java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT) {
-                throw SQLError.createSQLException("HOLD_CUSRORS_OVER_COMMIT is only supported holdability level",
-                        MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
-            }
-        }
-
+        checkResultSetHoldability(resultSetHoldability);
         return createStatement(resultSetType, resultSetConcurrency);
     }
 
@@ -1124,7 +1140,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public int getHoldability() throws SQLException {
-        return java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT;
+        return java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT;
     }
 
     @Override
@@ -1567,15 +1583,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public java.sql.CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        if (this.pedantic.getValue()) {
-            if (resultSetHoldability != java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT) {
-                throw SQLError.createSQLException(Messages.getString("Connection.17"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-            }
-        }
-
+        checkResultSetHoldability(resultSetHoldability);
         CallableStatement cStmt = (com.mysql.cj.jdbc.CallableStatement) prepareCall(sql, resultSetType, resultSetConcurrency);
-
         return cStmt;
     }
 
@@ -1696,13 +1705,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public java.sql.PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        if (this.pedantic.getValue()) {
-            if (resultSetHoldability != java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT) {
-                throw SQLError.createSQLException(Messages.getString("Connection.17"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-            }
-        }
-
+        checkResultSetHoldability(resultSetHoldability);
         return prepareStatement(sql, resultSetType, resultSetConcurrency);
     }
 
@@ -2061,13 +2064,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public java.sql.PreparedStatement serverPrepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
-        if (this.pedantic.getValue()) {
-            if (resultSetHoldability != java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT) {
-                throw SQLError.createSQLException(Messages.getString("Connection.17"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-            }
-        }
-
+        checkResultSetHoldability(resultSetHoldability);
         return serverPrepareStatement(sql, resultSetType, resultSetConcurrency);
     }
 
@@ -2243,8 +2240,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     @Override
-    public void setHoldability(int arg0) throws SQLException {
-        // do nothing
+    public void setHoldability(int holdability) throws SQLException {
+        checkResultSetHoldability(holdability);
     }
 
     @Override

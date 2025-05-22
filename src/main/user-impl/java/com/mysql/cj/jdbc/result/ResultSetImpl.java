@@ -2690,7 +2690,7 @@ public class ResultSetImpl extends NativeResultset implements ResultSetInternalM
 
     @Override
     public int getHoldability() throws SQLException {
-        throw SQLError.createSQLFeatureNotSupportedException();
+        return HOLD_CURSORS_OVER_COMMIT;
     }
 
     @Override

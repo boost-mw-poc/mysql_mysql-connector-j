@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#44791 (Bug#11753361), Setting/getting holdability on connection does not work properly.
+
   - Fix for Bug#21294134, DBMD.GETPROCEDURECOLUMNS() IS UNABLE TO DEAL WITH PROCEDURE COLUMNS WITH SPACES.
 
   - Fix for Bug#77658 (Bug#21946136), Incorrect java.sql.Statement.cancel() behavior.

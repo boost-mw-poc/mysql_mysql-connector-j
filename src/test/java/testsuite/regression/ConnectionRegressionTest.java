@@ -58,7 +58,9 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.security.Security;
 import java.security.cert.CertificateException;
+import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.PreparedStatement;
@@ -12352,6 +12354,145 @@ public class ConnectionRegressionTest extends BaseTestCase {
             this.getConnectionWithProps(props);
             return null;
         });
+    }
+
+    /**
+     * Tests fix for Bug#44791 (Bug#11753361), Setting/getting holdability on connection does not work properly.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug44791() throws Exception {
+        createProcedure("testBug44791", "() BEGIN SELECT 1; END");
+        final int fakeResultSetHoldability = 99;
+        Properties props = new Properties();
+
+        /*
+         * Pedantic off.
+         */
+        props.setProperty(PropertyKey.pedantic.getKeyName(), "false");
+
+        try (Connection testConn = getConnectionWithProps(props)) {
+            DatabaseMetaData testDbmd = testConn.getMetaData();
+            assertTrue(testDbmd.supportsResultSetHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));
+            assertFalse(testDbmd.supportsResultSetHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT));
+            assertFalse(testDbmd.supportsResultSetHoldability(fakeResultSetHoldability));
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testDbmd.getResultSetHoldability());
+
+            testConn.setHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT);
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+
+            testConn.setHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT);
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+
+            testConn.setHoldability(fakeResultSetHoldability);
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+        }
+
+        boolean useSPS = false;
+        do {
+            try (Connection testConn = getConnectionWithProps(props)) {
+                for (int h : new int[] { ResultSet.HOLD_CURSORS_OVER_COMMIT, ResultSet.CLOSE_CURSORS_AT_COMMIT, fakeResultSetHoldability }) {
+                    Statement testStmt = testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, h);
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testStmt.getResultSetHoldability());
+                    ResultSet testRs = testStmt.executeQuery("SELECT 1");
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+
+                    PreparedStatement testPstmt = testConn.prepareStatement("SELECT 1", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, h);
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testPstmt.getResultSetHoldability());
+                    testRs = testPstmt.executeQuery();
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+
+                    CallableStatement testCstmt = testConn.prepareCall("{ CALL testBug44791() }", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, h);
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testCstmt.getResultSetHoldability());
+                    testRs = testCstmt.executeQuery();
+                    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+                }
+            }
+        } while (useSPS = !useSPS);
+
+        /*
+         * Pedantic on.
+         */
+        props.setProperty(PropertyKey.pedantic.getKeyName(), "true");
+
+        try (Connection testConn = getConnectionWithProps(props)) {
+            DatabaseMetaData testDbmd = testConn.getMetaData();
+            assertTrue(testDbmd.supportsResultSetHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));
+            assertFalse(testDbmd.supportsResultSetHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT));
+            assertFalse(testDbmd.supportsResultSetHoldability(fakeResultSetHoldability));
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testDbmd.getResultSetHoldability());
+
+            testConn.setHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT);
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+
+            assertThrows(SQLFeatureNotSupportedException.class, "Holdability 'ResultSet.CLOSE_CURSORS_AT_COMMIT' is not supported", () -> {
+                testConn.setHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT);
+                return null;
+            });
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+
+            assertThrows(SQLException.class, "Unknown holdability constant '99'", () -> {
+                testConn.setHoldability(fakeResultSetHoldability);
+                return null;
+            });
+            assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testConn.getHoldability());
+        }
+
+        useSPS = false;
+        do {
+            try (Connection testConn = getConnectionWithProps(props)) {
+                // ResultSet.HOLD_CURSORS_OVER_COMMIT: works correctly.
+                Statement testStmt = testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testStmt.getResultSetHoldability());
+                ResultSet testRs = testStmt.executeQuery("SELECT 1");
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+
+                PreparedStatement testPstmt = testConn.prepareStatement("SELECT 1", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testPstmt.getResultSetHoldability());
+                testRs = testPstmt.executeQuery();
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+
+                CallableStatement testCstmt = testConn.prepareCall("{ CALL testBug44791() }", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testCstmt.getResultSetHoldability());
+                testRs = testCstmt.executeQuery();
+                assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, testRs.getHoldability());
+
+                // ResultSet.CLOSE_CURSORS_AT_COMMIT: not supported - throws SQLFeatureNotSupportedException.
+                assertThrows(SQLFeatureNotSupportedException.class, "Holdability 'ResultSet.CLOSE_CURSORS_AT_COMMIT' is not supported", () -> {
+                    testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.CLOSE_CURSORS_AT_COMMIT);
+                    return null;
+                });
+
+                assertThrows(SQLFeatureNotSupportedException.class, "Holdability 'ResultSet.CLOSE_CURSORS_AT_COMMIT' is not supported", () -> {
+                    testConn.prepareStatement("SELECT 1", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.CLOSE_CURSORS_AT_COMMIT);
+                    return null;
+                });
+
+                assertThrows(SQLFeatureNotSupportedException.class, "Holdability 'ResultSet.CLOSE_CURSORS_AT_COMMIT' is not supported", () -> {
+                    testConn.prepareCall("{ CALL testBug44791() }", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.CLOSE_CURSORS_AT_COMMIT);
+                    return null;
+                });
+
+                // fakeResultSetHoldability: unknown holdability - throws SQLException.
+                assertThrows(SQLException.class, "Unknown holdability constant '99'", () -> {
+                    testConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, fakeResultSetHoldability);
+                    return null;
+                });
+
+                assertThrows(SQLException.class, "Unknown holdability constant '99'", () -> {
+                    testConn.prepareStatement("SELECT 1", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, fakeResultSetHoldability);
+                    return null;
+                });
+
+                assertThrows(SQLException.class, "Unknown holdability constant '99'", () -> {
+                    testConn.prepareCall("{ CALL testBug44791() }", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, fakeResultSetHoldability);
+                    return null;
+                });
+            }
+        } while (useSPS = !useSPS);
     }
 
 }
