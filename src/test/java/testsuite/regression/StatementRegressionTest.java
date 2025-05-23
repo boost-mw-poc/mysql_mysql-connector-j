@@ -14242,4 +14242,99 @@ public class StatementRegressionTest extends BaseTestCase {
         interruptorExecService.shutdown();
     }
 
+    /**
+     * Tests fix for Bug#118201 (Bug#37971552), A potential bug in Mysql Connector/J.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug118201() throws Exception {
+        createTable("testBug118201", "(id INT PRIMARY KEY)");
+
+        boolean mltQry = false;
+        boolean rwBS = false;
+        boolean contBE = false;
+        boolean useSPS = false;
+
+        Properties props = new Properties();
+        do {
+            props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), Boolean.toString(mltQry));
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
+            props.setProperty(PropertyKey.continueBatchOnError.getKeyName(), Boolean.toString(contBE));
+
+            this.stmt.execute("TRUNCATE TABLE testBug118201");
+            this.stmt.executeUpdate("INSERT INTO testBug118201 VALUES (3)");
+
+            // Test Statement.
+            String testCase = String.format("Case [mulitQueries: %s, rwBS: %s, contBE: %s]", mltQry ? "Y" : "N", rwBS ? "Y" : "N", contBE ? "Y" : "N");
+            try (Connection testConn = getConnectionWithProps(props)) {
+                Statement testStmt = testConn.createStatement();
+                testStmt.addBatch("INSERT INTO testBug118201 VALUES (1)");
+                testStmt.addBatch("INSERT INTO testBug118201 VALUES (2)");
+                testStmt.addBatch("INSERT INTO testBug118201 VALUES (3)");
+                testStmt.addBatch("INSERT INTO testBug118201 VALUES (4)");
+                testStmt.addBatch("INSERT INTO testBug118201 VALUES (5)");
+                assertThrows(BatchUpdateException.class, "(?i)Duplicate entry '3' for key 'testBug118201.PRIMARY'", testStmt::executeBatch);
+            }
+
+            this.rs = this.stmt.executeQuery("SELECT * FROM testBug118201");
+            assertTrue(this.rs.next(), testCase);
+            assertEquals(1, this.rs.getInt(1), testCase);
+            assertTrue(this.rs.next(), testCase);
+            assertEquals(2, this.rs.getInt(1), testCase);
+            assertTrue(this.rs.next(), testCase);
+            assertEquals(3, this.rs.getInt(1), testCase);
+            if (!rwBS && contBE) {
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(4, this.rs.getInt(1), testCase);
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(5, this.rs.getInt(1), testCase);
+            }
+            assertFalse(this.rs.next(), testCase);
+
+            do {
+                this.stmt.execute("TRUNCATE TABLE testBug118201");
+                this.stmt.executeUpdate("INSERT INTO testBug118201 VALUES (3)");
+
+                // Test client and server PreparedStatement.
+                testCase = String.format("Case [mulitQueries: %s, rwBS: %s, contBE: %s, useSPS: %s]", mltQry ? "Y" : "N", rwBS ? "Y" : "N", contBE ? "Y" : "N",
+                        useSPS ? "Y" : "N");
+                props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    PreparedStatement testPstmt = testConn.prepareStatement("INSERT INTO testBug118201 VALUES (?)");
+                    testPstmt.setInt(1, 1);
+                    testPstmt.addBatch();
+                    testPstmt.setInt(1, 2);
+                    testPstmt.addBatch();
+                    testPstmt.setInt(1, 3);
+                    testPstmt.addBatch();
+                    testPstmt.setInt(1, 4);
+                    testPstmt.addBatch();
+                    testPstmt.setInt(1, 5);
+                    testPstmt.addBatch();
+                    assertThrows(BatchUpdateException.class, "(?i)Duplicate entry '3' for key 'testBug118201.PRIMARY'", testPstmt::executeBatch);
+                }
+
+                this.rs = this.stmt.executeQuery("SELECT * FROM testBug118201");
+                assertTrue(this.rs.next(), testCase);
+                if (rwBS) {
+                    assertEquals(3, this.rs.getInt(1), testCase);
+                } else {
+                    assertEquals(1, this.rs.getInt(1), testCase);
+                    assertTrue(this.rs.next(), testCase);
+                    assertEquals(2, this.rs.getInt(1), testCase);
+                    assertTrue(this.rs.next(), testCase);
+                    assertEquals(3, this.rs.getInt(1), testCase);
+                    if (contBE) {
+                        assertTrue(this.rs.next(), testCase);
+                        assertEquals(4, this.rs.getInt(1), testCase);
+                        assertTrue(this.rs.next(), testCase);
+                        assertEquals(5, this.rs.getInt(1), testCase);
+                    }
+                }
+                assertFalse(this.rs.next(), testCase);
+            } while (useSPS = !useSPS);
+        } while ((mltQry = !mltQry) || (rwBS = !rwBS) || (contBE = !contBE));
+    }
+
 }

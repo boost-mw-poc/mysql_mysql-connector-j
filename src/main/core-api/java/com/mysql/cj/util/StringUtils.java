@@ -1568,7 +1568,7 @@ public class StringUtils {
         return asBytes;
     }
 
-    public static boolean canHandleAsServerPreparedStatementNoCache(String sql, ServerVersion serverVersion, boolean allowMultiQueries,
+    public static boolean canHandleAsServerPreparedStatementNoCache(String sql, ServerVersion serverVersion, boolean multiQueriesEnabled,
             boolean noBackslashEscapes, boolean useAnsiQuotes) {
         // Can't use server-side prepare for CALL
         if (startsWithIgnoreCaseAndNonAlphaNumeric(sql, "CALL")) {
@@ -1580,7 +1580,7 @@ public class StringUtils {
         boolean allowBackslashEscapes = !noBackslashEscapes;
         String quoteChar = useAnsiQuotes ? "\"" : "'";
 
-        if (allowMultiQueries) {
+        if (multiQueriesEnabled) {
             if (StringUtils.indexOfIgnoreCase(0, sql, ";", quoteChar, quoteChar,
                     allowBackslashEscapes ? SearchMode.__BSE_MRK_COM_MYM_HNT_WS : SearchMode.__MRK_COM_MYM_HNT_WS) != -1) {
                 canHandleAsStatement = false;

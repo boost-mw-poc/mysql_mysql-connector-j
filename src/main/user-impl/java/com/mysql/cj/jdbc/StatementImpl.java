@@ -910,9 +910,8 @@ public class StatementImpl implements JdbcStatement {
 
                             this.batchedGeneratedKeys = new ArrayList<>(batchedArgs.size());
 
-                            boolean multiQueriesEnabled = locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.allowMultiQueries).getValue();
-
-                            if (multiQueriesEnabled || this.rewriteBatchedStatements.getValue() && nbrCommands > 4) {
+                            if (this.rewriteBatchedStatements.getValue() && nbrCommands > 4) {
+                                boolean multiQueriesEnabled = locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.allowMultiQueries).getValue();
                                 return executeBatchUsingMultiQueries(multiQueriesEnabled, nbrCommands, individualStatementTimeout);
                             }
 

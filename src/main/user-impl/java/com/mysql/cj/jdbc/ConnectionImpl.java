@@ -490,32 +490,29 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             return false;
         }
 
-        boolean allowMultiQueries = this.propertySet.getBooleanProperty(PropertyKey.allowMultiQueries).getValue()
+        boolean multiQueriesEnabled = this.propertySet.getBooleanProperty(PropertyKey.allowMultiQueries).getValue()
                 || this.propertySet.getBooleanProperty(PropertyKey.rewriteBatchedStatements).getValue();
 
         if (this.cachePrepStmts.getValue()) {
             this.serverSideStatementCheckCacheLock.lock();
             try {
                 Boolean flag = this.serverSideStatementCheckCache.get(sql);
-
                 if (flag != null) {
                     return flag.booleanValue();
                 }
 
-                boolean canHandle = StringUtils.canHandleAsServerPreparedStatementNoCache(sql, getServerVersion(), allowMultiQueries,
+                boolean canHandle = StringUtils.canHandleAsServerPreparedStatementNoCache(sql, getServerVersion(), multiQueriesEnabled,
                         this.session.getServerSession().isNoBackslashEscapesSet(), this.session.getServerSession().useAnsiQuotedIdentifiers());
-
                 if (sql.length() < this.prepStmtCacheSqlLimit.getValue()) {
-                    this.serverSideStatementCheckCache.put(sql, canHandle ? Boolean.TRUE : Boolean.FALSE);
+                    this.serverSideStatementCheckCache.put(sql, canHandle);
                 }
-
                 return canHandle;
             } finally {
                 this.serverSideStatementCheckCacheLock.unlock();
             }
         }
 
-        return StringUtils.canHandleAsServerPreparedStatementNoCache(sql, getServerVersion(), allowMultiQueries,
+        return StringUtils.canHandleAsServerPreparedStatementNoCache(sql, getServerVersion(), multiQueriesEnabled,
                 this.session.getServerSession().isNoBackslashEscapesSet(), this.session.getServerSession().useAnsiQuotedIdentifiers());
     }
 

@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#118201 (Bug#37971552), A potential bug in Mysql Connector/J.
+
   - Fix for Bug#44791 (Bug#11753361), Setting/getting holdability on connection does not work properly.
 
   - Fix for Bug#21294134, DBMD.GETPROCEDURECOLUMNS() IS UNABLE TO DEAL WITH PROCEDURE COLUMNS WITH SPACES.
