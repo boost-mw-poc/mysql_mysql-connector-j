@@ -52,6 +52,7 @@ import com.mysql.cj.conf.PropertyDefinitions.SslMode;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
 import com.mysql.cj.util.StringUtils;
 
 import testsuite.BaseTestCase;
@@ -2103,6 +2104,29 @@ public class CallableStatementRegressionTest extends BaseTestCase {
             stmtAnsiQuotes.execute("DROP PROCEDURE IF EXISTS " + procName3);
             stmtAnsiQuotes.execute("DROP DATABASE IF EXISTS \"testBug(20279578_aq\"");
         }
+    }
+
+    /**
+     * Tests fix for Bug#22473405, GETOBJECT(STRING , CLASS<T>) METHOD RETURNS ERROR FOR POOLED CONNECTION.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug22473405() throws Exception {
+        createProcedure("testBug22473405", "(OUT p INT) BEGIN SELECT 1 INTO p; END");
+        MysqlConnectionPoolDataSource ds = new MysqlConnectionPoolDataSource();
+        ds.setURL(dbUrl);
+        Connection testConn = ds.getPooledConnection().getConnection();
+
+        CallableStatement cstmt = testConn.prepareCall("{CALL testBug22473405(?)}");
+        cstmt.registerOutParameter(1, java.sql.Types.INTEGER);
+        cstmt.execute();
+        assertEquals(1, cstmt.getObject(1, Integer.class));
+
+        cstmt = testConn.prepareCall("{CALL testBug22473405(?)}");
+        cstmt.registerOutParameter(1, java.sql.Types.INTEGER);
+        cstmt.execute();
+        assertEquals(1, cstmt.getObject(1, Integer.class));
     }
 
 }

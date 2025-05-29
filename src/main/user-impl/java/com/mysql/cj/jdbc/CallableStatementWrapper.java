@@ -1717,7 +1717,7 @@ public class CallableStatementWrapper extends PreparedStatementWrapper implement
     @Override
     public <T> T getObject(int parameterIndex, Class<T> type) throws SQLException {
         if (this.wrappedStmt != null) {
-            return null; // TODO
+            return ((CallableStatement) this.wrappedStmt).getObject(parameterIndex, type);
         }
         throw SQLError.createSQLException(Messages.getString("Statement.AlreadyClosed"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                 this.exceptionInterceptor);
@@ -1726,7 +1726,7 @@ public class CallableStatementWrapper extends PreparedStatementWrapper implement
     @Override
     public <T> T getObject(String parameterName, Class<T> type) throws SQLException {
         if (this.wrappedStmt != null) {
-            return null; // TODO
+            return ((CallableStatement) this.wrappedStmt).getObject(parameterName, type);
         }
         throw SQLError.createSQLException(Messages.getString("Statement.AlreadyClosed"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                 this.exceptionInterceptor);
