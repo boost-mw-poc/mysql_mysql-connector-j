@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - WL#17009, Upgrade 3rd party libraries and tools.
+
   - Fix for Bug#118201 (Bug#37971552), A potential bug in Mysql Connector/J.
 
   - Fix for Bug#44791 (Bug#11753361), Setting/getting holdability on connection does not work properly.
