@@ -20,8 +20,10 @@
 
 package com.mysql.cj.protocol;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
@@ -276,14 +278,39 @@ public class ExportControlled {
             throw ExceptionFactory.createException(RSAException.class, "Key parameter is null");
         }
 
-        String keyData = key.replace("-----BEGIN PRIVATE KEY-----", "").replaceAll("\\R", "").replace("-----END PRIVATE KEY-----", "");
-        byte[] decodedKeyData = Base64.getDecoder().decode(keyData);
+        StringBuilder keyData = new StringBuilder();
+
+        try {
+            BufferedReader br = new BufferedReader(new StringReader(key));
+            String line;
+            boolean insideKey = false;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.equals("-----BEGIN PRIVATE KEY-----")) {
+                    insideKey = true;
+                    continue;
+                }
+                if (line.equals("-----END PRIVATE KEY-----")) {
+                    break;
+                }
+                if (insideKey) {
+                    keyData.append(line);
+                }
+            }
+        } catch (IOException e) {
+        }
+
+        if (keyData.length() == 0) {
+            throw new IllegalArgumentException("No valid unencrypted PKCS#8 key block found");
+        }
+
+        byte[] decodedKeyData = Base64.getDecoder().decode(keyData.toString());
 
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return (RSAPrivateKey) keyFactory.generatePrivate(new PKCS8EncodedKeySpec(decodedKeyData));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw ExceptionFactory.createException(RSAException.class, "Unable to decode private key", e);
+            throw ExceptionFactory.createException(RSAException.class, "Unable to decode PKCS#8 private key", e);
         }
     }
 
