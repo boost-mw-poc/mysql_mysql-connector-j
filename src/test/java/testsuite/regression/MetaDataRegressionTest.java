@@ -6017,4 +6017,24 @@ public class MetaDataRegressionTest extends BaseTestCase {
         } while (useIS = !useIS);
     }
 
+    /**
+     * Tests fix for Bug#98620, Bug#31503893, Using DatabaseMetaData.getColumns() gives collation mix error
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug98620() throws Exception {
+        createTable("testBug98620", "(id INT)");
+        boolean useIS = false;
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.connectionCollation.getKeyName(), "utf8mb3_unicode_ci");
+            props.setProperty(PropertyKey.useInformationSchema.getKeyName(), Boolean.toString(useIS));
+            Connection testConn = getConnectionWithProps(props);
+            this.rs = testConn.getMetaData().getColumns(null, null, "testBug98620", null);
+            assertTrue(this.rs.next());
+            assertEquals(isServerRunningOnWindows() ? "testbug98620" : "testBug98620", this.rs.getString("TABLE_NAME"));
+        } while (useIS = !useIS);
+    }
+
 }

@@ -3,6 +3,8 @@
 
 Version 9.4.0
 
+  - Fix for Bug#98620 (Bug#31503893), Using DatabaseMetaData.getColumns() gives collation mix error.
+
   - Fix for Bug#118389 (Bug#38044940), OCI ephemeral keys not working after change in OCI CLI.
 
   - Fix for Bug#22473405, GETOBJECT(STRING , CLASS<T>) METHOD RETURNS ERROR FOR POOLED CONNECTION.

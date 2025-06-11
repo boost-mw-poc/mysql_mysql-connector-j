@@ -26,9 +26,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import com.mysql.cj.CharsetSettings;
 import com.mysql.cj.Messages;
 import com.mysql.cj.MysqlType;
 import com.mysql.cj.ServerVersion;
@@ -36,12 +41,16 @@ import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.result.ResultSetFactory;
+import com.mysql.cj.util.LRUCache;
 import com.mysql.cj.util.StringUtils;
 
 /**
  * DatabaseMetaData implementation that uses INFORMATION_SCHEMA
  */
 public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
+
+    static final Lock INFORMATION_SCHEMA_COLLATION_CACHE_LOCK = new ReentrantLock();
+    static Map<ServerVersion, String> informationSchemaCollationCache = Collections.synchronizedMap(new LRUCache<>(10));
 
     protected DatabaseMetaDataInformationSchema(JdbcConnection connToSet, String databaseToSet, ResultSetFactory resultSetFactory) {
         super(connToSet, databaseToSet, resultSetFactory);
@@ -351,6 +360,7 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         final String dbFilter = normalizeIdentifierQuoting(chooseDatabaseTerm(catalog, schemaPattern));
         final String tableNameFilter = normalizeIdentifierQuoting(tableNamePattern);
         final String columnNameFilter = normalizeIdentifierQuoting(columnNamePattern);
+        final String infScCollation = getInformationSchemaCollation();
 
         StringBuilder query = new StringBuilder("SELECT");
         query.append(chooseBasedOnDatabaseTerm(() -> " TABLE_SCHEMA, NULL,", () -> " TABLE_CATALOG, TABLE_SCHEMA,"));       // TABLE_CAT, TABLE_SCHEM
@@ -362,8 +372,8 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         query.append(" ").append(MAX_BUFFER_SIZE).append(" AS BUFFER_LENGTH,");                                             // BUFFER_LENGTH
         appendDecimalDigitsClause(query).append(" AS DECIMAL_DIGITS,");                                                     // DECIMAL_DIGITS
         query.append(" 10 AS NUM_PREC_RADIX,");                                                                             // NUM_PREC_RADIX
-        query.append(" CASE WHEN IS_NULLABLE = 'NO' THEN ").append(columnNoNulls);
-        query.append(" ELSE CASE WHEN IS_NULLABLE = 'YES' THEN ").append(columnNullable);
+        query.append(" CASE WHEN IS_NULLABLE COLLATE " + infScCollation + "= 'NO' THEN ").append(columnNoNulls);
+        query.append(" ELSE CASE WHEN IS_NULLABLE COLLATE " + infScCollation + "= 'YES' THEN ").append(columnNullable);
         query.append(" ELSE ").append(columnNullableUnknown).append(" END END AS NULLABLE,");                               // NULLABLE
         query.append(" COLUMN_COMMENT AS REMARKS,");                                                                        // REMARKS
         query.append(" COLUMN_DEFAULT AS COLUMN_DEF,");                                                                     // COLUMN_DEF
@@ -377,8 +387,8 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         query.append(" NULL AS SCOPE_SCHEMA,");                                                                             // SCOPE_SCHEMA
         query.append(" NULL AS SCOPE_TABLE,");                                                                              // SCOPE_TABLE
         query.append(" NULL AS SOURCE_DATA_TYPE,");                                                                         // SOURCE_DATA_TYPE
-        query.append(" IF (EXTRA LIKE '%auto_increment%','YES','NO') AS IS_AUTOINCREMENT,");                                // IS_AUTOINCREMENT
-        query.append(" IF (EXTRA LIKE '%GENERATED%','YES','NO') AS IS_GENERATEDCOLUMN");                                    // IS_GENERATEDCOLUMN
+        query.append(" IF (EXTRA COLLATE " + infScCollation + " LIKE '%auto_increment%','YES','NO') AS IS_AUTOINCREMENT,"); // IS_AUTOINCREMENT
+        query.append(" IF (EXTRA COLLATE " + infScCollation + " LIKE  '%GENERATED%','YES','NO') AS IS_GENERATEDCOLUMN");    // IS_GENERATEDCOLUMN
         query.append(" FROM INFORMATION_SCHEMA.COLUMNS");
 
         StringBuilder condition = new StringBuilder();
@@ -1138,6 +1148,36 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
             ResultSet rs = executeMetadataQuery(pStmt);
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createVersionColumnsFields());
             return rs;
+        }
+    }
+
+    private String getInformationSchemaCollation() throws SQLException {
+        String informationSchemaCollation = informationSchemaCollationCache.get(getJdbcConnection().getServerVersion());
+        if (informationSchemaCollation != null) {
+            return informationSchemaCollation;
+        }
+
+        INFORMATION_SCHEMA_COLLATION_CACHE_LOCK.lock();
+        try {
+            // Double check, maybe another thread already added it.
+            informationSchemaCollation = informationSchemaCollationCache.get(getJdbcConnection().getServerVersion());
+            if (informationSchemaCollation != null) {
+                return informationSchemaCollation;
+            }
+
+            Statement stmt = getJdbcConnection().getMetaDataSafeStatement();
+            ResultSet rs = stmt.executeQuery("SELECT DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'information_schema'");
+            if (rs.next()) {
+                informationSchemaCollation = rs.getString(1);
+            } else {
+                informationSchemaCollation = getSession().getServerSession().getServerVariable(CharsetSettings.COLLATION_CONNECTION);
+            }
+            stmt.close();
+
+            informationSchemaCollationCache.put(getJdbcConnection().getServerVersion(), informationSchemaCollation);
+            return informationSchemaCollation;
+        } finally {
+            INFORMATION_SCHEMA_COLLATION_CACHE_LOCK.unlock();
         }
     }
 
