@@ -109,7 +109,8 @@ public class CharsetMapping {
                 new MysqlCharset(MYSQL_CHARSET_NAME_big5, 2, 0, new String[] { "Big5" }),
                 new MysqlCharset(MYSQL_CHARSET_NAME_gbk, 2, 0, new String[] { "GBK" }),
 
-                new MysqlCharset(MYSQL_CHARSET_NAME_sjis, 2, 0, new String[] { "SHIFT_JIS", "Cp943", "WINDOWS-31J" }), // SJIS is alias for SHIFT_JIS, Cp943 is rather a cp932 but we map it to sjis for years
+                // SJIS is alias for SHIFT_JIS, Cp943 is rather a cp932 but we map it to sjis for years
+                new MysqlCharset(MYSQL_CHARSET_NAME_sjis, 2, 0, new String[] { "SHIFT_JIS", "Cp943", "WINDOWS-31J" }),
                 new MysqlCharset(MYSQL_CHARSET_NAME_cp932, 2, 1, new String[] { "WINDOWS-31J" }),
 
                 new MysqlCharset(MYSQL_CHARSET_NAME_gb2312, 2, 0, new String[] { "GB2312" }),
@@ -135,7 +136,9 @@ public class CharsetMapping {
                 new MysqlCharset(MYSQL_CHARSET_NAME_cp850, 1, 0, new String[] { "Cp850", "Cp437" }),
 
                 new MysqlCharset(MYSQL_CHARSET_NAME_cp852, 1, 0, new String[] { "Cp852" }),
-                new MysqlCharset(MYSQL_CHARSET_NAME_keybcs2, 1, 0, new String[] { "Cp852" }), // Kamenicky encoding usually known as Cp895 but there is no official cp895 specification; close to Cp852, see http://ftp.muni.cz/pub/localization/charsets/cs-encodings-faq
+                // Kamenicky encoding usually known as Cp895 but there is no official cp895 specification; close to Cp852, see
+                // http://ftp.muni.cz/pub/localization/charsets/cs-encodings-faq
+                new MysqlCharset(MYSQL_CHARSET_NAME_keybcs2, 1, 0, new String[] { "Cp852" }),
 
                 new MysqlCharset(MYSQL_CHARSET_NAME_cp866, 1, 0, new String[] { "Cp866" }),
 
@@ -541,13 +544,10 @@ public class CharsetMapping {
     protected static String getStaticMysqlCharsetForJavaEncoding(String javaEncoding, ServerVersion version) {
         List<MysqlCharset> mysqlCharsets = CharsetMapping.JAVA_ENCODING_UC_TO_MYSQL_CHARSET.get(javaEncoding.toUpperCase(Locale.ENGLISH));
         if (mysqlCharsets != null) {
-            if (version == null) {
-                return mysqlCharsets.get(0).charsetName; // Take the first one we get
-            }
             MysqlCharset currentChoice = null;
             for (MysqlCharset charset : mysqlCharsets) {
-                if (charset.isOkayForVersion(version) && (currentChoice == null || currentChoice.minimumVersion.compareTo(charset.minimumVersion) < 0
-                        || currentChoice.priority < charset.priority && currentChoice.minimumVersion.compareTo(charset.minimumVersion) == 0)) {
+                if ((version == null || charset.isOkayForVersion(version)) && (currentChoice == null || currentChoice.priority < charset.priority
+                        || currentChoice.priority == charset.priority && currentChoice.minimumVersion.compareTo(charset.minimumVersion) < 0)) {
                     currentChoice = charset;
                 }
             }
@@ -681,7 +681,6 @@ class MysqlCharset {
     public final int priority;
     public final List<String> javaEncodingsUc = new ArrayList<>();
     public final List<String> aliases = new ArrayList<>();
-
     public final ServerVersion minimumVersion;
 
     /**
@@ -720,7 +719,6 @@ class MysqlCharset {
     public MysqlCharset(String charsetName, int mblen, int priority, String[] javaEncodings, ServerVersion minimumVersion) {
         this.charsetName = charsetName;
         this.mblen = mblen;
-        this.priority = priority;
 
         for (int i = 0; i < javaEncodings.length; i++) {
             String encoding = javaEncodings[i];
@@ -729,7 +727,7 @@ class MysqlCharset {
                 addEncodingMapping(cs.name());
                 cs.aliases().forEach(this::addEncodingMapping);
             } catch (Exception e) {
-                // if there is no support of this charset in JVM it's still possible to use our converter for 1-byte charsets
+                // If there is no support of this charset in JVM it's still possible to use our converter for 1-byte charsets.
                 if (mblen == 1) {
                     addEncodingMapping(encoding);
                 }
@@ -737,7 +735,11 @@ class MysqlCharset {
         }
 
         if (this.javaEncodingsUc.size() == 0) {
+            // Drop priority to minimum and map to default charset.
+            this.priority = -1;
             addEncodingMapping(mblen > 1 ? "UTF-8" : "Cp1252");
+        } else {
+            this.priority = priority;
         }
 
         this.minimumVersion = minimumVersion;
@@ -747,12 +749,12 @@ class MysqlCharset {
     public String toString() {
         StringBuilder asString = new StringBuilder();
         asString.append("[");
-        asString.append("charsetName=");
-        asString.append(this.charsetName);
-        asString.append(",mblen=");
-        asString.append(this.mblen);
-        // asString.append(",javaEncoding=");
-        // asString.append(this.javaEncodings.toString());
+        asString.append("charsetName=").append(this.charsetName);
+        asString.append(",mblen=").append(this.mblen);
+        asString.append(",pirority=").append(this.priority);
+        asString.append(",javaEncoding=").append(this.javaEncodingsUc);
+        asString.append(",aliases=").append(this.aliases);
+        asString.append(",minimumVersion=").append(this.minimumVersion);
         asString.append("]");
         return asString.toString();
     }
@@ -800,14 +802,11 @@ class Collation {
     public String toString() {
         StringBuilder asString = new StringBuilder();
         asString.append("[");
-        asString.append("index=");
-        asString.append(this.index);
-        asString.append(",collationNames=");
-        asString.append(Arrays.toString(this.collationNames));
-        asString.append(",charsetName=");
-        asString.append(this.mysqlCharset.charsetName);
-        asString.append(",javaCharsetName=");
-        asString.append(this.mysqlCharset.getMatchingJavaEncoding(null));
+        asString.append("index=").append(this.index);
+        asString.append(",collationNames=").append(Arrays.toString(this.collationNames));
+        asString.append(",priority=").append(this.priority);
+        asString.append(",charsetName=").append(this.mysqlCharset.charsetName);
+        asString.append(",javaCharsetName=").append(this.mysqlCharset.getMatchingJavaEncoding(null));
         asString.append("]");
         return asString.toString();
     }

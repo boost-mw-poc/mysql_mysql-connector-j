@@ -581,9 +581,9 @@ public class NativeCharsetSettings extends CharsetMapping implements CharsetSett
                     while ((r = rs.getRows().next()) != null) {
                         String collationName = r.getValue(0, svf);
                         String charsetName = r.getValue(1, svf);
-                        int collationIndex = ((Number) r.getValue(2, ivf)).intValue();
-                        int maxlen = ((Number) r.getValue(3, ivf)).intValue();
-                        boolean isDefault = ((Number) r.getValue(4, ivf)).intValue() > 0;
+                        int collationIndex = r.getValue(2, ivf).intValue();
+                        int maxlen = r.getValue(3, ivf).intValue();
+                        boolean isDefault = r.getValue(4, ivf).intValue() > 0;
 
                         if (collationIndex >= MAP_SIZE //
                                 || collationIndex != getStaticCollationIndexForCollationName(collationName)
