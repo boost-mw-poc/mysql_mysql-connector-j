@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#112090 (Bug#35716608), SHOW ENGINE command runs forever when using cursor fetch.
+
 Version 9.4.0
 
   - Fix for Bug#116120 (Bug#37079448), Inappropriate charset selected for connection when jdk.charsets not included.

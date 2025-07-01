@@ -14337,4 +14337,24 @@ public class StatementRegressionTest extends BaseTestCase {
         } while ((mltQry = !mltQry) || (rwBS = !rwBS) || (contBE = !contBE));
     }
 
+    /**
+     * Tests fix for Bug#112090 (Bug#35716608), SHOW ENGINE command runs forever when using cursor fetch.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug112090() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "true");
+        props.setProperty(PropertyKey.defaultFetchSize.getKeyName(), "5000");
+        props.setProperty(PropertyKey.useCursorFetch.getKeyName(), "true");
+        props.setProperty(PropertyKey.socketTimeout.getKeyName(), "1000");
+        Connection testConn = getConnectionWithProps(props);
+
+        this.pstmt = testConn.prepareStatement("SHOW ENGINE `MEMORY` STATUS");
+        this.pstmt.execute();
+        this.rs = this.pstmt.getResultSet();
+        assertFalse(this.rs.next());
+    }
+
 }
