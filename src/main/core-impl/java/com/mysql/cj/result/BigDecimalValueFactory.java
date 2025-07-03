@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
+import com.mysql.cj.Constants;
 import com.mysql.cj.conf.PropertySet;
 
 /**
@@ -75,13 +76,16 @@ public class BigDecimalValueFactory extends AbstractNumericValueFactory<BigDecim
     }
 
     /**
-     * Adjust the result value by apply the scale, if appropriate.
+     * Adjust the result value by replacing new "zero" instances by {@link BigDecimal} cached ones, and applying the scale, if appropriate.
      *
      * @param d
      *            value
      * @return result
      */
     private BigDecimal adjustResult(BigDecimal d) {
+        if (d.signum() == 0) {
+            d = Constants.BIG_DECIMAL_ZERO.setScale(d.scale());
+        }
         if (this.hasScale) {
             try {
                 return d.setScale(this.scale);

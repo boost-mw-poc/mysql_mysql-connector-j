@@ -21,7 +21,9 @@
 package com.mysql.cj.result;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.math.BigDecimal;
 
@@ -103,6 +105,14 @@ public class BigDecimalValueFactoryTest extends CommonAsserts {
         assertEquals(Constants.BIG_DECIMAL_MAX_INTEGER_VALUE, this.vf.createFromBigDecimal(Constants.BIG_DECIMAL_MAX_INTEGER_VALUE));
         assertEquals(Constants.BIG_DECIMAL_NEGATIVE_ONE, this.vf.createFromBigDecimal(Constants.BIG_DECIMAL_NEGATIVE_ONE));
         assertEquals(Constants.BIG_DECIMAL_MIN_INTEGER_VALUE, this.vf.createFromBigDecimal(Constants.BIG_DECIMAL_MIN_INTEGER_VALUE));
+
+        // Test reference equality for ZERO values.
+        assertSame(BigDecimal.ZERO, this.vf.createFromBigDecimal(Constants.BIG_DECIMAL_ZERO));
+        BigDecimal z0 = this.vf.createFromBigDecimal(new BigDecimal("0"));
+        BigDecimal z1 = this.vf.createFromBigDecimal(new BigDecimal("0.0"));
+        assertNotSame(z0, z1);
+        assertSame(z0, this.vf.createFromBigDecimal(new BigDecimal("0")));
+        assertSame(z1, this.vf.createFromBigDecimal(new BigDecimal("0.0")));
     }
 
     @Test

@@ -59,8 +59,8 @@ public class Constants {
     public static final String CJ_MINOR_VERSION = "@MYSQL_CJ_MINOR_VERSION@";
     public static final String CJ_LICENSE = "@MYSQL_CJ_LICENSE_TYPE@";
 
-    public static final BigInteger BIG_INTEGER_ZERO = BigInteger.valueOf(0);
-    public static final BigInteger BIG_INTEGER_ONE = BigInteger.valueOf(1);
+    public static final BigInteger BIG_INTEGER_ZERO = BigInteger.ZERO;
+    public static final BigInteger BIG_INTEGER_ONE = BigInteger.ONE;
     public static final BigInteger BIG_INTEGER_NEGATIVE_ONE = BigInteger.valueOf(-1);
     public static final BigInteger BIG_INTEGER_MIN_BYTE_VALUE = BigInteger.valueOf(Byte.MIN_VALUE);
     public static final BigInteger BIG_INTEGER_MAX_BYTE_VALUE = BigInteger.valueOf(Byte.MAX_VALUE);
@@ -71,8 +71,8 @@ public class Constants {
     public static final BigInteger BIG_INTEGER_MIN_LONG_VALUE = BigInteger.valueOf(Long.MIN_VALUE);
     public static final BigInteger BIG_INTEGER_MAX_LONG_VALUE = BigInteger.valueOf(Long.MAX_VALUE);
 
-    public static final BigDecimal BIG_DECIMAL_ZERO = BigDecimal.valueOf(0);
-    public static final BigDecimal BIG_DECIMAL_ONE = BigDecimal.valueOf(1);
+    public static final BigDecimal BIG_DECIMAL_ZERO = BigDecimal.ZERO;
+    public static final BigDecimal BIG_DECIMAL_ONE = BigDecimal.ONE;
     public static final BigDecimal BIG_DECIMAL_NEGATIVE_ONE = BigDecimal.valueOf(-1);
     public static final BigDecimal BIG_DECIMAL_MIN_BYTE_VALUE = BigDecimal.valueOf(Byte.MIN_VALUE);
     public static final BigDecimal BIG_DECIMAL_MAX_BYTE_VALUE = BigDecimal.valueOf(Byte.MAX_VALUE);
