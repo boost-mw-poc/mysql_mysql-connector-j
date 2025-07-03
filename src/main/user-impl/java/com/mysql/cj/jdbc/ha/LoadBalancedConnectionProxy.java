@@ -196,6 +196,9 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
                 case "random":
                     this.balancer = new RandomBalanceStrategy();
                     break;
+                case "sequential":
+                    this.balancer = new SequentialBalanceStrategy();
+                    break;
                 case "bestResponseTime":
                     this.balancer = new BestResponseTimeBalanceStrategy();
                     break;

@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#42777 (Bug#11751788), loadBalanceStrategy and roundRobinLoadBalance should be consolidated.
+
   - Fix for Bug#112090 (Bug#35716608), SHOW ENGINE command runs forever when using cursor fetch.
 
 Version 9.4.0

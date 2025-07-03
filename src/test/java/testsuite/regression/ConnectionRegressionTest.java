@@ -170,7 +170,6 @@ import com.mysql.cj.jdbc.ha.ReplicationConnection;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionGroup;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionGroupManager;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
-import com.mysql.cj.jdbc.ha.SequentialBalanceStrategy;
 import com.mysql.cj.jdbc.jmx.ReplicationGroupManagerMBean;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.ProfilerEvent;
@@ -2575,7 +2574,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), SequentialBalanceStrategy.class.getName());
+        props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), "sequential");
 
         Connection lbConn = getUnreliableLoadBalancedConnection(new String[] { "first", "second" }, props);
         try {
@@ -11994,7 +11993,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         testBug23143279RunTest("random");
         testBug23143279RunTest("bestResponseTime");
         testBug23143279RunTest("serverAffinity");
-        testBug23143279RunTest(SequentialBalanceStrategy.class.getName());
+        testBug23143279RunTest("sequential");
     }
 
     private void testBug23143279RunTest(String lbStrategy) throws Exception {
