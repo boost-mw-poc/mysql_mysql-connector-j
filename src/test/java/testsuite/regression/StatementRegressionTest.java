@@ -14372,4 +14372,34 @@ public class StatementRegressionTest extends BaseTestCase {
         assertEquals("SELECT * FROM testBug118688 WHERE a = '''aa''' AND b = 'b''b'", pquery.asSql());
     }
 
+    /**
+     * Tests fix for Bug#114974 (Bug#36614381), the SQL in batch will not clear after statement close.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug114974() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "true");
+        props.setProperty(PropertyKey.cachePrepStmts.getKeyName(), "true");
+        Connection testConn = getConnectionWithProps(props);
+        createTable("testBug114974", "(id INT)");
+        final String sql = "INSERT INTO testBug114974 VALUES (?)";
+
+        PreparedStatement testPStmt = testConn.prepareStatement(sql);
+        testPStmt.setInt(1, 1);
+        testPStmt.addBatch();
+        testPStmt.close();
+
+        testPStmt = testConn.prepareStatement(sql);
+        testPStmt.setInt(1, 2);
+        testPStmt.addBatch();
+        testPStmt.executeBatch();
+
+        this.rs = testConn.createStatement().executeQuery("SELECT * FROM testBug114974");
+        assertTrue(this.rs.next());
+        assertEquals(2, this.rs.getInt(1));
+        assertFalse(this.rs.next());
+    }
+
 }

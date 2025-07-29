@@ -441,6 +441,7 @@ public class ServerPreparedStatement extends ClientPreparedStatement {
             if (CloseOption.NO_CACHE.notIn(options) && this.isCacheable && isPoolable()) {
                 clearParameters();
                 clearAttributes();
+                clearBatch();
                 this.isClosed = true;
                 this.connection.recachePreparedStatement(this);
                 this.isCached = true;

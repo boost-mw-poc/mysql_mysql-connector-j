@@ -3,6 +3,9 @@
 
 Version 9.5.0
 
+  - Fix for Bug#114974 (Bug#36614381), the SQL in batch will not clear after statement close.
+    Thanks to Chengyi Dong for his contribution.
+
   - Fix for Bug#118688 (Bug#38222681), com.mysql.cj.protocol.a.StringValueEncoder#getString does not handle string escaping.
     Thanks to Feng Shen for his contribution.
 
