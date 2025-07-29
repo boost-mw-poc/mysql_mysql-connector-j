@@ -114,6 +114,7 @@ import com.mysql.cj.CharsetMappingWrapper;
 import com.mysql.cj.ClientPreparedQuery;
 import com.mysql.cj.MysqlConnection;
 import com.mysql.cj.MysqlType;
+import com.mysql.cj.PreparedQuery;
 import com.mysql.cj.Query;
 import com.mysql.cj.ServerPreparedQuery;
 import com.mysql.cj.Session;
@@ -14355,6 +14356,20 @@ public class StatementRegressionTest extends BaseTestCase {
         this.pstmt.execute();
         this.rs = this.pstmt.getResultSet();
         assertFalse(this.rs.next());
+    }
+
+    /**
+     * Tests fix for Bug#118688 (Bug#38222681), com.mysql.cj.protocol.a.StringValueEncoder#getString does not handle string escaping.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug118688() throws Exception {
+        this.pstmt = this.conn.prepareStatement("SELECT * FROM testBug118688 WHERE a = ? AND b = ?");
+        this.pstmt.setString(1, "'aa'");
+        this.pstmt.setString(2, "b'b");
+        PreparedQuery pquery = (PreparedQuery) ((JdbcStatement) this.pstmt).getQuery();
+        assertEquals("SELECT * FROM testBug118688 WHERE a = '''aa''' AND b = 'b''b'", pquery.asSql());
     }
 
 }

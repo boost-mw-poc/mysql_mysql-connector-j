@@ -116,6 +116,7 @@ public class StringValueEncoder extends AbstractValueEncoder {
     @Override
     public String getString(BindValue binding) {
         String x = (String) binding.getValue();
+        StringBuilder sb;
         switch (binding.getMysqlType()) {
             case NULL:
                 return "null";
@@ -171,10 +172,7 @@ public class StringValueEncoder extends AbstractValueEncoder {
             case BLOB:
             case MEDIUMBLOB:
             case LONGBLOB:
-                StringBuilder sb = new StringBuilder("'");
-                sb.append(x);
-                sb.append("'");
-                return sb.toString();
+                return StringUtils.toString(getBytes(binding), this.charEncoding.getValue());
             case DATE:
                 Object dt = TimeUtil.parseToDateTimeObject(x, binding.getMysqlType());
                 if (dt instanceof LocalDate) {

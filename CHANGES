@@ -3,6 +3,9 @@
 
 Version 9.5.0
 
+  - Fix for Bug#118688 (Bug#38222681), com.mysql.cj.protocol.a.StringValueEncoder#getString does not handle string escaping.
+    Thanks to Feng Shen for his contribution.
+
   - Fix for Bug#118329 (Bug#38022329), Contribution: Optimize BigDecimal zero value handling to reduce memory footprint.
     Thanks to Chengjun Huang for his contribution.
 
