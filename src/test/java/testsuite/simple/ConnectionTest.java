@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.BufferedInputStream;
@@ -849,39 +848,22 @@ public class ConnectionTest extends BaseTestCase {
         this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'max_allowed_packet'");
         this.rs.next();
         long defaultMaxAllowedPacket = this.rs.getInt(2);
-        boolean changeMaxAllowedPacket = defaultMaxAllowedPacket < 4 + 1024 * 1024 * 32 - 1;
 
-        if (versionMeetsMinimum(5, 6, 20) && !versionMeetsMinimum(5, 7)) {
-            /*
-             * The 5.6.20 patch for Bug #16963396, Bug #19030353, Bug #69477 limits the size of redo log BLOB writes
-             * to 10% of the redo log file size. The 5.7.5 patch addresses the bug without imposing a limitation.
-             * As a result of the redo log BLOB write limit introduced for MySQL 5.6, innodb_log_file_size should be set to a value
-             * greater than 10 times the largest BLOB data size found in the rows of your tables plus the length of other variable length
-             * fields (VARCHAR, VARBINARY, and TEXT type fields).
-             */
-            this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'innodb_log_file_size'");
-            this.rs.next();
-            assumeFalse(this.rs.getInt(2) < 1024 * 1024 * 32 * 10,
-                    "You need to increase innodb_log_file_size to at least " + 1024 * 1024 * 32 * 10 + " before running this test!");
-        }
+        createTable("testUseCompress", "(pos INT PRIMARY KEY AUTO_INCREMENT, blobdata LONGBLOB)");
 
         try {
-            if (changeMaxAllowedPacket) {
-                this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + 1024 * 1024 * 33);
-            }
+            this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + 1024 * 1024 * 33);
 
-            testCompressionWith("false", 1024 * 1024 * 16 - 2); // no split
-            testCompressionWith("false", 1024 * 1024 * 16 - 1); // split with additional empty packet
-            testCompressionWith("false", 1024 * 1024 * 32);   // big payload
+            testUseCompress("false", 1024 * 1024 * 16 - 2); // No split.
+            testUseCompress("false", 1024 * 1024 * 16 - 1); // Split with additional empty packet.
+            testUseCompress("false", 1024 * 1024 * 32); // Big payload.
 
-            testCompressionWith("true", 1024 * 1024 * 16 - 2 - 3); // no split, one compressed packet
-            testCompressionWith("true", 1024 * 1024 * 16 - 2 - 2); // no split, two compressed packets
-            testCompressionWith("true", 1024 * 1024 * 16 - 1);   // split with additional empty packet, two compressed packets
-            testCompressionWith("true", 1024 * 1024 * 32);     // big payload
+            testUseCompress("true", 1024 * 1024 * 16 - 2 - 3); // No split, one compressed packet.
+            testUseCompress("true", 1024 * 1024 * 16 - 2 - 2); // No split, two compressed packets.
+            testUseCompress("true", 1024 * 1024 * 16 - 1); // Split with additional empty packet, two compressed packets.
+            testUseCompress("true", 1024 * 1024 * 32); // Big payload.
         } finally {
-            if (changeMaxAllowedPacket) {
-                this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + defaultMaxAllowedPacket);
-            }
+            this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + defaultMaxAllowedPacket);
         }
     }
 
@@ -891,24 +873,26 @@ public class ConnectionTest extends BaseTestCase {
      *
      * @throws Exception
      */
-    private void testCompressionWith(String useCompression, int maxPayloadSize) throws Exception {
-        String sqlToSend = "INSERT INTO BLOBTEST(blobdata) VALUES (?)";
-        int requiredSize = maxPayloadSize - sqlToSend.length() - "_binary''".length();
+    private void testUseCompress(String useCompression, int maxPayloadSize) throws Exception {
+        this.stmt.executeUpdate("TRUNCATE TABLE testUseCompress");
 
-        File testBlobFile = File.createTempFile("cmj-testblob", ".dat");
+        String sqlToSend = "INSERT INTO testUseCompress (blobdata) VALUES (?)";
+        int remainingSize = maxPayloadSize - sqlToSend.length() - "X''".length() - 2 /* parameter_count & parameter_set_count */;
+        if (remainingSize % 2 != 0) {
+            sqlToSend += " ";
+            remainingSize--;
+        }
+        int requiredSize = remainingSize / 2; // HEX requires twice the size of the data.
+
+        File testBlobFile = File.createTempFile("testUseCompress", ".dat");
         testBlobFile.deleteOnExit();
 
-        // TODO: following cleanup doesn't work correctly during concurrent execution of testsuite
-        // cleanupTempFiles(testBlobFile, "cmj-testblob");
-
         BufferedOutputStream bOut = new BufferedOutputStream(new FileOutputStream(testBlobFile));
-
-        // generate a random sequence of letters. this ensures that no escaped characters cause packet sizes that interfere with bounds tests
+        // Generate a random sequence of letters.
         Random random = new Random();
         for (int i = 0; i < requiredSize; i++) {
             bOut.write((byte) (65 + random.nextInt(26)));
         }
-
         bOut.flush();
         bOut.close();
 
@@ -916,37 +900,32 @@ public class ConnectionTest extends BaseTestCase {
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useCompression.getKeyName(), useCompression);
-        Connection conn1 = getConnectionWithProps(props);
-        Statement stmt1 = conn1.createStatement();
+        Connection testConn = getConnectionWithProps(props);
 
-        createTable("BLOBTEST", "(pos int PRIMARY KEY auto_increment, blobdata LONGBLOB)");
+        PreparedStatement testPstmt = testConn.prepareStatement(sqlToSend);
         BufferedInputStream bIn = new BufferedInputStream(new FileInputStream(testBlobFile));
+        testPstmt.setBinaryStream(1, bIn, (int) testBlobFile.length());
+        testPstmt.execute();
+        testPstmt.clearParameters();
+        bIn.close();
 
-        this.pstmt = conn1.prepareStatement(sqlToSend);
-
-        this.pstmt.setBinaryStream(1, bIn, (int) testBlobFile.length());
-        this.pstmt.execute();
-        this.pstmt.clearParameters();
-
-        this.rs = stmt1.executeQuery("SELECT blobdata from BLOBTEST LIMIT 1");
+        Statement testStmt = testConn.createStatement();
+        this.rs = testStmt.executeQuery("SELECT blobdata FROM testUseCompress LIMIT 1");
         this.rs.next();
         InputStream is = this.rs.getBinaryStream(1);
 
-        bIn.close();
         bIn = new BufferedInputStream(new FileInputStream(testBlobFile));
-        int blobbyte = 0;
-        int count = 0;
-        while ((blobbyte = is.read()) > -1) {
-            int filebyte = bIn.read();
-            assertFalse(filebyte < 0 || filebyte != blobbyte, "Blob is not identical to initial data.");
-            count++;
+        int blobByte = 0;
+        int blobSize = 0;
+        while ((blobByte = is.read()) > -1) {
+            int fileByte = bIn.read();
+            assertFalse(fileByte < 0 || fileByte != blobByte, "Blob is not identical to initial data.");
+            blobSize++;
         }
-        assertEquals(requiredSize, count);
+        assertEquals(requiredSize, blobSize);
+        bIn.close();
 
         is.close();
-        if (bIn != null) {
-            bIn.close();
-        }
     }
 
     /**

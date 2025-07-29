@@ -61,7 +61,7 @@ public class InputStreamValueEncoder extends AbstractValueEncoder {
 
     protected byte[] streamToBytes(InputStream in, long length, NativePacketPayload packet) {
         boolean useLength = length == -1 ? false : this.propertySet.getBooleanProperty(PropertyKey.useStreamLengthsInPrepStmts).getValue();
-        in.mark(Integer.MAX_VALUE); // we may need to read this same stream several times, so we need to reset it at the end.
+        in.mark(Integer.MAX_VALUE); // We may need to read this same stream several times, so we need to reset it at the end.
         try {
             if (this.streamConvertBuf == null) {
                 this.streamConvertBuf = new byte[4096];
@@ -71,12 +71,10 @@ public class InputStreamValueEncoder extends AbstractValueEncoder {
             int lengthLeftToRead = (int) (length - bcnt);
 
             ByteArrayOutputStream bytesOut = null;
-            boolean hexEscape = false;
             if (packet == null) {
                 bytesOut = new ByteArrayOutputStream();
             } else {
-                hexEscape = this.serverSession.isNoBackslashEscapesSet();
-                packet.writeBytes(StringLengthDataType.STRING_FIXED, StringUtils.getBytes(hexEscape ? "x" : "_binary"));
+                packet.writeBytes(StringLengthDataType.STRING_FIXED, StringUtils.getBytes("X"));
                 packet.writeInteger(IntegerDataType.INT1, (byte) '\'');
             }
 
@@ -84,14 +82,10 @@ public class InputStreamValueEncoder extends AbstractValueEncoder {
                 if (packet == null) {
                     bytesOut.write(this.streamConvertBuf, 0, bcnt);
                 } else {
-                    if (hexEscape) {
-                        StringUtils.hexEscapeBlock(this.streamConvertBuf, bcnt, (lowBits, highBits) -> {
-                            packet.writeInteger(IntegerDataType.INT1, lowBits);
-                            packet.writeInteger(IntegerDataType.INT1, highBits);
-                        });
-                    } else {
-                        escapeblockFast(this.streamConvertBuf, packet, bcnt);
-                    }
+                    StringUtils.hexEscapeBlock(this.streamConvertBuf, bcnt, (lowBits, highBits) -> {
+                        packet.writeInteger(IntegerDataType.INT1, lowBits);
+                        packet.writeInteger(IntegerDataType.INT1, highBits);
+                    });
                 }
 
                 if (useLength) {
@@ -124,42 +118,6 @@ public class InputStreamValueEncoder extends AbstractValueEncoder {
 
                 in = null;
             }
-        }
-    }
-
-    private final void escapeblockFast(byte[] buf, NativePacketPayload packet, int size) {
-        int lastwritten = 0;
-
-        for (int i = 0; i < size; i++) {
-            byte b = buf[i];
-
-            if (b == '\0') {
-                // write stuff not yet written
-                if (i > lastwritten) {
-                    packet.writeBytes(StringLengthDataType.STRING_FIXED, buf, lastwritten, i - lastwritten);
-                }
-
-                // write escape
-                packet.writeInteger(IntegerDataType.INT1, (byte) '\\');
-                packet.writeInteger(IntegerDataType.INT1, (byte) '0');
-                lastwritten = i + 1;
-            } else {
-                if (b == '\\' || b == '\'') {
-                    // write stuff not yet written
-                    if (i > lastwritten) {
-                        packet.writeBytes(StringLengthDataType.STRING_FIXED, buf, lastwritten, i - lastwritten);
-                    }
-
-                    // write escape
-                    packet.writeInteger(IntegerDataType.INT1, b);
-                    lastwritten = i; // not i+1 as b wasn't written.
-                }
-            }
-        }
-
-        // write out remaining stuff from buffer
-        if (lastwritten < size) {
-            packet.writeBytes(StringLengthDataType.STRING_FIXED, buf, lastwritten, size - lastwritten);
         }
     }
 

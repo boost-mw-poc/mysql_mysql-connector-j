@@ -830,9 +830,7 @@ public abstract class BaseTestCase {
 
     protected void cleanupTempFiles(final File exampleTempFile, final String tempfilePrefix) {
         File tempfilePath = exampleTempFile.getParentFile();
-
         File[] possibleFiles = tempfilePath.listFiles((dir, name) -> name.indexOf(tempfilePrefix) != -1 && !exampleTempFile.getName().equals(name));
-
         if (possibleFiles != null) {
             for (int i = 0; i < possibleFiles.length; i++) {
                 try {

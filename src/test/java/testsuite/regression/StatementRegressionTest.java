@@ -42,6 +42,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
@@ -51,6 +52,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
@@ -14400,6 +14402,49 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(this.rs.next());
         assertEquals(2, this.rs.getInt(1));
         assertFalse(this.rs.next());
+    }
+
+    /**
+     * Tests fix for Bug#45554 (Bug#11754018), Connector/J does not encode binary data if useServerPrepStatements=false.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug45554() throws Exception {
+        final String testString = "€\\\\";
+        final byte[] testStringBytes = testString.getBytes();
+
+        Path filePath = Files.createTempFile("testBug45554", ".dat");
+        OutputStream os = Files.newOutputStream(filePath);
+        os.write(testString.getBytes());
+        os.close();
+
+        boolean useSPS = false;
+        String[] charSets = new String[] { "UTF8", "GBK", "SJIS" };
+
+        do {
+            for (String cs : charSets) {
+                String testCase = String.format("Case [useSPS: %s,  charset: %s]", useSPS ? "Y" : "N", cs);
+
+                Properties props = new Properties();
+                props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+                props.setProperty(PropertyKey.characterEncoding.getKeyName(), cs);
+
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    this.rs = this.stmt.executeQuery("SELECT '" + testString.replace("\\", "\\\\") + "'");
+                    assertTrue(this.rs.next(), testCase);
+                    assertArrayEquals(testStringBytes, this.rs.getBytes(1), testCase);
+
+                    InputStream is = Files.newInputStream(filePath);
+                    this.pstmt = testConn.prepareStatement("SELECT ?");
+                    this.pstmt.setBinaryStream(1, is);
+                    this.rs = this.pstmt.executeQuery();
+                    assertTrue(this.rs.next(), testCase);
+                    assertArrayEquals(testStringBytes, this.rs.getBytes(1), testCase);
+                    is.close();
+                }
+            }
+        } while (useSPS = !useSPS);
     }
 
 }
