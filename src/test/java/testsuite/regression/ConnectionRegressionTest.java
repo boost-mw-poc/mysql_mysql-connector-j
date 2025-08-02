@@ -5299,53 +5299,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     /**
-     * Tests fix for Bug#69777 - Setting maxAllowedPacket below 8203 makes blobSendChunkSize negative.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBug69777() throws Exception {
-        final int maxPacketSizeThreshold = 8203; // ServerPreparedStatement.BLOB_STREAM_READ_BUF_SIZE + 11
-
-        Properties props = new Properties();
-        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
-        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-
-        // test maxAllowedPacket below threshold and useServerPrepStmts=true
-        props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "true");
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + (maxPacketSizeThreshold - 1));
-        assertThrows(SQLException.class, "Connection setting too low for 'maxAllowedPacket'.*", () -> {
-            getConnectionWithProps(props).close();
-            return null;
-        });
-
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + maxPacketSizeThreshold);
-        assertThrows(SQLException.class, "Connection setting too low for 'maxAllowedPacket'.*", () -> {
-            getConnectionWithProps(props).close();
-            return null;
-        });
-
-        // the following instructions should execute without any problem
-
-        // test maxAllowedPacket above threshold and useServerPrepStmts=true
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + (maxPacketSizeThreshold + 1));
-        getConnectionWithProps(props).close();
-
-        // test maxAllowedPacket below threshold and useServerPrepStmts=false
-        props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "false");
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + (maxPacketSizeThreshold - 1));
-        getConnectionWithProps(props).close();
-
-        // test maxAllowedPacket on threshold and useServerPrepStmts=false
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + maxPacketSizeThreshold);
-        getConnectionWithProps(props).close();
-
-        // test maxAllowedPacket above threshold and useServerPrepStmts=false
-        props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), "" + (maxPacketSizeThreshold + 1));
-        getConnectionWithProps(props).close();
-    }
-
-    /**
      * Tests fix for BUG#69579 - DriverManager.setLoginTimeout not honored.
      *
      * @throws Exception

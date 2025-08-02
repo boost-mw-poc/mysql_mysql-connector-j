@@ -14447,4 +14447,137 @@ public class StatementRegressionTest extends BaseTestCase {
         } while (useSPS = !useSPS);
     }
 
+    /**
+     * Tests fix for Bug#17881458, BEHAVIOR OF SETBINARYSTREAM() METHOD IS DIFFERENT WHEN USESERVERPREPSTMTS=TRUE.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug17881458() throws Exception {
+        testBug17881458Blob();
+        testBug17881458Clob();
+    }
+
+    private void testBug17881458Blob() throws Exception {
+        String defaultMaxAllowedPacket = getMysqlVariable("max_allowed_packet");
+        createTable("testBug17881458_blob", "(id INT AUTO_INCREMENT PRIMARY KEY, data LONGBLOB)");
+
+        try {
+            final int MAX_PACKET = 1024 * 10;
+            this.stmt.execute("SET GLOBAL max_allowed_packet = " + MAX_PACKET);
+
+            boolean useSPS = false;
+            boolean useSrmLen = false;
+            boolean underLimit = false;
+            do {
+                this.stmt.execute("TRUNCATE TABLE testBug17881458_blob");
+
+                Properties props = new Properties();
+                props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+                props.setProperty(PropertyKey.useStreamLengthsInPrepStmts.getKeyName(), Boolean.toString(useSrmLen));
+                props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), Integer.toString(MAX_PACKET));
+                props.setProperty(PropertyKey.blobSendChunkSize.getKeyName(), Integer.toString(MAX_PACKET));
+
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    assertEquals(MAX_PACKET,
+                            ((JdbcConnection) testConn).getPropertySet().getIntegerProperty(PropertyKey.blobSendChunkSize.getKeyName()).getValue());
+                    assertEquals(MAX_PACKET,
+                            ((JdbcConnection) testConn).getPropertySet().getIntegerProperty(PropertyKey.maxAllowedPacket.getKeyName()).getValue());
+
+                    byte[] data = new byte[MAX_PACKET - (underLimit ? 7 /* (7 = length of COM_STMT_SEND_LONG_DATA internal header) */ : 6)];
+                    Arrays.fill(data, (byte) 0);
+                    InputStream in = new ByteArrayInputStream(data);
+
+                    PreparedStatement testPstmt = testConn.prepareStatement("INSERT INTO testBug17881458_blob (data) VALUES (?)");
+                    testPstmt.setBlob(1, in, 1000);
+
+                    if (useSrmLen || useSPS && underLimit) {
+                        testPstmt.execute();
+                        testPstmt.execute();
+                        testPstmt.execute();
+                        testPstmt.close();
+
+                        int expectedLen = useSrmLen ? 1000 : MAX_PACKET - 7;
+                        this.rs = this.stmt.executeQuery("SELECT id, OCTET_LENGTH(data) FROM testBug17881458_blob");
+                        assertTrue(this.rs.next());
+                        assertEquals(1, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertTrue(this.rs.next());
+                        assertEquals(2, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertTrue(this.rs.next());
+                        assertEquals(3, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertFalse(this.rs.next());
+                    } else {
+                        assertThrows(SQLException.class, ".*Packet for query is too large .*", testPstmt::execute);
+                    }
+                }
+            } while ((useSPS = !useSPS) || (useSrmLen = !useSrmLen) || (underLimit = !underLimit));
+        } finally {
+            this.stmt.execute("SET GLOBAL max_allowed_packet = " + defaultMaxAllowedPacket);
+        }
+    }
+
+    private void testBug17881458Clob() throws Exception {
+        String defaultMaxAllowedPacket = getMysqlVariable("max_allowed_packet");
+        createTable("testBug17881458_clob", "(id INT AUTO_INCREMENT PRIMARY KEY, data TEXT)");
+
+        try {
+            final int MAX_PACKET = 1024 * 10;
+            this.stmt.execute("SET GLOBAL max_allowed_packet = " + MAX_PACKET);
+
+            boolean useSPS = false;
+            boolean useSrmLen = false;
+            boolean underLimit = false;
+            do {
+                this.stmt.execute("TRUNCATE TABLE testBug17881458_clob");
+
+                Properties props = new Properties();
+                props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+                props.setProperty(PropertyKey.useStreamLengthsInPrepStmts.getKeyName(), Boolean.toString(useSrmLen));
+                props.setProperty(PropertyKey.maxAllowedPacket.getKeyName(), Integer.toString(MAX_PACKET));
+                props.setProperty(PropertyKey.blobSendChunkSize.getKeyName(), Integer.toString(MAX_PACKET));
+
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    assertEquals(MAX_PACKET,
+                            ((JdbcConnection) testConn).getPropertySet().getIntegerProperty(PropertyKey.blobSendChunkSize.getKeyName()).getValue());
+                    assertEquals(MAX_PACKET,
+                            ((JdbcConnection) testConn).getPropertySet().getIntegerProperty(PropertyKey.maxAllowedPacket.getKeyName()).getValue());
+
+                    char[] data = new char[MAX_PACKET - (underLimit ? 7 /* (7 = length of COM_STMT_SEND_LONG_DATA internal header) */ : 6)];
+                    Arrays.fill(data, '-');
+                    Reader reader = new CharArrayReader(data);
+
+                    PreparedStatement testPstmt = testConn.prepareStatement("INSERT INTO testBug17881458_clob (data) VALUES (?)");
+                    testPstmt.setClob(1, reader, 1000);
+
+                    if (useSrmLen || useSPS && underLimit) {
+                        testPstmt.execute();
+                        testPstmt.execute();
+                        testPstmt.execute();
+                        testPstmt.close();
+
+                        int expectedLen = useSrmLen ? 1000 : MAX_PACKET - 7;
+                        this.rs = this.stmt.executeQuery("SELECT id, LENGTH(data) FROM testBug17881458_clob");
+                        assertTrue(this.rs.next());
+                        assertEquals(1, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertTrue(this.rs.next());
+                        assertEquals(2, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertTrue(this.rs.next());
+                        assertEquals(3, this.rs.getInt(1));
+                        assertEquals(expectedLen, this.rs.getInt(2));
+                        assertFalse(this.rs.next());
+                    } else {
+                        assertThrows(SQLException.class, ".*Packet for query is too large .*", testPstmt::execute);
+                    }
+                }
+            } while ((useSPS = !useSPS) || (useSrmLen = !useSrmLen) || (underLimit = !underLimit));
+        } finally {
+            this.stmt.execute("SET GLOBAL max_allowed_packet = " + defaultMaxAllowedPacket);
+        }
+    }
+
 }

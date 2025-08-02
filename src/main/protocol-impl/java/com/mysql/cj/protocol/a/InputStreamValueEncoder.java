@@ -61,14 +61,14 @@ public class InputStreamValueEncoder extends AbstractValueEncoder {
 
     protected byte[] streamToBytes(InputStream in, long length, NativePacketPayload packet) {
         boolean useLength = length == -1 ? false : this.propertySet.getBooleanProperty(PropertyKey.useStreamLengthsInPrepStmts).getValue();
-        in.mark(Integer.MAX_VALUE); // We may need to read this same stream several times, so we need to reset it at the end.
+        in.mark(Integer.MAX_VALUE); // This same stream may have to be read several times, so it must be reset at the end.
         try {
             if (this.streamConvertBuf == null) {
                 this.streamConvertBuf = new byte[4096];
             }
-            int bcnt = useLength ? Util.readBlock(in, this.streamConvertBuf, (int) length, this.exceptionInterceptor)
+            int bcnt = useLength ? Util.readBlock(in, this.streamConvertBuf, length, this.exceptionInterceptor)
                     : Util.readBlock(in, this.streamConvertBuf, this.exceptionInterceptor);
-            int lengthLeftToRead = (int) (length - bcnt);
+            long lengthLeftToRead = length - bcnt;
 
             ByteArrayOutputStream bytesOut = null;
             if (packet == null) {

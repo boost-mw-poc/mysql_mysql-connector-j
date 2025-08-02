@@ -432,8 +432,7 @@ public class Util {
     }
 
     /**
-     * Reads length bytes from reader into buf. Blocks until enough input is
-     * available
+     * Reads length bytes from reader into buf. Blocks until enough input is available.
      *
      * @param reader
      *            {@link Reader}
@@ -459,23 +458,89 @@ public class Util {
         return numCharsRead;
     }
 
-    public static final int readBlock(InputStream i, byte[] b, ExceptionInterceptor exceptionInterceptor) {
+    /**
+     * Reads data from the provided {@link InputStream} into the specified buffer.
+     *
+     * @param inStream
+     *            The {@link InputStream} to read from.
+     * @param buffer
+     *            Buffer into which bytes are read.
+     * @param exceptionInterceptor
+     *            The {@link ExceptionInterceptor} to handle new exceptions thrown.
+     * @return
+     *         The number of bytes read, or -1 if the end of the stream is reached
+     */
+    public static final int readBlock(InputStream inStream, byte[] buffer, ExceptionInterceptor exceptionInterceptor) {
         try {
-            return i.read(b);
-        } catch (Throwable ex) {
+            return inStream.read(buffer);
+        } catch (Exception ex) {
             throw ExceptionFactory.createException(Messages.getString("Util.5") + ex.getClass().getName(), exceptionInterceptor);
         }
     }
 
-    public static final int readBlock(InputStream i, byte[] b, int length, ExceptionInterceptor exceptionInterceptor) {
+    /**
+     * Reads data from the provided {@link InputStream} into the specified buffer, up to the specified length or the size of the buffer, whichever is smaller.
+     *
+     * @param inStream
+     *            The {@link InputStream} to read from.
+     * @param buffer
+     *            Buffer into which bytes are read.
+     * @param length
+     *            The maximum amount of bytes to read from the input stream.
+     * @param exceptionInterceptor
+     *            The {@link ExceptionInterceptor} to handle new exceptions thrown.
+     * @return
+     *         The number of bytes read, or -1 if the end of the stream is reached
+     */
+    public static final int readBlock(InputStream inStream, byte[] buffer, long length, ExceptionInterceptor exceptionInterceptor) {
         try {
-            int lengthToRead = length;
-            if (lengthToRead > b.length) {
-                lengthToRead = b.length;
-            }
-            return i.read(b, 0, lengthToRead);
-        } catch (Throwable ex) {
+            int lengthToRead = length > buffer.length ? buffer.length : (int) length;
+            return inStream.read(buffer, 0, lengthToRead);
+        } catch (Exception ex) {
             throw ExceptionFactory.createException(Messages.getString("Util.5") + ex.getClass().getName(), exceptionInterceptor);
+        }
+    }
+
+    /**
+     * Reads characters from the provided {@link Reader} into the specified buffer.
+     *
+     * @param reader
+     *            The {@link Reader} to read from.
+     * @param buffer
+     *            Buffer into which the characters are read.
+     * @param exceptionInterceptor
+     *            The {@link ExceptionInterceptor} to handle new exceptions thrown.
+     * @return
+     *         The number of characters read, or -1 if the end of the stream is reached
+     */
+    public static final int readBlock(Reader reader, char[] buffer, ExceptionInterceptor exceptionInterceptor) {
+        try {
+            return reader.read(buffer);
+        } catch (Exception e) {
+            throw ExceptionFactory.createException(Messages.getString("Util.6") + e.getClass().getName(), exceptionInterceptor);
+        }
+    }
+
+    /**
+     * Reads characters from the provided {@link Reader} into the specified buffer, up to the specified length or the size of the buffer, whichever is smaller.
+     *
+     * @param reader
+     *            The {@link Reader} to read from.
+     * @param buffer
+     *            Buffer into which the characters are read.
+     * @param length
+     *            The maximum amount of characters to read from the stream.
+     * @param exceptionInterceptor
+     *            The {@link ExceptionInterceptor} to handle new exceptions thrown.
+     * @return
+     *         The number of characters read, or -1 if the end of the stream is reached
+     */
+    public static final int readBlock(Reader reader, char[] buffer, long length, ExceptionInterceptor exceptionInterceptor) {
+        try {
+            int lengthToRead = length > buffer.length ? buffer.length : (int) length;
+            return reader.read(buffer, 0, lengthToRead);
+        } catch (Exception ex) {
+            throw ExceptionFactory.createException(Messages.getString("Util.6") + ex.getClass().getName(), exceptionInterceptor);
         }
     }
 

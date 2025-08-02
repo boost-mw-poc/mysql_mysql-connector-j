@@ -20,7 +20,6 @@
 
 package com.mysql.cj;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -50,14 +49,15 @@ import com.mysql.cj.telemetry.TelemetryScope;
 import com.mysql.cj.telemetry.TelemetrySpan;
 import com.mysql.cj.telemetry.TelemetrySpanName;
 import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
 
 // TODO should not be protocol-specific
 
 public class ServerPreparedQuery extends ClientPreparedQuery {
 
-    public static final int BLOB_STREAM_READ_BUF_SIZE = 8192;
-    public static final byte OPEN_CURSOR_FLAG = 0x01;
-    public static final byte PARAMETER_COUNT_AVAILABLE = 0x08;
+    private static final int READ_BUFFER_SIZE = 8192;
+    private static final byte OPEN_CURSOR_FLAG = 0x01;
+    private static final byte PARAMETER_COUNT_AVAILABLE = 0x08;
 
     /** The ID that the server uses to identify this PreparedStatement */
     private long serverStatementId;
@@ -409,10 +409,10 @@ public class ServerPreparedQuery extends ClientPreparedQuery {
                     this.session.getProtocol()
                             .sendCommand(this.commandBuilder.buildComStmtSendLongData(packet, this.serverStatementId, parameterIndex, (byte[]) value), true, 0);
                 } else if (value instanceof InputStream) {
-                    storeStreamOrReader(parameterIndex, packet, (InputStream) value);
+                    storeStream(parameterIndex, packet, (InputStream) value, binding.getScaleOrLength());
                 } else if (value instanceof java.sql.Blob) {
                     try {
-                        storeStreamOrReader(parameterIndex, packet, ((java.sql.Blob) value).getBinaryStream());
+                        storeStream(parameterIndex, packet, ((java.sql.Blob) value).getBinaryStream(), binding.getScaleOrLength());
                     } catch (Throwable t) {
                         throw ExceptionFactory.createException(t.getMessage(), this.session.getExceptionInterceptor());
                     }
@@ -420,13 +420,13 @@ public class ServerPreparedQuery extends ClientPreparedQuery {
                     if (binding.isNational() && !this.charEncoding.equalsIgnoreCase("UTF-8") && !this.charEncoding.equalsIgnoreCase("utf8")) {
                         throw ExceptionFactory.createException(Messages.getString("ServerPreparedStatement.31"), this.session.getExceptionInterceptor());
                     }
-                    storeStreamOrReader(parameterIndex, packet, (Reader) value);
+                    storeReader(parameterIndex, packet, (Reader) value, binding.getScaleOrLength());
                 } else if (value instanceof Clob) {
                     if (binding.isNational() && !this.charEncoding.equalsIgnoreCase("UTF-8") && !this.charEncoding.equalsIgnoreCase("utf8")) {
                         throw ExceptionFactory.createException(Messages.getString("ServerPreparedStatement.31"), this.session.getExceptionInterceptor());
                     }
                     try {
-                        storeStreamOrReader(parameterIndex, packet, ((Clob) value).getCharacterStream());
+                        storeReader(parameterIndex, packet, ((Clob) value).getCharacterStream(), binding.getScaleOrLength());
                     } catch (Throwable t) {
                         throw ExceptionFactory.createException(t.getMessage(), t);
                     }
@@ -477,88 +477,126 @@ public class ServerPreparedQuery extends ClientPreparedQuery {
         this.resultFields = resultFields;
     }
 
-    private void storeStreamOrReader(int parameterIndex, NativePacketPayload packet, Closeable streamOrReader) {
-        // TODO consider to use more precise type than just Closable
+    private void storeStream(int parameterIndex, NativePacketPayload packet, InputStream inStream, long length) {
         this.session.checkClosed();
-        boolean isStream = InputStream.class.isAssignableFrom(streamOrReader.getClass());
-        byte[] bBuf = null;
-        char[] cBuf = null;
-        String clobEncoding = null;
 
         this.session.getSessionLock().lock();
         try {
-            if (isStream) {
-                bBuf = new byte[BLOB_STREAM_READ_BUF_SIZE];
-            } else {
-                clobEncoding = this.session.getPropertySet().getStringProperty(PropertyKey.clobCharacterEncoding).getStringValue();
-                if (clobEncoding == null) {
-                    clobEncoding = this.session.getPropertySet().getStringProperty(PropertyKey.characterEncoding).getValue();
-                }
-                int maxBytesChar = 2;
-                if (clobEncoding != null) {
-                    maxBytesChar = this.session.getServerSession().getCharsetSettings().getMaxBytesPerChar(clobEncoding);
-                    if (maxBytesChar == 1) {
-                        maxBytesChar = 2; // for safety
-                    }
-                }
-                cBuf = new char[ServerPreparedQuery.BLOB_STREAM_READ_BUF_SIZE / maxBytesChar];
-            }
+            inStream.mark(Integer.MAX_VALUE); // This same stream may have to be read several times, so it must be reset at the end.
 
-            boolean readAny = false;
+            boolean limitLength = length == -1 ? false : this.session.getPropertySet().getBooleanProperty(PropertyKey.useStreamLengthsInPrepStmts).getValue();
+            int sendThreshold = this.session.getPropertySet().getMemorySizeProperty(PropertyKey.blobSendChunkSize).getValue();
+
+            byte[] buffer = new byte[READ_BUFFER_SIZE];
+            boolean dataSent = false;
+            int bytesRead = 0;
             int bytesInPacket = 0;
-            int totalBytesRead = 0;
-            int bytesReadAtLastSend = 0;
-            int packetIsFullAt = this.session.getPropertySet().getMemorySizeProperty(PropertyKey.blobSendChunkSize).getValue();
-            int numRead = 0;
+            long lengthLeft = length;
 
-            try {
-                packet.setPosition(0);
-                this.commandBuilder.buildComStmtSendLongDataHeader(packet, this.serverStatementId, parameterIndex);
-
-                while ((numRead = isStream ? ((InputStream) streamOrReader).read(bBuf) : ((Reader) streamOrReader).read(cBuf)) != -1) {
-                    readAny = true;
-
-                    if (isStream) {
-                        packet.writeBytes(StringLengthDataType.STRING_FIXED, bBuf, 0, numRead);
-                        bytesInPacket += numRead;
-                        totalBytesRead += numRead;
-                    } else {
-                        byte[] valueAsBytes = StringUtils.getBytes(cBuf, 0, numRead, clobEncoding);
-                        packet.writeBytes(StringSelfDataType.STRING_EOF, valueAsBytes);
-                        bytesInPacket += valueAsBytes.length;
-                        totalBytesRead += valueAsBytes.length;
-                    }
-
-                    if (bytesInPacket >= packetIsFullAt) {
-                        bytesReadAtLastSend = totalBytesRead;
-
-                        this.session.getProtocol().sendCommand(packet, true, 0);
-
-                        bytesInPacket = 0;
-                        packet.setPosition(0);
-                        this.commandBuilder.buildComStmtSendLongDataHeader(packet, this.serverStatementId, parameterIndex);
-                    }
+            do {
+                if (bytesInPacket == 0) {
+                    packet.setPosition(0);
+                    this.commandBuilder.buildComStmtSendLongDataHeader(packet, this.serverStatementId, parameterIndex);
                 }
 
-                if (!readAny || totalBytesRead != bytesReadAtLastSend) {
+                if (limitLength) {
+                    bytesRead = Util.readBlock(inStream, buffer, lengthLeft, this.session.getExceptionInterceptor());
+                    lengthLeft -= bytesRead;
+                } else {
+                    bytesRead = Util.readBlock(inStream, buffer, this.session.getExceptionInterceptor());
+                }
+                if (bytesRead > 0) {
+                    packet.writeBytes(StringLengthDataType.STRING_FIXED, buffer, 0, bytesRead);
+                    bytesInPacket += bytesRead;
+                }
+
+                if (bytesInPacket >= sendThreshold || bytesRead <= 0 && (!dataSent || bytesInPacket > 0)) {
                     this.session.getProtocol().sendCommand(packet, true, 0);
+                    dataSent = true;
+                    bytesInPacket = 0;
                 }
-            } catch (IOException ioEx) {
-                throw ExceptionFactory.createException(
-                        (isStream ? Messages.getString("ServerPreparedStatement.24") : Messages.getString("ServerPreparedStatement.25")) + ioEx.toString(),
-                        ioEx, this.session.getExceptionInterceptor());
-            } finally {
-                if (this.autoClosePStmtStreams.getValue()) {
-                    if (streamOrReader != null) {
-                        try {
-                            streamOrReader.close();
-                        } catch (IOException ioEx) {
-                            // ignore
-                        }
+            } while (bytesRead > 0);
+        } finally {
+            try {
+                inStream.reset();
+            } catch (IOException e) {
+            }
+
+            if (this.autoClosePStmtStreams.getValue()) {
+                if (inStream != null) {
+                    try {
+                        inStream.close();
+                    } catch (IOException e) {
                     }
                 }
             }
+
+            this.session.getSessionLock().unlock();
+        }
+    }
+
+    private void storeReader(int parameterIndex, NativePacketPayload packet, Reader reader, long length) {
+        this.session.checkClosed();
+
+        this.session.getSessionLock().lock();
+        try {
+            try {
+                reader.mark(Integer.MAX_VALUE); // This same stream may have to be read several times, so it must be reset at the end.
+            } catch (IOException e) {
+            }
+
+            String clobEncoding = this.session.getPropertySet().getStringProperty(PropertyKey.clobCharacterEncoding).getStringValue();
+            if (clobEncoding == null) {
+                clobEncoding = this.session.getPropertySet().getStringProperty(PropertyKey.characterEncoding).getValue();
+            }
+            boolean limitLength = length == -1 ? false : this.session.getPropertySet().getBooleanProperty(PropertyKey.useStreamLengthsInPrepStmts).getValue();
+            int sendThreshold = this.session.getPropertySet().getMemorySizeProperty(PropertyKey.blobSendChunkSize).getValue();
+
+            char[] buffer = new char[READ_BUFFER_SIZE];
+            boolean dataSent = false;
+            int charsRead = 0;
+            int bytesInPacket = 0;
+            long lengthLeft = length;
+
+            do {
+                if (bytesInPacket == 0) {
+                    packet.setPosition(0);
+                    this.commandBuilder.buildComStmtSendLongDataHeader(packet, this.serverStatementId, parameterIndex);
+                }
+
+                if (limitLength) {
+                    charsRead = Util.readBlock(reader, buffer, lengthLeft, this.session.getExceptionInterceptor());
+                    lengthLeft -= charsRead;
+                } else {
+                    charsRead = Util.readBlock(reader, buffer, this.session.getExceptionInterceptor());
+                }
+                if (charsRead > 0) {
+                    byte[] charsAsBytes = StringUtils.getBytes(buffer, 0, charsRead, clobEncoding);
+                    packet.writeBytes(StringSelfDataType.STRING_EOF, charsAsBytes);
+                    bytesInPacket += charsAsBytes.length;
+                }
+
+                if (bytesInPacket >= sendThreshold || charsRead <= 0 && (!dataSent || bytesInPacket > 0)) {
+                    this.session.getProtocol().sendCommand(packet, true, 0);
+                    dataSent = true;
+                    bytesInPacket = 0;
+                }
+            } while (charsRead > 0);
         } finally {
+            try {
+                reader.reset();
+            } catch (IOException e) {
+            }
+
+            if (this.autoClosePStmtStreams.getValue()) {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException ioEx) {
+                    }
+                }
+            }
+
             this.session.getSessionLock().unlock();
         }
     }

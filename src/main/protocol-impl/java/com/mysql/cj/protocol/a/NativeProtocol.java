@@ -79,7 +79,6 @@ import com.mysql.cj.NativeCharsetSettings;
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.Query;
 import com.mysql.cj.QueryResult;
-import com.mysql.cj.ServerPreparedQuery;
 import com.mysql.cj.ServerVersion;
 import com.mysql.cj.Session;
 import com.mysql.cj.TransactionEventHandler;
@@ -2231,16 +2230,7 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
             if (this.useServerPrepStmts.getValue()) {
                 RuntimeProperty<Integer> blobSendChunkSize = this.propertySet.getProperty(PropertyKey.blobSendChunkSize);
                 int preferredBlobSendChunkSize = blobSendChunkSize.getValue();
-
-                // LONG_DATA and MySQLIO packet header size
-                int packetHeaderSize = ServerPreparedQuery.BLOB_STREAM_READ_BUF_SIZE + 11;
-                int allowedBlobSendChunkSize = Math.min(preferredBlobSendChunkSize, this.maxAllowedPacket.getValue()) - packetHeaderSize;
-
-                if (allowedBlobSendChunkSize <= 0) {
-                    throw ExceptionFactory.createException(Messages.getString("Connection.15", new Object[] { packetHeaderSize }),
-                            MysqlErrorNumbers.SQLSTATE_MYSQL_INVALID_CONNECTION_ATTRIBUTE, 0, false, null, this.exceptionInterceptor);
-                }
-
+                int allowedBlobSendChunkSize = Math.min(preferredBlobSendChunkSize, this.maxAllowedPacket.getValue());
                 blobSendChunkSize.setValue(allowedBlobSendChunkSize);
             }
         }
