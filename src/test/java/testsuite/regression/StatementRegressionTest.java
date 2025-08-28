@@ -11810,10 +11810,8 @@ public class StatementRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug23204652() throws Exception {
-        assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.", () -> {
-            this.stmt.executeQuery("DO 1 + 2");
-            return null;
-        });
+        assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.",
+                () -> this.stmt.executeQuery("DO 1 + 2"));
     }
 
     /**
@@ -11826,19 +11824,15 @@ public class StatementRegressionTest extends BaseTestCase {
         String[] queries = new String[] { "CREATE TABLE testBug71929 (id INT)", "/* comments */CREATE TABLE testBug71929 (id INT)",
                 "/* comments *//* more comments */CREATE TABLE testBug71929 (id INT)" };
         for (String query : queries) {
-            assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.", () -> {
-                this.stmt.executeQuery(query);
-                return null;
-            });
+            assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.",
+                    () -> this.stmt.executeQuery(query));
         }
 
         queries = new String[] { "SELECT 1", "/* comments */SELECT 1", "/* comments *//* more comments */SELECT 1" };
         for (String query : queries) {
             assertThrows(SQLException.class,
-                    "Statement\\.executeUpdate\\(\\) or Statement\\.executeLargeUpdate\\(\\) cannot issue statements that produce result sets\\.", () -> {
-                        this.stmt.executeUpdate(query);
-                        return null;
-                    });
+                    "Statement\\.executeUpdate\\(\\) or Statement\\.executeLargeUpdate\\(\\) cannot issue statements that produce result sets\\.",
+                    () -> this.stmt.executeUpdate(query));
         }
     }
 
@@ -14577,6 +14571,92 @@ public class StatementRegressionTest extends BaseTestCase {
             } while ((useSPS = !useSPS) || (useSrmLen = !useSrmLen) || (underLimit = !underLimit));
         } finally {
             this.stmt.execute("SET GLOBAL max_allowed_packet = " + defaultMaxAllowedPacket);
+        }
+    }
+
+    /**
+     * Tests fix for Bug#107543 (Bug#34464351), Cannot execute a SELECT statement that writes to an OUTFILE.
+     * (INTO variable variant)
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug107543_IntoVar() throws Exception {
+        // Test 1: execute() with INTO @var
+        this.stmt.execute("SELECT 'testBug107543_1' INTO @testbug107543_a");
+        assertEquals("testBug107543_1", getSingleValueWithQuery("SELECT @testbug107543_a"));
+
+        // Test 2: executeUpdate() with INTO @var
+        this.stmt.executeUpdate("SELECT 'testBug107543_2' INTO @testbug107543_b");
+        assertEquals("testBug107543_2", getSingleValueWithQuery("SELECT @testbug107543_b"));
+
+        // Test 3: executeQuery() with INTO @var
+        assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.",
+                () -> this.stmt.executeQuery("SELECT 'testBug107543_3' INTO @testbug107543_c"));
+    }
+
+    /**
+     * Tests fix for Bug#107543 (Bug#34464351), Cannot execute a SELECT statement that writes to an OUTFILE.
+     * (INTO file variant)
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug107543_IntoFile() throws Exception {
+        String filePrivDir = getMysqlVariable("secure_file_priv");
+        assumeTrue(filePrivDir != null && !"NULL".equalsIgnoreCase(filePrivDir),
+                "To run this test the server needs to be started with the option\"--secure-file-priv=\"");
+        filePrivDir = filePrivDir.isEmpty() ? Paths.get("").toAbsolutePath().toString() : Paths.get(filePrivDir).toRealPath().toString();
+        filePrivDir = filePrivDir.endsWith(File.separator) ? filePrivDir : filePrivDir + File.separator;
+
+        createTable("testBug107543", "(txt VARCHAR(100))");
+        this.stmt.executeUpdate("INSERT INTO testBug107543 VALUES ('MySQL Connector/J')");
+
+        Path dataFilePath = Paths.get(filePrivDir, "testbug107543.dat");
+        for (String statement : new String[] { "SELECT * FROM", "TABLE" }) {
+            for (String outType : new String[] { "OUTFILE", "DUMPFILE" }) {
+                final String sql = statement + " testBug107543 INTO " + outType + " '" + dataFilePath.toString() + "'";
+
+                // Test 1: execute() with INTO [OUTFILE | DUMPFILE]
+                try {
+                    this.stmt.execute(sql);
+                    List<String> lines = Files.readAllLines(dataFilePath);
+                    assertEquals(1, lines.size());
+                    assertEquals("MySQL Connector/J", lines.get(0));
+                } finally {
+                    try {
+                        Files.delete(dataFilePath);
+                    } catch (Exception e) {
+                        // Ignore.
+                    }
+                }
+
+                // Test 2: executeUpdate() with INTO [OUTFILE | DUMPFILE]
+                try {
+                    this.stmt.executeUpdate(sql);
+                    List<String> lines = Files.readAllLines(dataFilePath);
+                    assertEquals(1, lines.size());
+                    assertEquals("MySQL Connector/J", lines.get(0));
+                } finally {
+                    try {
+                        Files.delete(dataFilePath);
+                    } catch (Exception e) {
+                        // Ignore.
+                    }
+                }
+
+                // Test 3: executeQuery() with INTO [OUTFILE | DUMPFILE]
+                try {
+                    assertThrows(SQLException.class, "Statement\\.executeQuery\\(\\) cannot issue statements that do not produce result sets\\.",
+                            () -> this.stmt.executeQuery(sql));
+                } finally {
+                    try {
+                        Files.delete(dataFilePath);
+                    } catch (Exception e) {
+                        // Ignore.
+                    }
+                }
+            }
         }
     }
 

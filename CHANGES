@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#107543 (Bug#34464351), Cannot execute a SELECT statement that writes to an OUTFILE.
+
   - Fix for Bug#17881458, BEHAVIOR OF SETBINARYSTREAM() METHOD IS DIFFERENT WHEN USESERVERPREPSTMTS=TRUE.
 
   - Fix for Bug#45554 (Bug#11754018), Connector/J does not encode binary data if useServerPrepStatements=false.

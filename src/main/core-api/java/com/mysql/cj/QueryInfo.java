@@ -42,7 +42,9 @@ import com.mysql.cj.util.StringUtils;
 public class QueryInfo {
 
     private static final String OPENING_MARKERS = "`'\"";
+    private static final String OPENING_MARKERS_WITH_PARENS = "`'\"(";
     private static final String CLOSING_MARKERS = "`'\"";
+    private static final String CLOSING_MARKERS_WITH_PARENS = "`'\")";
     private static final String OVERRIDING_MARKERS = "";
 
     private static final String SELECT_STATEMENT = "SELECT";
@@ -57,6 +59,7 @@ public class QueryInfo {
     private static final String AS_CLAUSE = "AS";
     private static final String[] ODKU_CLAUSE = new String[] { "ON", "DUPLICATE", "KEY", "UPDATE" };
     private static final String LAST_INSERT_ID_FUNC = "LAST_INSERT_ID";
+    private static final String INTO_CLAUSE = "INTO";
 
     private QueryInfo baseQueryInfo = null;
 
@@ -814,15 +817,16 @@ public class QueryInfo {
     public static QueryReturnType getQueryReturnType(String sql, boolean noBackslashEscapes) {
         /*
          * Statements that return results:
-         * - ANALYZE; CHECK/CHECKSUM; DESC/DESCRIBE; EXPLAIN; HELP; OPTIMIZE; REPAIR; SELECT; SHOW; TABLE; VALUES; WITH ... SELECT|TABLE|VALUES ...; XA RECOVER;
+         * - ANALYZE; CHECK/CHECKSUM; DESC/DESCRIBE; EXPLAIN; HELP; OPTIMIZE; REPAIR; SELECT (exc. [... INTO]); SHOW; TABLE (exc. [... INTO]); VALUES; WITH ...
+         * SELECT|TABLE|VALUES ...; XA RECOVER;
          *
          * Statements that may return results:
          * - CALL; EXECUTE;
          *
          * Statements that do not return results:
          * - ALTER; BINLOG; CACHE; CHANGE; CLONE; COMMIT; CREATE; DEALLOCATE; DELETE; DO; DROP; FLUSH; GET; GRANT; HANDLER; IMPORT; INSERT; INSTALL; KILL; LOAD;
-         * - LOCK; PREPARE; PURGE; RELEASE; RENAME; REPLACE; RESET; RESIGNAL; RESTART; REVOKE; ROLLBACK; SAVEPOINT; SET; SHUTDOWN; SIGNAL; START; STOP;
-         * - TRUNCATE; UNINSTALL; UNLOCK; UPDATE; USE; WITH ... DELETE|UPDATE ...; XA [!RECOVER];
+         * LOCK; PREPARE; PURGE; RELEASE; RENAME; REPLACE; RESET; RESIGNAL; RESTART; REVOKE; ROLLBACK; SAVEPOINT; SELECT ... INTO; SET; SHUTDOWN; SIGNAL; START;
+         * STOP; TABLE ... INTO; TRUNCATE; UNINSTALL; UNLOCK; UPDATE; USE; WITH ... DELETE|UPDATE ...; XA [!RECOVER];
          */
         int statementKeywordPos = indexOfStatementKeyword(sql, noBackslashEscapes);
         if (statementKeywordPos == -1) {
@@ -848,9 +852,11 @@ public class QueryInfo {
         } else if (firstStatementChar == 'R' && StringUtils.startsWithIgnoreCaseAndWs(sql, "REPAIR", statementKeywordPos)) {
             return QueryReturnType.PRODUCES_RESULT_SET;
         } else if (firstStatementChar == 'S' && (StringUtils.startsWithIgnoreCaseAndWs(sql, "SELECT", statementKeywordPos)
+                && !containsIntoClause(statementKeywordPos, sql, noBackslashEscapes)
                 || StringUtils.startsWithIgnoreCaseAndWs(sql, "SHOW", statementKeywordPos))) {
             return QueryReturnType.PRODUCES_RESULT_SET;
-        } else if (firstStatementChar == 'T' && StringUtils.startsWithIgnoreCaseAndWs(sql, "TABLE", statementKeywordPos)) {
+        } else if (firstStatementChar == 'T' && StringUtils.startsWithIgnoreCaseAndWs(sql, "TABLE", statementKeywordPos)
+                && !containsIntoClause(statementKeywordPos, sql, noBackslashEscapes)) {
             return QueryReturnType.PRODUCES_RESULT_SET;
         } else if (firstStatementChar == 'V' && StringUtils.startsWithIgnoreCaseAndWs(sql, "VALUES", statementKeywordPos)) {
             return QueryReturnType.PRODUCES_RESULT_SET;
@@ -871,6 +877,23 @@ public class QueryInfo {
     }
 
     /**
+     * Checks whether the given input string contains an "INTO" clause, starting from the specified position, while optionally considering MySQL's
+     * NO_BACKSLASH_ESCAPES SQL mode for escape sequence handling.
+     *
+     * @param startingPosition
+     *            the position in the string to begin the search
+     * @param searchIn
+     *            the string to search for the "INTO" clause
+     * @param noBackslashEscapes
+     *            whether backslash escapes should be ignored (true for NO_BACKSLASH_ESCAPES mode)
+     * @return {@code true} if the "INTO" clause is found in the input string from the given position, {@code false} otherwise
+     */
+    private static boolean containsIntoClause(int startingPosition, String searchIn, boolean noBackslashEscapes) {
+        return StringUtils.indexOfIgnoreCase(startingPosition, searchIn, INTO_CLAUSE, OPENING_MARKERS_WITH_PARENS, CLOSING_MARKERS_WITH_PARENS,
+                noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL) != -1;
+    }
+
+    /**
      * Returns the context of the WITH statement. The context can be: SELECT, TABLE, VALUES, UPDATE or DELETE. This operation does not take into consideration
      * the multiplicity of queries in the specified SQL.
      *
@@ -885,7 +908,7 @@ public class QueryInfo {
         String commentsFreeSql = StringUtils.stripCommentsAndHints(sql, OPENING_MARKERS, CLOSING_MARKERS, !noBackslashEscapes);
 
         // Iterate through statement words, skipping all sub-queries sections enclosed by parens.
-        StringInspector strInspector = new StringInspector(commentsFreeSql, OPENING_MARKERS + "(", CLOSING_MARKERS + ")", OPENING_MARKERS,
+        StringInspector strInspector = new StringInspector(commentsFreeSql, OPENING_MARKERS_WITH_PARENS, CLOSING_MARKERS_WITH_PARENS, OPENING_MARKERS,
                 noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
         boolean asFound = false;
         while (true) {
