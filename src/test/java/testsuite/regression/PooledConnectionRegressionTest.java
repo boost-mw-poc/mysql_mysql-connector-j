@@ -57,8 +57,8 @@ import com.mysql.cj.jdbc.Clob;
 import com.mysql.cj.jdbc.CommentClientInfoProvider;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.ConnectionWrapper;
-import com.mysql.cj.jdbc.DatabaseMetaDataMysqlSchema;
 import com.mysql.cj.jdbc.DatabaseMetaDataInformationSchema;
+import com.mysql.cj.jdbc.DatabaseMetaDataMysqlSchema;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
@@ -260,37 +260,33 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
      */
     @Test
     public void testPacketTooLargeException() throws Exception {
-        final ConnectionEventListener conListener = new ConnectionListener();
-        PooledConnection pc = null;
+        String defaultMaxAllowedPacket = getMysqlVariable("max_allowed_packet");
 
-        pc = this.cpds.getPooledConnection();
+        try {
+            final int maxPacket = 10240;
+            final int numChars = (int) (maxPacket * 1.2);
 
-        pc.addConnectionEventListener(conListener);
+            this.stmt.execute("SET GLOBAL max_allowed_packet=" + maxPacket);
+            createTable("testPacketTooLarge", "(data LONGBLOB)");
 
-        createTable("testPacketTooLarge", "(field1 LONGBLOB)");
+            PooledConnection pc = this.cpds.getPooledConnection();
+            pc.addConnectionEventListener(new ConnectionListener());
+            Connection connFromPool = pc.getConnection();
 
-        Connection connFromPool = pc.getConnection();
-        PreparedStatement pstmtFromPool = ((ConnectionWrapper) connFromPool).clientPrepare("INSERT INTO testPacketTooLarge VALUES (?)");
+            PreparedStatement pstmtFromPool = ((ConnectionWrapper) connFromPool).clientPrepare("INSERT INTO testPacketTooLarge VALUES (?)");
+            try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(newTempBinaryFile("testPacketTooLargeException", numChars)))) {
+                pstmtFromPool.setBinaryStream(1, bis, numChars);
+                assertThrows(PacketTooBigException.class, () -> pstmtFromPool.executeUpdate());
+            }
 
-        this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'max_allowed_packet'");
-        this.rs.next();
+            // Ensure subsequent queries still work after previous failure.
+            this.rs = connFromPool.createStatement().executeQuery("SELECT 1");
 
-        int maxAllowedPacket = this.rs.getInt(2);
-
-        int numChars = (int) (maxAllowedPacket * 1.2);
-
-        pstmtFromPool.setBinaryStream(1, new BufferedInputStream(new FileInputStream(newTempBinaryFile("testPacketTooLargeException", numChars))), numChars);
-
-        assertThrows(PacketTooBigException.class, () -> {
-            pstmtFromPool.executeUpdate();
-            return null;
-        });
-
-        // This should still work okay, even though the last query on the same connection didn't...
-        this.rs = connFromPool.createStatement().executeQuery("SELECT 1");
-
-        assertEquals(0, this.connectionErrorEventCount);
-        assertEquals(0, this.closeEventCount);
+            assertEquals(0, this.connectionErrorEventCount);
+            assertEquals(0, this.closeEventCount);
+        } finally {
+            this.stmt.execute("SET GLOBAL max_allowed_packet = " + defaultMaxAllowedPacket);
+        }
     }
 
     /**
@@ -449,14 +445,14 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
         assertEquals(this.conn.getAutoCommit(), cw.getAutoCommit());
         assertEquals(((JdbcConnection) this.conn).getAutoIncrementIncrement(), cw.getAutoIncrementIncrement());
-        assertEquals(((JdbcConnection) this.conn).getCatalog(), cw.getCatalog());
+        assertEquals(this.conn.getCatalog(), cw.getCatalog());
         assertEquals(((JdbcConnection) this.conn).getCharacterSetMetadata(), cw.getCharacterSetMetadata());
-        assertEquals(((JdbcConnection) this.conn).getHoldability(), cw.getHoldability());
+        assertEquals(this.conn.getHoldability(), cw.getHoldability());
         assertEquals(((JdbcConnection) this.conn).getHost(), cw.getHost());
         assertEquals(((JdbcConnection) this.conn).getHostPortPair(), cw.getHostPortPair());
         assertEquals(Properties.class, cw.getProperties().getClass());
         assertEquals(JdbcPropertySetImpl.class, cw.getPropertySet().getClass());
-        assertEquals(((JdbcConnection) this.conn).getSchema(), cw.getSchema());
+        assertEquals(this.conn.getSchema(), cw.getSchema());
         assertEquals(((JdbcConnection) this.conn).getServerVersion().toString(), cw.getServerVersion().toString());
         assertEquals(NativeSession.class, cw.getSession().getClass());
         assertEquals(((JdbcConnection) this.conn).getSessionMaxRows(), cw.getSessionMaxRows());
@@ -492,17 +488,18 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         assertNotEquals(((JdbcConnection) this.conn).getStatementComment(), cw.getStatementComment());
 
         assertNull(cw.getExceptionInterceptor());
-        assertEquals(((JdbcConnection) this.conn).getNetworkTimeout(), cw.getNetworkTimeout());
-        assertEquals(((JdbcConnection) this.conn).getTypeMap(), cw.getTypeMap());
+        assertEquals(this.conn.getNetworkTimeout(), cw.getNetworkTimeout());
+        assertEquals(this.conn.getTypeMap(), cw.getTypeMap());
         assertNull(cw.getWarnings());
 
         // testsuite is built upon non-SSL default connection with additional useSSL=false&allowPublicKeyRetrieval=true properties
         assertFalse(cw.hasSameProperties((JdbcConnection) this.conn));
 
         assertTrue(cw.isSameResource((JdbcConnection) this.conn));
-        assertEquals(((JdbcConnection) this.conn).nativeSQL("SELECT 1"), cw.nativeSQL("SELECT 1"));
+        assertEquals(this.conn.nativeSQL("SELECT 1"), cw.nativeSQL("SELECT 1"));
 
-        assertEquals(cw.getServerVersion().meetsMinimum(new ServerVersion(8, 0, 3)) ? DatabaseMetaDataInformationSchema.class : DatabaseMetaDataMysqlSchema.class,
+        assertEquals(
+                cw.getServerVersion().meetsMinimum(new ServerVersion(8, 0, 3)) ? DatabaseMetaDataInformationSchema.class : DatabaseMetaDataMysqlSchema.class,
                 cw.getMetaData().getClass());
 
         // TODO find a way to test following methods
@@ -735,7 +732,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         assertEquals(((JdbcConnection) this.conn).getHostPortPair(), cw.getHostPortPair());
         assertEquals(Properties.class, cw.getProperties().getClass());
         assertEquals(JdbcPropertySetImpl.class, cw.getPropertySet().getClass());
-        assertEquals(((JdbcConnection) this.conn).getSchema(), cw.getSchema());
+        assertEquals(this.conn.getSchema(), cw.getSchema());
         assertEquals(((JdbcConnection) this.conn).getServerVersion().toString(), cw.getServerVersion().toString());
         assertEquals(NativeSession.class, cw.getSession().getClass());
         assertEquals(((JdbcConnection) this.conn).getSessionMaxRows(), cw.getSessionMaxRows());
@@ -786,7 +783,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
         assertEquals(ConnectionImpl.class, cw.getActiveMySQLConnection().getClass());
         assertNull(cw.getExceptionInterceptor());
-        assertEquals(((JdbcConnection) this.conn).getNetworkTimeout(), cw.getNetworkTimeout());
+        assertEquals(this.conn.getNetworkTimeout(), cw.getNetworkTimeout());
         assertThrows(SQLNonTransientConnectionException.class, "Logical handle no longer valid", () -> {
             cw.getTypeMap();
             return null;
