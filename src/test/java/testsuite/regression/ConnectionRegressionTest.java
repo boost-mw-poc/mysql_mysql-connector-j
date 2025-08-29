@@ -12447,4 +12447,30 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } while (useSPS = !useSPS);
     }
 
+    /**
+     * Tests fix for Bug#107094 (Bug#34104230), NullPointerException when calling equals with null on MultiHostConnectionProxy.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug107094() throws Exception {
+        assertTrue(this.conn.equals(this.conn));
+        assertFalse(this.conn.equals(null));
+
+        try (Connection testConn = getFailoverConnection()) {
+            assertTrue(testConn.equals(testConn));
+            assertFalse(testConn.equals(null));
+        }
+
+        try (Connection testConn = getLoadBalancedConnection()) {
+            assertTrue(testConn.equals(testConn));
+            assertFalse(testConn.equals(null));
+        }
+
+        try (Connection testConn = getSourceReplicaReplicationConnection()) {
+            assertTrue(testConn.equals(testConn));
+            assertFalse(testConn.equals(null));
+        }
+    }
+
 }

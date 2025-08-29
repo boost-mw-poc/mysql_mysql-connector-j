@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#107094 (Bug#34104230), NullPointerException when calling equals with null on MultiHostConnectionProxy.
+
   - Fix for Bug#107543 (Bug#34464351), Cannot execute a SELECT statement that writes to an OUTFILE.
 
   - Fix for Bug#17881458, BEHAVIOR OF SETBINARYSTREAM() METHOD IS DIFFERENT WHEN USESERVERPREPSTMTS=TRUE.

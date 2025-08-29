@@ -482,6 +482,9 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
         }
 
         if (METHOD_EQUALS.equals(methodName)) {
+            if (args[0] == null) {
+                return false;
+            }
             // Let args[0] "unwrap" to its InvocationHandler if it is a proxy.
             return args[0].equals(this);
         }
