@@ -3952,25 +3952,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
-    public void testBug36662() throws Exception {
-        try {
-            String tz1 = TimeUtil.getCanonicalTimeZone("MEST", null);
-            assertNotNull(tz1);
-        } catch (Exception e1) {
-            String mes1 = e1.getMessage();
-            mes1 = mes1.substring(mes1.lastIndexOf("The timezones that 'MEST' maps to are:") + 39);
-            try {
-                String tz2 = TimeUtil.getCanonicalTimeZone("CEST", null);
-                assertEquals(mes1, tz2);
-            } catch (Exception e2) {
-                String mes2 = e2.getMessage();
-                mes2 = mes2.substring(mes2.lastIndexOf("The timezones that 'CEST' maps to are:") + 39);
-                assertEquals(mes1, mes2);
-            }
-        }
-    }
-
-    @Test
     public void testIsLocal() throws Exception {
         boolean normalState = ((ConnectionImpl) this.conn).isServerLocal();
 

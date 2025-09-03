@@ -132,25 +132,23 @@ public class TimeUtil {
     /**
      * Returns the 'official' Java timezone name for the given timezone
      *
-     * @param timezoneStr
+     * @param timeZoneStr
      *            the 'common' timezone name
      * @param exceptionInterceptor
      *            exception interceptor
      *
      * @return the Java timezone name for the given timezone
      */
-    public static String getCanonicalTimeZone(String timezoneStr, ExceptionInterceptor exceptionInterceptor) {
-        if (timezoneStr == null) {
+    public static String getCanonicalTimeZone(String timeZoneStr, ExceptionInterceptor exceptionInterceptor) {
+        if (timeZoneStr == null) {
             return null;
         }
 
-        timezoneStr = timezoneStr.trim();
+        timeZoneStr = timeZoneStr.trim();
 
-        // handle '+/-hh:mm' form ...
-        if (timezoneStr.length() > 2) {
-            if ((timezoneStr.charAt(0) == '+' || timezoneStr.charAt(0) == '-') && Character.isDigit(timezoneStr.charAt(1))) {
-                return "GMT" + timezoneStr;
-            }
+        // Handle '+/-hh:mm' form.
+        if (timeZoneStr.length() > 2 && (timeZoneStr.charAt(0) == '+' || timeZoneStr.charAt(0) == '-') && Character.isDigit(timeZoneStr.charAt(1))) {
+            return "GMT" + timeZoneStr;
         }
 
         LOCK.lock();
@@ -162,13 +160,13 @@ public class TimeUtil {
             LOCK.unlock();
         }
 
-        String canonicalTz;
-        if ((canonicalTz = timeZoneMappings.getProperty(timezoneStr)) != null) {
+        String canonicalTz = timeZoneMappings.getProperty(timeZoneStr);
+        if (canonicalTz != null) {
             return canonicalTz;
         }
 
         throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                Messages.getString("TimeUtil.UnrecognizedTimeZoneId", new Object[] { timezoneStr }), exceptionInterceptor);
+                Messages.getString("TimeUtil.UnrecognizedTimeZoneId", new Object[] { timeZoneStr }), exceptionInterceptor);
     }
 
     /**
@@ -329,11 +327,9 @@ public class TimeUtil {
         } catch (IOException e) {
             throw ExceptionFactory.createException(Messages.getString("TimeUtil.LoadTimeZoneMappingError"), exceptionInterceptor);
         }
-        // bridge all Time Zone ids known by Java
+        // Bridge all Time Zones known by Java.
         for (String tz : TimeZone.getAvailableIDs()) {
-            if (!timeZoneMappings.containsKey(tz)) {
-                timeZoneMappings.put(tz, tz);
-            }
+            timeZoneMappings.put(tz, tz);
         }
     }
 
