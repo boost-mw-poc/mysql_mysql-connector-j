@@ -310,6 +310,7 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         if (databaseTermValue() != DatabaseTerm.CATALOG) {
             query.append(" WHERE FALSE");
         }
+        query.append(" ORDER BY TABLE_CAT");
         ResultSet rs = stmt.executeQuery(query.toString());
 
         ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createCatalogsFields());
@@ -936,7 +937,7 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
 
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-        final String dbFromTerm = chooseDatabaseTerm(catalog, schemaPattern);
+        final String dbFromTerm = chooseDatabaseTerm(null, schemaPattern);
         final String dbFilter = normalizeIdentifierQuoting(dbFromTerm);
 
         StringBuilder query = new StringBuilder("SELECT");
@@ -945,6 +946,7 @@ public class DatabaseMetaDataInformationSchema extends DatabaseMetaData {
         query.append(" FROM INFORMATION_SCHEMA.SCHEMATA");
         query.append(chooseBasedOnDatabaseTerm(() -> " WHERE FALSE",
                 () -> dbFilter == null ? "" : StringUtils.hasWildcards(dbFilter) ? " WHERE SCHEMA_NAME LIKE ?" : " WHERE SCHEMA_NAME = ?"));
+        query.append(" ORDER BY TABLE_CATALOG, TABLE_SCHEM");
 
         try (PreparedStatement pStmt = prepareMetaDataSafeStatement(query.toString())) {
             if (dbFilter != null) {

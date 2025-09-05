@@ -20,6 +20,7 @@
 
 package testsuite.regression;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -6034,6 +6035,30 @@ public class MetaDataRegressionTest extends BaseTestCase {
             this.rs = testConn.getMetaData().getColumns(null, null, "testBug98620", null);
             assertTrue(this.rs.next());
             assertEquals(isServerRunningOnWindows() ? "testbug98620" : "testBug98620", this.rs.getString("TABLE_NAME"));
+        } while (useIS = !useIS);
+    }
+
+    /**
+     * Tests fix for Bug#118938 (Bug#38396227), DatabaseMetaDataInformationSchema#getSchemas has a bug.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug118938() throws Exception {
+        boolean useIS = false;
+        do {
+            for (DatabaseTerm dbt : DatabaseTerm.values()) {
+                Properties props = new Properties();
+                props.setProperty(PropertyKey.useInformationSchema.getKeyName(), Boolean.toString(useIS));
+                props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbt.toString());
+
+                assertDoesNotThrow(() -> {
+                    try (Connection testConn = getConnectionWithProps(props)) {
+                        DatabaseMetaData dbmd = testConn.getMetaData();
+                        dbmd.getSchemas("%", "%");
+                    }
+                }, "DatabaseMetaData.getSchemas should not throw for DatabaseTerm: " + dbt);
+            }
         } while (useIS = !useIS);
     }
 
