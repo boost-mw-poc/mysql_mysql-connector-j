@@ -20,8 +20,6 @@
 
 /**
  * Java classes for X DevAPI support.
- *
- * @since 6.0
  */
 
 package com.mysql.cj.xdevapi;
