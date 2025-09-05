@@ -22,7 +22,7 @@
  * Message classes used for serialization with Google Protocol Buffers to support the X Protocol. Classes are generated using <i>protoc</i> like so:
  *
  * <pre>
- * protoc --java_out=<PROJ_CJ_PATH>/src/generated/java --proto_path=<PROTOC_PATH>/include --proto_path=<PROJ_MYSQL_PATH>//plugin/x/protocol/protobuf <PROJ_MYSQL_PATH>/plugin/x/protocol/protobuf/*.proto
+ * protoc --java_out=<PROJ_CJ_PATH>/src/generated/java --proto_path=<PROTOC_PATH>/include --proto_path=<PROJ_MYSQL_PATH>/plugin/x/protocol/protobuf <PROJ_MYSQL_PATH>/plugin/x/protocol/protobuf/*.proto
  * </pre>
  */
 
