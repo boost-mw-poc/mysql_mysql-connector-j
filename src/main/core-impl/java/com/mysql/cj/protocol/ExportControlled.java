@@ -557,6 +557,13 @@ public class ExportControlled {
                         }
                     }
                 }
+            } else {
+                // Not all KeyManagers require a file-based keystore. If clientCertificateKeyStoreUrl is empty, still try to create a functional KeyManager.
+                try {
+                    kms = kmf.getKeyManagers();
+                } catch (IllegalStateException e) {
+                    // Ignore. No KeyManager shall be used.
+                }
             }
 
             InputStream trustStoreIS = null;

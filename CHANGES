@@ -3,6 +3,9 @@
 
 Version 9.5.0
 
+  - Fix for Bug#98699 (Bug#30932850), Allow empty keyStore file for keyStoreTypes that do not require files.
+    Thanks to Kolbe Kegel for his contribution.
+
   - Fix for Bug#118938 (Bug#38396227), DatabaseMetaDataInformationSchema#getSchemas has a bug.
 
   - Fix for Bug#99292 (Bug#31195955), Contribution: Support Windows time zone \'Coordinated Universal Time\'.
