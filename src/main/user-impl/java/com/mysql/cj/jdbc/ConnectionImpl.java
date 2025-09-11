@@ -402,7 +402,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 if (this.propertySet.getBooleanProperty(PropertyKey.cacheResultSetMetadata).getValue()) {
                     this.resultSetMetadataCache = new LRUCache<>(this.propertySet.getIntegerProperty(PropertyKey.metadataCacheSize).getValue());
                 }
-                if (this.propertySet.getStringProperty(PropertyKey.socksProxyHost).getStringValue() != null) {
+                if (this.propertySet.getStringProperty(PropertyKey.socksProxyHost).getStringValue() != null
+                        && !this.propertySet.getProperty(PropertyKey.socketFactory).isExplicitlySet()) {
                     this.propertySet.getProperty(PropertyKey.socketFactory).setValue(SocksProxySocketFactory.class.getName());
                 }
 

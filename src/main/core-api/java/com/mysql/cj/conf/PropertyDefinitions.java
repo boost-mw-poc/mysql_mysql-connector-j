@@ -59,6 +59,8 @@ public class PropertyDefinitions {
 
     public static final String SYSP_testsuite_cantGrant /*                    */ = "com.mysql.cj.testsuite.cantGrant";
     public static final String SYSP_testsuite_unavailable_host /*             */ = "com.mysql.cj.testsuite.unavailable.host";
+    public static final String SYSP_testsuite_socksProxyHost /*               */ = "com.mysql.cj.testsuite.socksProxyHost";
+    public static final String SYSP_testsuite_socksProxyPort /*               */ = "com.mysql.cj.testsuite.socksProxyPort";
 
     /** For testsuite.regression.DataSourceRegressionTest */
     public static final String SYSP_testsuite_ds_host /*                      */ = "com.mysql.cj.testsuite.ds.host";

@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -187,6 +188,7 @@ import com.mysql.cj.protocol.ServerSessionStateController;
 import com.mysql.cj.protocol.ServerSessionStateController.ServerSessionStateChanges;
 import com.mysql.cj.protocol.ServerSessionStateController.SessionStateChange;
 import com.mysql.cj.protocol.ServerSessionStateController.SessionStateChangesListener;
+import com.mysql.cj.protocol.SocksProxySocketFactory;
 import com.mysql.cj.protocol.StandardSocketFactory;
 import com.mysql.cj.protocol.a.DebugBufferingPacketReader;
 import com.mysql.cj.protocol.a.DebugBufferingPacketSender;
@@ -12451,6 +12453,56 @@ public class ConnectionRegressionTest extends BaseTestCase {
         try (Connection testConn = getSourceReplicaReplicationConnection()) {
             assertTrue(testConn.equals(testConn));
             assertFalse(testConn.equals(null));
+        }
+    }
+
+    /**
+     * Tests fix for Bug#19887224, RUNNING THE TEST SUITE WITH SOCKSPROXY* PROPERTIES HANGS IN TEST TESTBUG56429.
+     *
+     * This test requires a SOCKS proxy tunnel and the corresponding system properties to be set. For example:
+     * - Start the proxy: ssh -f -N -D 127.0.0.1:1080 user@localhost
+     * - Set the system properties: com.mysql.cj.testsuite.socksProxyHost=127.0.0.1 and com.mysql.cj.testsuite.socksProxyPort=1080
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug19887224() throws Exception {
+        assumeFalse(((JdbcConnection) this.conn).getPropertySet().getStringProperty(PropertyKey.socksProxyHost.getKeyName()).isExplicitlySet(),
+                "This test cannot run when socksProxyHost is set.");
+        assumeTrue(
+                StandardSocketFactory.class.getName()
+                        .equals(((JdbcConnection) this.conn).getPropertySet().getStringProperty(PropertyKey.socketFactory.getKeyName()).getValue()),
+                "This test requires StandardSocketFactory to be configured as the socket factory.");
+
+        String socksProxyHost = System.getProperty(PropertyDefinitions.SYSP_testsuite_socksProxyHost);
+        String socksProxyPort = System.getProperty(PropertyDefinitions.SYSP_testsuite_socksProxyPort);
+
+        assumingThat(socksProxyHost != null && socksProxyPort != null, () -> {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.socksProxyHost.getKeyName(), socksProxyHost);
+            props.setProperty(PropertyKey.socksProxyPort.getKeyName(), socksProxyPort);
+            try (Connection testConn = getConnectionWithProps(props)) {
+                assertEquals(socksProxyHost,
+                        ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socksProxyHost.getKeyName()).getValue());
+                assertEquals(SocksProxySocketFactory.class.getName(),
+                        ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socketFactory.getKeyName()).getValue());
+            }
+        });
+
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.socketFactory.getKeyName(), UnreliableSocketFactory.class.getName());
+        try (Connection testConn = getConnectionWithProps(props)) {
+            assertNull(((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socksProxyHost.getKeyName()).getValue());
+            assertEquals(UnreliableSocketFactory.class.getName(),
+                    ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socketFactory.getKeyName()).getValue());
+        }
+
+        props.setProperty(PropertyKey.socksProxyHost.getKeyName(), "fakehost");
+        props.setProperty(PropertyKey.socksProxyPort.getKeyName(), "12345");
+        try (Connection testConn = getConnectionWithProps(props)) {
+            assertEquals("fakehost", ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socksProxyHost.getKeyName()).getValue());
+            assertEquals(UnreliableSocketFactory.class.getName(),
+                    ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socketFactory.getKeyName()).getValue());
         }
     }
 
