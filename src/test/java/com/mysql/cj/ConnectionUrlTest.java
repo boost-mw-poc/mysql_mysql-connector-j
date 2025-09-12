@@ -1102,7 +1102,7 @@ public class ConnectionUrlTest {
                 } catch (Exception e) {
                     assertTrue(WrongArgumentException.class.isAssignableFrom(e.getClass()),
                             cs + ": expected to throw a " + WrongArgumentException.class.getName());
-                    assertEquals(Messages.getString("ConnectionString.14", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
+                    assertEquals(Messages.getString("ConnectionString.15", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
                             cs);
                 }
             }
@@ -1123,7 +1123,7 @@ public class ConnectionUrlTest {
                 } catch (Exception e) {
                     assertTrue(WrongArgumentException.class.isAssignableFrom(e.getClass()),
                             cs + ": expected to throw a " + WrongArgumentException.class.getName());
-                    assertEquals(Messages.getString("ConnectionString.15", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
+                    assertEquals(Messages.getString("ConnectionString.16", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
                             cs);
                 }
             }
@@ -1140,7 +1140,7 @@ public class ConnectionUrlTest {
                 } catch (Exception e) {
                     assertTrue(WrongArgumentException.class.isAssignableFrom(e.getClass()),
                             cs + ": expected to throw a " + WrongArgumentException.class.getName());
-                    assertEquals(Messages.getString("ConnectionString.16", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
+                    assertEquals(Messages.getString("ConnectionString.17", new Object[] { ConnectionUrl.Type.XDEVAPI_SESSION.getScheme() }), e.getMessage(),
                             cs);
                 }
             }
@@ -1463,18 +1463,32 @@ public class ConnectionUrlTest {
         props.remove(PropertyKey.PROTOCOL.getKeyName());
 
         // Setting replicationConnectionGroup not allowed.
-        props.setProperty(PropertyKey.replicationConnectionGroup.getKeyName(), "lbgrp");
+        props.setProperty(PropertyKey.replicationConnectionGroup.getKeyName(), "rpgrp");
         assertThrows(InvalidConnectionAttributeException.class,
                 "The option 'replicationConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
-                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql+srv:replication://hostname1,hostname2?replicationConnectionGroup=lbgrp", null));
+                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql+srv:replication://hostname1,hostname2?replicationConnectionGroup=rpgrp", null));
         assertThrows(InvalidConnectionAttributeException.class,
                 "The option 'replicationConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
-                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql:replication://hostname1,hostname2?dnsSrv=true&replicationConnectionGroup=lbgrp",
+                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql:replication://hostname1,hostname2?dnsSrv=true&replicationConnectionGroup=rpgrp",
                         null));
         assertThrows(InvalidConnectionAttributeException.class,
                 "The option 'replicationConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
                 () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql:replication://hostname1,hostname2", props));
         props.remove(PropertyKey.replicationConnectionGroup.getKeyName());
+
+        // Setting loadBalanceConnectionGroup not allowed.
+        props.setProperty(PropertyKey.loadBalanceConnectionGroup.getKeyName(), "lbgrp");
+        assertThrows(InvalidConnectionAttributeException.class,
+                "The option 'loadBalanceConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
+                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql+srv:replication://hostname1,hostname2?loadBalanceConnectionGroup=lbgrp", null));
+        assertThrows(InvalidConnectionAttributeException.class,
+                "The option 'loadBalanceConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
+                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql:replication://hostname1,hostname2?dnsSrv=true&loadBalanceConnectionGroup=lbgrp",
+                        null));
+        assertThrows(InvalidConnectionAttributeException.class,
+                "The option 'loadBalanceConnectionGroup' cannot be set\\. Live management of connections is not supported with DNS SRV lookup\\.",
+                () -> ConnectionUrl.getConnectionUrlInstance("jdbc:mysql:replication://hostname1,hostname2", props));
+        props.remove(PropertyKey.loadBalanceConnectionGroup.getKeyName());
 
         // Resolving hosts fails.
         assertThrows(CJException.class, "Unable to locate any hosts for hostname1\\.",

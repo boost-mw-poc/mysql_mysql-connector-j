@@ -20,6 +20,7 @@
 
 package testsuite.regression;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -12504,6 +12505,36 @@ public class ConnectionRegressionTest extends BaseTestCase {
             assertEquals(UnreliableSocketFactory.class.getName(),
                     ((JdbcConnection) testConn).getPropertySet().getStringProperty(PropertyKey.socketFactory.getKeyName()).getValue());
         }
+    }
+
+    /**
+     * Tests fix for Bug#19887224, RUNNING THE TEST SUITE WITH SOCKSPROXY* PROPERTIES HANGS IN TEST TESTBUG56429.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug81128() throws Exception {
+        Properties props = new Properties();
+        try (Connection testConn = getUnreliableReplicationConnection(new String[] { "primary", "secondary" }, props)) {
+            assertArrayEquals(new String[] { "/secondary", "/primary" }, UnreliableSocketFactory.getHostsFromAllConnections().toArray());
+            assertEquals("primary", ((JdbcConnection) testConn).getHost());
+        }
+
+        props.setProperty(PropertyKey.replicationConnectionGroup.getKeyName(), "testBug81128rp");
+        try (Connection testConn = getUnreliableReplicationConnection(new String[] { "primary", "secondary" }, props)) {
+            assertArrayEquals(new String[] { "/secondary", "/primary" }, UnreliableSocketFactory.getHostsFromAllConnections().toArray());
+            assertEquals("primary", ((JdbcConnection) testConn).getHost());
+        }
+
+        props.setProperty(PropertyKey.loadBalanceConnectionGroup.getKeyName(), "testBug81128lb");
+        assertThrows(SQLException.class,
+                ".*Illegal database URL, the option 'loadBalanceConnectionGroup' cannot be set in 'jdbc:mysql:replication:' connections\\.",
+                () -> getUnreliableReplicationConnection(new String[] { "primary", "secondary" }, props));
+
+        props.remove(PropertyKey.replicationConnectionGroup.getKeyName());
+        assertThrows(SQLException.class,
+                ".*Illegal database URL, the option 'loadBalanceConnectionGroup' cannot be set in 'jdbc:mysql:replication:' connections\\.",
+                () -> getUnreliableReplicationConnection(new String[] { "primary", "secondary" }, props));
     }
 
 }

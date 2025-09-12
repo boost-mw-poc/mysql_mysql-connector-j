@@ -90,36 +90,42 @@ public class ReplicationDnsSrvConnectionUrl extends ConnectionUrl {
          * 4. If property 'dnsSrv' is set then it cannot be "false".
          * 5. Property 'protocol' cannot be "PIPE".
          * 6. Property 'replicationConnectionGroup' cannot be set.
+         * 7. Property 'loadBalanceConnectionGroup' cannot be set.
          */
         HostInfo srvHostSource = this.sourceHosts.isEmpty() ? null : this.sourceHosts.get(0);
         Map<String, String> hostPropsSource = srvHostSource == null ? Collections.emptyMap() : srvHostSource.getHostProperties();
         HostInfo srvHostReplica = this.replicaHosts.isEmpty() ? null : this.replicaHosts.get(0);
         Map<String, String> hostPropsReplica = srvHostReplica == null ? Collections.emptyMap() : srvHostReplica.getHostProperties();
         if (srvHostSource == null || srvHostReplica == null || DEFAULT_HOST.equals(srvHostSource.getHost()) || DEFAULT_HOST.equals(srvHostReplica.getHost())) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.20"));
-        }
-        if (this.sourceHosts.size() != 1 || this.replicaHosts.size() != 1) {
             throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.21"));
         }
-        if (srvHostSource.getPort() != DEFAULT_PORT || srvHostReplica.getPort() != DEFAULT_PORT) {
+        if (this.sourceHosts.size() != 1 || this.replicaHosts.size() != 1) {
             throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.22"));
+        }
+        if (srvHostSource.getPort() != DEFAULT_PORT || srvHostReplica.getPort() != DEFAULT_PORT) {
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.23"));
         }
         if (hostPropsSource.containsKey(PropertyKey.dnsSrv.getKeyName()) || hostPropsReplica.containsKey(PropertyKey.dnsSrv.getKeyName())) {
             if (!BooleanPropertyDefinition.booleanFrom(PropertyKey.dnsSrv.getKeyName(), hostPropsSource.get(PropertyKey.dnsSrv.getKeyName()), null)
                     || !BooleanPropertyDefinition.booleanFrom(PropertyKey.dnsSrv.getKeyName(), hostPropsReplica.get(PropertyKey.dnsSrv.getKeyName()), null)) {
                 throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                        Messages.getString("ConnectionString.23", new Object[] { PropertyKey.dnsSrv.getKeyName() }));
+                        Messages.getString("ConnectionString.24", new Object[] { PropertyKey.dnsSrv.getKeyName() }));
             }
         }
         if (hostPropsSource.containsKey(PropertyKey.PROTOCOL.getKeyName()) && hostPropsSource.get(PropertyKey.PROTOCOL.getKeyName()).equalsIgnoreCase("PIPE")
                 || hostPropsReplica.containsKey(PropertyKey.PROTOCOL.getKeyName())
                         && hostPropsReplica.get(PropertyKey.PROTOCOL.getKeyName()).equalsIgnoreCase("PIPE")) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.24"));
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.25"));
         }
         if (hostPropsSource.containsKey(PropertyKey.replicationConnectionGroup.getKeyName())
                 || hostPropsReplica.containsKey(PropertyKey.replicationConnectionGroup.getKeyName())) {
             throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                    Messages.getString("ConnectionString.25", new Object[] { PropertyKey.replicationConnectionGroup.getKeyName() }));
+                    Messages.getString("ConnectionString.26", new Object[] { PropertyKey.replicationConnectionGroup.getKeyName() }));
+        }
+        if (hostPropsSource.containsKey(PropertyKey.loadBalanceConnectionGroup.getKeyName())
+                || hostPropsReplica.containsKey(PropertyKey.loadBalanceConnectionGroup.getKeyName())) {
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
+                    Messages.getString("ConnectionString.26", new Object[] { PropertyKey.loadBalanceConnectionGroup.getKeyName() }));
         }
     }
 

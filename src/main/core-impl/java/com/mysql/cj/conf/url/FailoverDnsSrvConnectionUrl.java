@@ -62,22 +62,22 @@ public class FailoverDnsSrvConnectionUrl extends ConnectionUrl {
         HostInfo srvHost = super.getMainHost();
         Map<String, String> hostProps = srvHost.getHostProperties();
         if (DEFAULT_HOST.equals(srvHost.getHost())) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.18"));
-        }
-        if (this.hosts.size() != 1) {
             throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.19"));
         }
+        if (this.hosts.size() != 1) {
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.20"));
+        }
         if (srvHost.getPort() != DEFAULT_PORT) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.22"));
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.23"));
         }
         if (hostProps.containsKey(PropertyKey.dnsSrv.getKeyName())) {
             if (!BooleanPropertyDefinition.booleanFrom(PropertyKey.dnsSrv.getKeyName(), hostProps.get(PropertyKey.dnsSrv.getKeyName()), null)) {
                 throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                        Messages.getString("ConnectionString.23", new Object[] { PropertyKey.dnsSrv.getKeyName() }));
+                        Messages.getString("ConnectionString.24", new Object[] { PropertyKey.dnsSrv.getKeyName() }));
             }
         }
         if (hostProps.containsKey(PropertyKey.PROTOCOL.getKeyName()) && hostProps.get(PropertyKey.PROTOCOL.getKeyName()).equalsIgnoreCase("PIPE")) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.24"));
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.25"));
         }
     }
 

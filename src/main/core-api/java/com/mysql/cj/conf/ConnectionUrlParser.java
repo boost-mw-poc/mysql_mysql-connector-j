@@ -123,7 +123,7 @@ public class ConnectionUrlParser implements DatabaseUrlContainer {
         }
         if (!isConnectionStringSupported(connString)) {
             throw ExceptionFactory.createException(UnsupportedConnectionStringException.class,
-                    Messages.getString("ConnectionString.17", new String[] { connString }));
+                    Messages.getString("ConnectionString.18", new String[] { connString }));
         }
         this.baseConnectionString = connString;
         parseConnectionString();

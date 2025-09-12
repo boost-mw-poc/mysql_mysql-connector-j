@@ -28,12 +28,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.HostsListView;
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.exceptions.ExceptionFactory;
+import com.mysql.cj.exceptions.InvalidConnectionAttributeException;
 
 public class ReplicationConnectionUrl extends ConnectionUrl {
 
@@ -78,6 +82,16 @@ public class ReplicationConnectionUrl extends ConnectionUrl {
             this.replicaHosts.addAll(undefinedHosts);
         }
 
+        /*
+         * Validate the hosts list:
+         * 1. Property 'loadBalanceConnectionGroup' cannot be set.
+         */
+        if (Stream.concat(this.sourceHosts.stream(), this.replicaHosts.stream()).map(HostInfo::getHostProperties)
+                .anyMatch(p -> p.containsKey(PropertyKey.loadBalanceConnectionGroup.getKeyName()))) {
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.14",
+                    new Object[] { PropertyKey.loadBalanceConnectionGroup.getKeyName(), Type.REPLICATION_CONNECTION.getScheme() }));
+        }
+
         // TODO: Validate the hosts list: there can't be any two hosts with same host:port.
         // Although this should be required, it also is incompatible with our current tests which are creating replication connections
         // using the same host configurations.
@@ -86,7 +100,7 @@ public class ReplicationConnectionUrl extends ConnectionUrl {
         //            for (HostInfo hi : hostsLists) {
         //                if (visitedHosts.contains(hi.getHostPortPair())) {
         //                    throw ExceptionFactory.createException(WrongArgumentException.class,
-        //                            Messages.getString("ConnectionString.13", new Object[] { hi.getHostPortPair(), Type.REPLICATION_CONNECTION.getProtocol() }));
+        //                            Messages.getString("ConnectionString.13", new Object[] { hi.getHostPortPair(), Type.REPLICATION_CONNECTION.getScheme() }));
         //                }
         //                visitedHosts.add(hi.getHostPortPair());
         //            }

@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#81128 (Bug#23146631), Master host list overwritten by slave list when loadBalanceConnectionGroup used.
+
   - Fix for Bug#19887224, RUNNING THE TEST SUITE WITH SOCKSPROXY* PROPERTIES HANGS IN TEST TESTBUG56429.
 
   - Fix for Bug#98699 (Bug#30932850), Allow empty keyStore file for keyStoreTypes that do not require files.

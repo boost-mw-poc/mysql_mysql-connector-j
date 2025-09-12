@@ -65,18 +65,18 @@ public class XDevApiDnsSrvConnectionUrl extends ConnectionUrl {
         HostInfo srvHost = super.getMainHost();
         Map<String, String> hostProps = srvHost.getHostProperties();
         if (DEFAULT_HOST.equals(srvHost.getHost())) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.18"));
-        }
-        if (this.hosts.size() != 1) {
             throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.19"));
         }
+        if (this.hosts.size() != 1) {
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.20"));
+        }
         if (srvHost.getPort() != DEFAULT_PORT) {
-            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.22"));
+            throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.23"));
         }
         if (hostProps.containsKey(PropertyKey.xdevapiDnsSrv.getKeyName())) {
             if (!BooleanPropertyDefinition.booleanFrom(PropertyKey.xdevapiDnsSrv.getKeyName(), hostProps.get(PropertyKey.xdevapiDnsSrv.getKeyName()), null)) {
                 throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                        Messages.getString("ConnectionString.23", new Object[] { PropertyKey.xdevapiDnsSrv.getKeyName() }));
+                        Messages.getString("ConnectionString.24", new Object[] { PropertyKey.xdevapiDnsSrv.getKeyName() }));
             }
         }
     }

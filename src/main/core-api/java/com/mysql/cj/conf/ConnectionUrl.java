@@ -791,10 +791,10 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         try {
             srvRecords = DnsSrv.lookupSrvRecords(srvServiceName);
         } catch (NamingException e) {
-            throw ExceptionFactory.createException(Messages.getString("ConnectionString.26", new Object[] { srvServiceName }), e);
+            throw ExceptionFactory.createException(Messages.getString("ConnectionString.27", new Object[] { srvServiceName }), e);
         }
         if (srvRecords == null || srvRecords.size() == 0) {
-            throw ExceptionFactory.createException(Messages.getString("ConnectionString.26", new Object[] { srvServiceName }));
+            throw ExceptionFactory.createException(Messages.getString("ConnectionString.27", new Object[] { srvServiceName }));
         }
 
         return Collections.unmodifiableList(srvRecordsToHostsList(srvRecords, srvHost));

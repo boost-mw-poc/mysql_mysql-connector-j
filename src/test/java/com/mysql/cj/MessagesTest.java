@@ -52,12 +52,26 @@ public class MessagesTest {
         assertEquals(
                 "Illegal database URL, Host 'Test1' is duplicated in the combined hosts list (sources & replicas) but 'Test2' connections can only handle one instance of each host:port pair.",
                 Messages.getString("ConnectionString.13", new Object[] { "Test1", "Test2" }));
+        assertEquals("Illegal database URL, the option 'Test1' cannot be set in 'Test2' connections.",
+                Messages.getString("ConnectionString.14", new Object[] { "Test1", "Test2" }));
         assertEquals("Illegal database URL, in a 'Test' multi-host connection it is required the same credentials in all hosts.",
-                Messages.getString("ConnectionString.14", new Object[] { "Test" }));
-        assertEquals("Illegal database URL, in a 'Test' multi-host connection it is required that all or none of the hosts set a \"priority\" value.",
                 Messages.getString("ConnectionString.15", new Object[] { "Test" }));
-        assertEquals("Illegal database URL, in a 'Test' multi-host connection the \"priority\" setting must be a value between 0 and 100.",
+        assertEquals("Illegal database URL, in a 'Test' multi-host connection it is required that all or none of the hosts set a \"priority\" value.",
                 Messages.getString("ConnectionString.16", new Object[] { "Test" }));
+        assertEquals("Illegal database URL, in a 'Test' multi-host connection the \"priority\" setting must be a value between 0 and 100.",
+                Messages.getString("ConnectionString.17", new Object[] { "Test" }));
+        assertEquals("Connector/J cannot handle a connection string 'Test'.", Messages.getString("ConnectionString.18", new Object[] { "Test" }));
+        assertEquals("A host name is required for DNS SRV lookup enabled connections.", Messages.getString("ConnectionString.19"));
+        assertEquals("Specifying multiple host names with DNS SRV lookup is not allowed.", Messages.getString("ConnectionString.20"));
+        assertEquals("Exactly two host names of different types are required for DNS SRV lookup enabled replication connections.",
+                Messages.getString("ConnectionString.21"));
+        assertEquals("Specifying multiple host names for the same type with DNS SRV lookup is not allowed.", Messages.getString("ConnectionString.22"));
+        assertEquals("Specifying a port number with DNS SRV lookup is not allowed.", Messages.getString("ConnectionString.23"));
+        assertEquals("'Test' cannot be set to false with DNS SRV lookup enabled.", Messages.getString("ConnectionString.24", new Object[] { "Test" }));
+        assertEquals("Using named pipes with DNS SRV lookup is not allowed.", Messages.getString("ConnectionString.25"));
+        assertEquals("The option 'Test' cannot be set. Live management of connections is not supported with DNS SRV lookup.",
+                Messages.getString("ConnectionString.26", new Object[] { "Test" }));
+        assertEquals("Unable to locate any hosts for Test.", Messages.getString("ConnectionString.27", new Object[] { "Test" }));
 
         assertEquals("Cannot load connection class because of underlying exception: " + ex.toString(),
                 Messages.getString("NonRegisteringDriver.17", new Object[] { ex.toString() }));

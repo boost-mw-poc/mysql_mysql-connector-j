@@ -83,11 +83,11 @@ public class XDevApiConnectionUrl extends ConnectionUrl {
             } else {
                 if (!StringUtils.nullSafeEqual(user, hi.getUser()) || !StringUtils.nullSafeEqual(password, hi.getPassword())) {
                     throw ExceptionFactory.createException(WrongArgumentException.class,
-                            Messages.getString("ConnectionString.14", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
+                            Messages.getString("ConnectionString.15", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
                 }
                 if (hasPriority ^ hi.getHostProperties().containsKey(PropertyKey.PRIORITY.getKeyName())) {
                     throw ExceptionFactory.createException(WrongArgumentException.class,
-                            Messages.getString("ConnectionString.15", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
+                            Messages.getString("ConnectionString.16", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
                 }
             }
             if (hasPriority) {
@@ -95,7 +95,7 @@ public class XDevApiConnectionUrl extends ConnectionUrl {
                     int priority = Integer.parseInt(hi.getProperty(PropertyKey.PRIORITY.getKeyName()));
                     if (priority < 0 || priority > 100) {
                         throw ExceptionFactory.createException(WrongArgumentException.class,
-                                Messages.getString("ConnectionString.16", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
+                                Messages.getString("ConnectionString.17", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
                     }
                     if (priorities.contains(priority)) {
                         this.hasDuplicatedPriorities = true;
@@ -104,7 +104,7 @@ public class XDevApiConnectionUrl extends ConnectionUrl {
                     }
                 } catch (NumberFormatException e) {
                     throw ExceptionFactory.createException(WrongArgumentException.class,
-                            Messages.getString("ConnectionString.16", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
+                            Messages.getString("ConnectionString.17", new Object[] { Type.XDEVAPI_SESSION.getScheme() }));
                 }
             }
         }
