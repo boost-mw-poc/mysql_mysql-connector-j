@@ -72,6 +72,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientException;
+import java.sql.Savepoint;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -12535,6 +12536,50 @@ public class ConnectionRegressionTest extends BaseTestCase {
         assertThrows(SQLException.class,
                 ".*Illegal database URL, the option 'loadBalanceConnectionGroup' cannot be set in 'jdbc:mysql:replication:' connections\\.",
                 () -> getUnreliableReplicationConnection(new String[] { "primary", "secondary" }, props));
+    }
+
+    /**
+     * Tests fix for Bug#62693 (Bug#16722068), XAConnection savepoint capability.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug62693() throws Exception {
+        MysqlXADataSource xaDS = new MysqlXADataSource();
+        xaDS.setUrl(dbUrl);
+        xaDS.getStringProperty(PropertyKey.sslMode.getKeyName()).setValue("DISABLED");
+        xaDS.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
+
+        XAConnection testXaCon = xaDS.getXAConnection();
+        XAResource testXaRes = testXaCon.getXAResource();
+
+        try (Connection testConn = testXaCon.getConnection()) {
+            // Without an active global transaction.
+            testConn.setAutoCommit(false);
+            Savepoint sp = testConn.setSavepoint();
+            testConn.rollback(sp);
+            testConn.commit();
+            testConn.setAutoCommit(true);
+
+            // With an active global transaction.
+            Xid xid = new MysqlXid(new byte[] { 0x1 }, new byte[] { 0xf }, 0);
+            testXaRes.start(xid, XAResource.TMNOFLAGS);
+            testConn.setAutoCommit(false);
+            assertThrows(SQLException.class, "Can't call setSavepoint\\(\\) on an XAConnection associated with a global transaction", testConn::setSavepoint)
+                    .getMessage();
+            assertThrows(SQLException.class, "Can't call rollback\\(\\) on an XAConnection associated with a global transaction", () -> {
+                testConn.rollback();
+                return null;
+            });
+            assertThrows(SQLException.class, "Can't call commit\\(\\) on an XAConnection associated with a global transaction", () -> {
+                testConn.commit();
+                return null;
+            });
+            assertThrows(SQLException.class, "Can't set autocommit to 'true' on an XAConnection", () -> {
+                testConn.setAutoCommit(true);
+                return null;
+            });
+        }
     }
 
 }

@@ -145,8 +145,9 @@ public class MessagesTest {
         assertEquals("Can't use configured regex due to underlying exception.", Messages.getString("ResultSetScannerInterceptor.1"));
 
         assertEquals("Can't set autocommit to 'true' on an XAConnection", Messages.getString("ConnectionWrapper.0"));
-        assertEquals("Can't call commit() on an XAConnection associated with a global transaction", Messages.getString("ConnectionWrapper.1"));
-        assertEquals("Can't call rollback() on an XAConnection associated with a global transaction", Messages.getString("ConnectionWrapper.2"));
+        assertEquals("Can't call setSavepoint() on an XAConnection associated with a global transaction", Messages.getString("ConnectionWrapper.1"));
+        assertEquals("Can't call commit() on an XAConnection associated with a global transaction", Messages.getString("ConnectionWrapper.2"));
+        assertEquals("Can't call rollback() on an XAConnection associated with a global transaction", Messages.getString("ConnectionWrapper.3"));
 
         assertEquals("Illegal hour value '99' for java.sql.Time type in value 'Test'.", Messages.getString("TimeUtil.0", new Object[] { 99, "Test" }));
         assertEquals("Illegal minute value '99' for java.sql.Time type in value 'Test'.", Messages.getString("TimeUtil.1", new Object[] { 99, "Test" }));
