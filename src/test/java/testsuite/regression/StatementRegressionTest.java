@@ -14615,7 +14615,7 @@ public class StatementRegressionTest extends BaseTestCase {
         Path dataFilePath = Paths.get(filePrivDir, "testbug107543.dat");
         for (String statement : new String[] { "SELECT * FROM", "TABLE" }) {
             for (String outType : new String[] { "OUTFILE", "DUMPFILE" }) {
-                final String sql = statement + " testBug107543 INTO " + outType + " '" + dataFilePath.toString() + "'";
+                final String sql = statement + " testBug107543 INTO " + outType + " '" + dataFilePath.toString().replace("\\", "\\\\") + "'";
 
                 // Test 1: execute() with INTO [OUTFILE | DUMPFILE]
                 try {
