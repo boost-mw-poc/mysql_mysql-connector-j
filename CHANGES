@@ -3,6 +3,8 @@
 
 Version 9.5.0
 
+  - Fix for Bug#72036 (Bug#18403804), XA isSameRM() shouldn't take database into account.
+
   - Fix for Bug#62693 (Bug#16722068), XAConnection savepoint capability.
 
   - Fix for Bug#81128 (Bug#23146631), Master host list overwritten by slave list when loadBalanceConnectionGroup used.

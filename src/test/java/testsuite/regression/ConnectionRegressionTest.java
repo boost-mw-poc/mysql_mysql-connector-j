@@ -12582,4 +12582,40 @@ public class ConnectionRegressionTest extends BaseTestCase {
         }
     }
 
+    /**
+     * Tests fix for Bug#72036 (Bug#18403804), XA isSameRM() shouldn't take database into account.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug72036() throws Exception {
+        final String dbA = "testBug72036A";
+        final String dbB = "testBug72036B";
+        createDatabase(dbA);
+        createDatabase(dbB);
+
+        MysqlXADataSource xaDS = new MysqlXADataSource();
+        xaDS.getStringProperty(PropertyKey.sslMode.getKeyName()).setValue("DISABLED");
+        xaDS.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
+
+        xaDS.setUrl(getReplacedDbUrl(dbUrl, dbA));
+        XAConnection testXaConA1 = xaDS.getXAConnection();
+        XAResource testXaResA1 = testXaConA1.getXAResource();
+        assertEquals(dbA, testXaConA1.getConnection().getCatalog());
+
+        XAConnection testXaConA2 = xaDS.getXAConnection();
+        XAResource testXaResA2 = testXaConA2.getXAResource();
+        assertEquals(dbA, testXaConA2.getConnection().getCatalog());
+
+        assertTrue(testXaResA1.isSameRM(testXaResA2));
+
+        xaDS.setUrl(getReplacedDbUrl(dbUrl, dbB));
+        XAConnection testXaConB = xaDS.getXAConnection();
+        XAResource testXaResB = testXaConB.getXAResource();
+        assertEquals(dbB, testXaConB.getConnection().getCatalog());
+
+        assertTrue(testXaResA1.isSameRM(testXaResB));
+        assertTrue(testXaResA2.isSameRM(testXaResB));
+    }
+
 }

@@ -1417,38 +1417,21 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 return false;
             }
 
-            boolean directCompare = true;
-
             String otherHost = ((ConnectionImpl) otherConnection).origHostToConnectTo;
-            String otherOrigDatabase = ((ConnectionImpl) otherConnection).origHostInfo.getDatabase();
-            String otherCurrentDb = ((ConnectionImpl) otherConnection).database;
-
-            if (!StringUtils.nullSafeEqual(otherHost, this.origHostToConnectTo)) {
-                directCompare = false;
-            } else if (otherHost != null && otherHost.indexOf(',') == -1 && otherHost.indexOf(':') == -1) {
-                // need to check port numbers
-                directCompare = ((ConnectionImpl) otherConnection).origPortToConnectTo == this.origPortToConnectTo;
+            if (StringUtils.nullSafeEqual(otherHost, this.origHostToConnectTo)) {
+                return true;
             }
 
-            if (directCompare) {
-                if (!StringUtils.nullSafeEqual(otherOrigDatabase, this.origHostInfo.getDatabase())
-                        || !StringUtils.nullSafeEqual(otherCurrentDb, this.database)) {
-                    directCompare = false;
-                }
-            }
-
-            if (directCompare) {
+            if (otherHost != null && otherHost.indexOf(',') == -1 && otherHost.indexOf(':') == -1 && // need to check port numbers
+                    ((ConnectionImpl) otherConnection).origPortToConnectTo == this.origPortToConnectTo) {
                 return true;
             }
 
             // Has the user explicitly set a resourceId?
             String otherResourceId = ((ConnectionImpl) otherConnection).getPropertySet().getStringProperty(PropertyKey.resourceId).getValue();
             String myResourceId = this.propertySet.getStringProperty(PropertyKey.resourceId).getValue();
-
             if (otherResourceId != null || myResourceId != null) {
-                directCompare = StringUtils.nullSafeEqual(otherResourceId, myResourceId);
-
-                if (directCompare) {
+                if (StringUtils.nullSafeEqual(otherResourceId, myResourceId)) {
                     return true;
                 }
             }

@@ -44,7 +44,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +51,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLContext;
 
@@ -494,24 +494,18 @@ public abstract class BaseTestCase {
     }
 
     protected String getNoDbUrl(String url) throws SQLException {
+        return getReplacedDbUrl(url, "");
+    }
+
+    protected String getReplacedDbUrl(String url, String dbReplacement) throws SQLException {
         Properties props = getPropertiesFromUrl(ConnectionUrl.getConnectionUrlInstance(url, null));
         final String host = props.getProperty(PropertyKey.HOST.getKeyName(), "localhost");
         final String port = props.getProperty(PropertyKey.PORT.getKeyName(), "3306");
         props.remove(PropertyKey.DBNAME.getKeyName());
         removeHostRelatedProps(props);
 
-        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/?");
-
-        Enumeration<Object> keyEnum = props.keys();
-        while (keyEnum.hasMoreElements()) {
-            String key = (String) keyEnum.nextElement();
-            urlBuilder.append(key);
-            urlBuilder.append("=");
-            urlBuilder.append(props.get(key));
-            if (keyEnum.hasMoreElements()) {
-                urlBuilder.append("&");
-            }
-        }
+        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/").append(dbReplacement).append("?");
+        urlBuilder.append(props.stringPropertyNames().stream().map(k -> k + "=" + props.getProperty(k)).collect(Collectors.joining("&")));
         return urlBuilder.toString();
     }
 
