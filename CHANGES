@@ -1,6 +1,8 @@
 # Changelog
 # https://dev.mysql.com/doc/relnotes/connector-j/en/
 
+Version 9.6.0
+
 Version 9.5.0
 
   - Fix for Bug#72036 (Bug#18403804), XA isSameRM() shouldn't take database into account.
