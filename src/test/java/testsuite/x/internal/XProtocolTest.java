@@ -452,7 +452,7 @@ public class XProtocolTest extends InternalXBaseTestCase {
     public void testWarnings() {
         assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
 
-        this.protocol.send(this.messageBuilder.buildSqlStatement("explain select 1"), 0);
+        this.protocol.send(this.messageBuilder.buildSqlStatement("explain format=traditional select 1"), 0);
         this.protocol.readMetadata();
         this.protocol.drainRows();
         SqlResult res = this.protocol
