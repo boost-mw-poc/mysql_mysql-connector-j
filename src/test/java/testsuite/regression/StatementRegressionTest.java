@@ -14660,4 +14660,18 @@ public class StatementRegressionTest extends BaseTestCase {
         }
     }
 
+    /**
+     * Tests for Bug#119245 (Bug#38599240), Select into fix breaks queries with 'into' in them.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug119245() throws Exception {
+        createTable("testBug119245", "(preINTO INT, preINTOpos INT, INTOpos INT)");
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTO, preINTOpos, INTOpos FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTO FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTOpos FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTOpos FROM testBug119245").close());
+    }
+
 }

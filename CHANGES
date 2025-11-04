@@ -3,6 +3,8 @@
 
 Version 9.6.0
 
+  - Fix for Bug#119245 (Bug#38599240), Select into fix breaks queries with 'into' in them.
+
 Version 9.5.0
 
   - Fix for Bug#72036 (Bug#18403804), XA isSameRM() shouldn't take database into account.

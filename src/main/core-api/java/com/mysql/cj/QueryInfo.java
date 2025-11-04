@@ -889,8 +889,28 @@ public class QueryInfo {
      * @return {@code true} if the "INTO" clause is found in the input string from the given position, {@code false} otherwise
      */
     private static boolean containsIntoClause(int startingPosition, String searchIn, boolean noBackslashEscapes) {
-        return StringUtils.indexOfIgnoreCase(startingPosition, searchIn, INTO_CLAUSE, OPENING_MARKERS_WITH_PARENS, CLOSING_MARKERS_WITH_PARENS,
-                noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL) != -1;
+        StringInspector strInspector = new StringInspector(searchIn, startingPosition, OPENING_MARKERS_WITH_PARENS, CLOSING_MARKERS_WITH_PARENS,
+                OPENING_MARKERS, noBackslashEscapes ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
+
+        if (strInspector.indexOfNextAlphanumericChar() == -1) {
+            return false;
+        }
+
+        while (true) {
+            if (strInspector.matchesIgnoreCase(INTO_CLAUSE) != -1) { // "INTO" found; ensure it stands alone.
+                strInspector.incrementPosition(INTO_CLAUSE.length());
+                int nextPos = strInspector.getPosition();
+                if (strInspector.indexOfNextAlphanumericChar() != nextPos) {
+                    return true;
+                }
+            }
+            for (int prevPos = strInspector.getPosition(); prevPos == strInspector.getPosition();) { // Move to the start of the next keyword.
+                prevPos = strInspector.incrementPosition();
+                if (strInspector.indexOfNextAlphanumericChar() == -1) {
+                    return false;
+                }
+            }
+        }
     }
 
     /**
