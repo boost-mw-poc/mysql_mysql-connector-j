@@ -21,6 +21,7 @@
 package testsuite.regression;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -12616,6 +12617,22 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
         assertTrue(testXaResA1.isSameRM(testXaResB));
         assertTrue(testXaResA2.isSameRM(testXaResB));
+    }
+
+    /**
+     * Tests fix for Bug#119271 (Bug#38599496), Connector/J fails to accept legacy value zeroDateTimeBehavior=convertToNull on multi-host URLs (failover).
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug119271() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.zeroDateTimeBehavior.getKeyName(), "convertToNull");
+
+        assertDoesNotThrow(() -> getConnectionWithProps(props).close());
+        assertDoesNotThrow(() -> getFailoverConnection(props).close());
+        assertDoesNotThrow(() -> getLoadBalancedConnection(props).close());
+        assertDoesNotThrow(() -> getSourceReplicaReplicationConnection(props).close());
     }
 
 }

@@ -1196,6 +1196,15 @@ public class ConnectionUrlTest {
         connStr.add("jdbc:mysql://127.0.0.1:1234/db?key=value&zeroDateTimeBehavior=convertToNull");
         connStr.add("jdbc:mysql://(port=3306,user=root,password=pwd,zeroDateTimeBehavior=convertToNull)/test");
         connStr.add("jdbc:mysql://address=(port=3306)(user=root)(password=pwd)(zeroDateTimeBehavior=convertToNull)/test");
+        connStr.add("jdbc:mysql://onehost:1111,anotherhost:2222/db");
+        connStr.add("jdbc:mysql://onehost:1111,anotherhost:2222/db?key=value&zeroDateTimeBehavior=convertToNull");
+        connStr.add("jdbc:mysql://(host=onehost,port=1111,key=value,zeroDateTimeBehavior=convertToNull),anotherhost:2222/db");
+        connStr.add("jdbc:mysql:loadbalance://onehost:1111,anotherhost:2222/db");
+        connStr.add("jdbc:mysql:loadbalance://onehost:1111,anotherhost:2222/db?key=value&zeroDateTimeBehavior=convertToNull");
+        connStr.add("jdbc:mysql:loadbalance://(host=onehost,port=1111,key=value,zeroDateTimeBehavior=convertToNull),anotherhost:2222/db");
+        connStr.add("jdbc:mysql:replication://onehost:1111,anotherhost:2222/db");
+        connStr.add("jdbc:mysql:replication://onehost:1111,anotherhost:2222/db?key=value&zeroDateTimeBehavior=convertToNull");
+        connStr.add("jdbc:mysql:replication://(host=onehost,port=1111,key=value,zeroDateTimeBehavior=convertToNull),anotherhost:2222/db");
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.zeroDateTimeBehavior.getKeyName(), "convertToNull");
@@ -1203,6 +1212,8 @@ public class ConnectionUrlTest {
         for (String cs : connStr) {
             ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(cs, props);
             assertEquals(ZeroDatetimeBehavior.CONVERT_TO_NULL.name(), connUrl.getMainHost().getProperty(PropertyKey.zeroDateTimeBehavior.getKeyName()));
+            assertEquals(ZeroDatetimeBehavior.CONVERT_TO_NULL.name(),
+                    connUrl.getConnectionArgumentsAsProperties().getProperty(PropertyKey.zeroDateTimeBehavior.getKeyName()));
         }
     }
 

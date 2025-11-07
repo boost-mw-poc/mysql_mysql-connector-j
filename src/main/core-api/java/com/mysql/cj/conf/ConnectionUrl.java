@@ -371,6 +371,8 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         // Collect properties from additional sources.
         setupPropertiesTransformer();
         expandPropertiesFromConfigFiles(this.properties);
+        fixProtocolDependencies(this.properties);
+        replaceLegacyPropertyValues(this.properties);
         injectPerTypeProperties(this.properties);
     }
 
