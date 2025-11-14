@@ -104,8 +104,6 @@ public interface Protocol<M extends Message> {
 
     void afterHandshake();
 
-    void changeDatabase(String database);
-
     /**
      * Re-authenticates as the given user and password
      *

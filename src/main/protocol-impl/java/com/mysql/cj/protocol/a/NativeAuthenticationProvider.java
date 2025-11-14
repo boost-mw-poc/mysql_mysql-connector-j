@@ -524,12 +524,6 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
             throw ExceptionFactory.createException(WrongArgumentException.class,
                     Messages.getString("CommunicationsException.TooManyAuthenticationPluginNegotiations"), getExceptionInterceptor());
         }
-
-        this.protocol.afterHandshake();
-
-        if (!this.useConnectWithDb) {
-            this.protocol.changeDatabase(this.database);
-        }
     }
 
     private String getNthFactorPassword(int nthFactor) {
@@ -653,9 +647,9 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         String enc = serverSession.getCharsetSettings().getPasswordCharacterEncoding();
 
         NativePacketPayload last_sent = new NativePacketPayload(AUTH_411_OVERHEAD + 7 //
-                + 48                // passwordLength
-                + 3 * this.username.length() // userLength
-                + (this.useConnectWithDb ? 3 * this.database.length() : 1)   // databaseLength
+                + 48                                                       // passwordLength
+                + 3 * this.username.length()                               // userLength
+                + (this.useConnectWithDb ? 3 * this.database.length() : 1) // databaseLength
                 + 1);
         last_sent.writeInteger(IntegerDataType.INT1, NativeConstants.COM_CHANGE_USER);
 

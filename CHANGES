@@ -3,6 +3,9 @@
 
 Version 9.6.0
 
+  - Fix for Bug#113413 (Bug#36107426), Connection.changeUser cannot be done after DriverManager.loginTimeout elapses.
+    Thanks to Kazuhisa Kawashima for his contribution.
+
   - Fix for Bug#119271 (Bug#38599496), Connector/J fails to accept legacy value zeroDateTimeBehavior=convertToNull on multi-host URLs (failover).
 
   - Fix for Bug#119245 (Bug#38599240), Select into fix breaks queries with 'into' in them.

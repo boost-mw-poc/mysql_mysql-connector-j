@@ -973,12 +973,6 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
     }
 
     @Override
-    public void changeDatabase(String database) {
-        throw ExceptionFactory.createException(CJOperationNotSupportedException.class, "Not supported");
-        // TODO: Figure out how this is relevant for X Protocol client Session
-    }
-
-    @Override
     public boolean versionMeetsMinimum(int major, int minor, int subminor) {
         //TODO: expose this via ServerVersion so calls look like x.getServerVersion().meetsMinimum(major, minor, subminor)
         throw ExceptionFactory.createException(CJOperationNotSupportedException.class, "Not supported");

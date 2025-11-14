@@ -78,8 +78,8 @@ public class DebugBufferingPacketReader implements MessageReader<NativePacketHea
                 throw new IOException(Messages.getString("PacketReader.9", new Object[] { "-1", currPacketSeq }));
             }
 
-            if (currPacketSeq != -128 && prevPacketSeq != -1 && currPacketSeq != prevPacketSeq + 1) {
-                throw new IOException(Messages.getString("PacketReader.9", new Object[] { prevPacketSeq + 1, currPacketSeq }));
+            if (currPacketSeq != -128 && prevPacketSeq != -1 && (currPacketSeq < prevPacketSeq + 1 || currPacketSeq > prevPacketSeq + 2)) {
+                throw new IOException(Messages.getString("PacketReader.9", new Object[] { prevPacketSeq + 1, prevPacketSeq + 2, currPacketSeq }));
             }
 
         } else {

@@ -527,8 +527,7 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
         return this.serverSession;
     }
 
-    @Override
-    public void changeDatabase(String database) {
+    private void changeDatabase(String database) {
         if (database == null || database.length() == 0) {
             return;
         }
@@ -1280,10 +1279,13 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
     @Override
     public void changeUser(String user, String password, String database) {
         this.packetSequence = -1;
-        this.packetSender = this.packetSender.undecorateAll();
-        this.packetReader = this.packetReader.undecorateAll();
+        this.packetReader.resetMessageSequence();
 
         this.authProvider.changeUser(user, password, database);
+
+        if (this.propertySet.getBooleanProperty(PropertyKey.createDatabaseIfNotExist).getValue()) {
+            changeDatabase(database);
+        }
     }
 
     protected boolean useNanosForElapsedTime() {
@@ -1330,6 +1332,12 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
         beforeHandshake();
 
         this.authProvider.connect(user, password, database);
+
+        afterHandshake();
+
+        if (this.propertySet.getBooleanProperty(PropertyKey.createDatabaseIfNotExist).getValue()) {
+            changeDatabase(database);
+        }
     }
 
     protected boolean isDataAvailable() {
