@@ -14674,4 +14674,43 @@ public class StatementRegressionTest extends BaseTestCase {
         assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTOpos FROM testBug119245").close());
     }
 
+    /**
+     * Tests fix for Bug#118234 (Bug#37975837), A potential bugs in Mysql Connector/J.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug118234() throws Exception {
+        boolean rwBS = false;
+
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
+
+            for (int numQueries = 1; numQueries <= 5; numQueries++) { // Batch is rewritten as multi-query when batch size is above 4 queries.
+                String testCase = String.format("Case [rwBS: %s,  NumSelects: %d]", rwBS ? "Y" : "N", numQueries);
+
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    Statement testStmt = testConn.createStatement();
+                    testStmt.addBatch("SET @testBug118234 = 'Connector/J'");
+                    for (int i = 0; i < numQueries; i++) {
+                        testStmt.addBatch("SELECT 1");
+                    }
+                    assertThrows(testCase, BatchUpdateException.class,
+                            "Statement\\.executeUpdate\\(\\) or Statement\\.executeLargeUpdate\\(\\) cannot issue statements that produce result sets\\.",
+                            testStmt::executeBatch);
+
+                    this.rs = testStmt.executeQuery("SELECT @testBug118234");
+                    assertTrue(this.rs.next(), testCase);
+                    if (rwBS && numQueries >= 4) { // Entire rewritten batch fails.
+                        assertNull(this.rs.getString(1), testCase);
+                    } else {
+                        assertEquals("Connector/J", this.rs.getString(1), testCase);
+                    }
+                    assertFalse(this.rs.next(), testCase);
+                }
+            }
+        } while (rwBS = !rwBS);
+    }
+
 }

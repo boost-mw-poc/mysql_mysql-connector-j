@@ -907,12 +907,10 @@ public class StatementImpl implements JdbcStatement {
 
                         if (batchedArgs != null) {
                             int nbrCommands = batchedArgs.size();
-
-                            this.batchedGeneratedKeys = new ArrayList<>(batchedArgs.size());
+                            this.batchedGeneratedKeys = new ArrayList<>(nbrCommands);
 
                             if (this.rewriteBatchedStatements.getValue() && nbrCommands > 4) {
-                                boolean multiQueriesEnabled = locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.allowMultiQueries).getValue();
-                                return executeBatchUsingMultiQueries(multiQueriesEnabled, nbrCommands, individualStatementTimeout);
+                                return executeBatchUsingMultiQueries(individualStatementTimeout);
                             }
 
                             timeoutTask = startQueryTimer(this, individualStatementTimeout);
@@ -1014,10 +1012,6 @@ public class StatementImpl implements JdbcStatement {
     /**
      * Rewrites batch into a single query to send to the server. This method will constrain each batch to be shorter than max_allowed_packet on the server.
      *
-     * @param multiQueriesEnabled
-     *            is multi-queries syntax allowed?
-     * @param nbrCommands
-     *            number of queries in a batch
      * @param individualStatementTimeout
      *            timeout for a single query in a batch
      *
@@ -1025,23 +1019,23 @@ public class StatementImpl implements JdbcStatement {
      * @throws SQLException
      *             if a database access error occurs or this method is called on a closed PreparedStatement
      */
-    private long[] executeBatchUsingMultiQueries(boolean multiQueriesEnabled, int nbrCommands, long individualStatementTimeout) throws SQLException {
+    private long[] executeBatchUsingMultiQueries(long individualStatementTimeout) throws SQLException {
         JdbcConnection locallyScopedConn = checkClosed();
 
         Lock connectionLock = locallyScopedConn.getConnectionLock();
         connectionLock.lock();
         try {
+            boolean multiQueriesEnabled = locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.allowMultiQueries).getValue();
             if (!multiQueriesEnabled) {
-                this.session.enableMultiQueries();
+                this.session.enableMultiQueries(); // Temporarily enable multi-queries.
             }
 
             java.sql.Statement batchStmt = null;
-
             CancelQueryTask timeoutTask = null;
-
             try {
+                List<Object> batchedArgs = this.query.getBatchedArgs();
+                int nbrCommands = batchedArgs.size();
                 long[] updateCounts = new long[nbrCommands];
-
                 for (int i = 0; i < nbrCommands; i++) {
                     updateCounts[i] = Statement.EXECUTE_FAILED;
                 }
@@ -1074,14 +1068,17 @@ public class StatementImpl implements JdbcStatement {
                 SQLException sqlEx = null;
 
                 int argumentSetsInBatchSoFar = 0;
-
+                boolean batchContainsResultSetProducingQuery = false;
                 for (commandIndex = 0; commandIndex < nbrCommands; commandIndex++) {
                     String nextQuery = (String) this.query.getBatchedArgs().get(commandIndex);
 
                     if (queryBuf.length() > 0 && ((queryBuf.length() + nextQuery.length()) * numberOfBytesPerChar + 1 /* for semicolon */
                             + NativeConstants.HEADER_LENGTH) * escapeAdjust + 32 > this.maxAllowedPacket.getValue()) {
                         try {
-                            batchStmt.execute(queryBuf.toString(), java.sql.Statement.RETURN_GENERATED_KEYS);
+                            if (batchContainsResultSetProducingQuery) {
+                                throw SQLError.createSQLException(Messages.getString("Statement.46"), "01S03", getExceptionInterceptor());
+                            }
+                            batchStmt.executeUpdate(queryBuf.toString(), java.sql.Statement.RETURN_GENERATED_KEYS);
                         } catch (SQLException ex) {
                             sqlEx = handleExceptionForBatch(commandIndex, argumentSetsInBatchSoFar, updateCounts, ex);
                         }
@@ -1090,8 +1087,10 @@ public class StatementImpl implements JdbcStatement {
 
                         queryBuf = new StringBuilder();
                         argumentSetsInBatchSoFar = 0;
+                        batchContainsResultSetProducingQuery = false;
                     }
 
+                    batchContainsResultSetProducingQuery = batchContainsResultSetProducingQuery || !isNonResultSetProducingQuery(nextQuery);
                     queryBuf.append(nextQuery);
                     queryBuf.append(";");
                     argumentSetsInBatchSoFar++;
@@ -1099,7 +1098,10 @@ public class StatementImpl implements JdbcStatement {
 
                 if (queryBuf.length() > 0) {
                     try {
-                        batchStmt.execute(queryBuf.toString(), java.sql.Statement.RETURN_GENERATED_KEYS);
+                        if (batchContainsResultSetProducingQuery) {
+                            throw SQLError.createSQLException(Messages.getString("Statement.46"), "01S03", getExceptionInterceptor());
+                        }
+                        batchStmt.executeUpdate(queryBuf.toString(), java.sql.Statement.RETURN_GENERATED_KEYS);
                     } catch (SQLException ex) {
                         sqlEx = handleExceptionForBatch(commandIndex - 1, argumentSetsInBatchSoFar, updateCounts, ex);
                     }
