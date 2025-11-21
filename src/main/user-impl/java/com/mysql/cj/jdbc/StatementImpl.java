@@ -478,6 +478,8 @@ public class StatementImpl implements JdbcStatement {
                 this.generatedKeysResults.doClose(CloseOption.IMPLICIT);
             }
             closeAllOpenResults();
+            this.results = null;
+            this.generatedKeysResults = null;
         }
     }
 
@@ -1060,7 +1062,6 @@ public class StatementImpl implements JdbcStatement {
                 int escapeAdjust = 1;
 
                 batchStmt.setEscapeProcessing(this.doEscapeProcessing);
-
                 if (this.doEscapeProcessing) {
                     escapeAdjust = 2; // We assume packet _could_ grow by this amount, as we're not sure how big statement will end up after escape processing
                 }
@@ -1143,6 +1144,7 @@ public class StatementImpl implements JdbcStatement {
         connectionLock.lock();
         try {
             updateCounts[updateCountCounter++] = batchedStatement.getLargeUpdateCount();
+            this.updateCount = batchedStatement.getLargeUpdateCount();
 
             boolean doGenKeys = this.batchedGeneratedKeys != null;
 
@@ -1158,6 +1160,7 @@ public class StatementImpl implements JdbcStatement {
 
             while (batchedStatement.getMoreResults() || batchedStatement.getLargeUpdateCount() != -1) {
                 updateCounts[updateCountCounter++] = batchedStatement.getLargeUpdateCount();
+                this.updateCount = batchedStatement.getLargeUpdateCount();
 
                 if (doGenKeys) {
                     long generatedKey = batchedStatement.getLastInsertID();
@@ -1643,31 +1646,6 @@ public class StatementImpl implements JdbcStatement {
         connectionLock.lock();
         try {
             return this.lastInsertId;
-        } finally {
-            connectionLock.unlock();
-        }
-    }
-
-    /**
-     * getLongUpdateCount returns the current result as an update count, if the
-     * result is a ResultSet or there are no more results, -1 is returned. It
-     * should only be called once per result.
-     *
-     * <p>
-     * This method returns longs as MySQL server returns 64-bit values for update counts
-     * </p>
-     *
-     * @return the current update count.
-     */
-    public long getLongUpdateCount() {
-        Lock connectionLock = checkClosed().getConnectionLock();
-        connectionLock.lock();
-        try {
-            if (this.results == null || this.results.hasRows()) {
-                return -1;
-            }
-
-            return this.updateCount;
         } finally {
             connectionLock.unlock();
         }
@@ -2349,11 +2327,11 @@ public class StatementImpl implements JdbcStatement {
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
-            if (this.results == null || this.results.hasRows()) {
-                return -1;
+            if (this.results != null) {
+                return this.results.hasRows() ? -1 : this.results.getUpdateCount();
             }
 
-            return this.results.getUpdateCount();
+            return this.updateCount;
         } finally {
             connectionLock.unlock();
         }

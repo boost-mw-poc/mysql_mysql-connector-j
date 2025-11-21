@@ -7116,9 +7116,7 @@ public class StatementRegressionTest extends BaseTestCase {
         String testStep;
         ResultSet testResultSet1, testResultSet2, testResultSet3;
 
-        // We are testing against code that was compiled with Java 6, so methods isCloseOnCompletion() and
-        // closeOnCompletion() aren't available in the Statement interface. We need to test directly our implementations.
-        StatementImpl testStatement = null;
+        Statement testStatement = null;
         PreparedStatement testPrepStatement = null;
         CallableStatement testCallStatement = null;
 
@@ -7132,7 +7130,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // ResultSets should be closed when owning Statement is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
 
         assertFalse(testStatement.isCloseOnCompletion(), testStep + ".ST:0. Statement.isCloseOnCompletion(): false by default.");
         assertFalse(testStatement.isClosed(), testStep + ".ST:0. Statement.isClosed(): false.");
@@ -7192,7 +7190,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7212,7 +7210,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close, keeping statement open, when following with an executeBatch()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7229,7 +7227,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close keeping statement open, when following with an executeUpdate()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7268,7 +7266,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 2: Multiple ResultSets, sequentially (connection without properties)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7304,7 +7302,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         assertTrue(testStatement.execute("CALL testBug68916_proc"), testStep + ".ST:3. There should be some ResultSets.");
@@ -7373,7 +7371,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 4: Generated Keys ResultSet (connection without properties)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (1), (2), (3)", Statement.RETURN_GENERATED_KEYS);
@@ -7390,7 +7388,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:4. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test again and combine with simple query
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (4), (5), (6)", Statement.RETURN_GENERATED_KEYS);
@@ -7416,10 +7414,7 @@ public class StatementRegressionTest extends BaseTestCase {
         String testStep;
         ResultSet testResultSet1, testResultSet2, testResultSet3;
 
-        // We are testing against code that was compiled with Java 6, so methods isCloseOnCompletion() and
-        // closeOnCompletion() aren't available in the Statement interface. We need to test directly our
-        // implementations.
-        StatementImpl testStatement = null;
+        Statement testStatement = null;
         PreparedStatement testPrepStatement = null;
         CallableStatement testCallStatement = null;
 
@@ -7434,7 +7429,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // ResultSets should stay open when owning Statement is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
 
         assertFalse(testStatement.isCloseOnCompletion(), testStep + ".ST:0. Statement.isCloseOnCompletion(): false dy default.");
         assertFalse(testStatement.isClosed(), testStep + ".ST:0. Statement.isClosed(): false.");
@@ -7494,7 +7489,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7514,7 +7509,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close keeping statement open, when following with an executeBatch()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7531,7 +7526,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close keeping statement open, when following with an executeUpdate()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7570,7 +7565,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 2: Multiple ResultSets, sequentially (holdResultsOpenOverStatementClose=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7614,7 +7609,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         assertTrue(testStatement.execute("CALL testBug68916_proc"), testStep + ".ST:3. There should be some ResultSets.");
@@ -7683,7 +7678,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 4: Generated Keys ResultSet (holdResultsOpenOverStatementClose=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (1), (2), (3)", Statement.RETURN_GENERATED_KEYS);
@@ -7700,7 +7695,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:4. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test again and combine with simple query
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (4), (5), (6)", Statement.RETURN_GENERATED_KEYS);
@@ -7734,10 +7729,7 @@ public class StatementRegressionTest extends BaseTestCase {
         String testStep;
         ResultSet testResultSet1, testResultSet2, testResultSet3;
 
-        // We are testing against code that was compiled with Java 6, so methods isCloseOnCompletion() and
-        // closeOnCompletion() aren't available in the Statement interface. We need to test directly our
-        // implementations.
-        StatementImpl testStatement = null;
+        Statement testStatement = null;
         PreparedStatement testPrepStatement = null;
         CallableStatement testCallStatement = null;
 
@@ -7752,7 +7744,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // ResultSets should stay open when owning Statement is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
 
         assertFalse(testStatement.isCloseOnCompletion(), testStep + ".ST:0. Statement.isCloseOnCompletion(): false by default.");
         assertFalse(testStatement.isClosed(), testStep + ".ST:0. Statement.isClosed(): false.");
@@ -7812,7 +7804,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement, although using closeOnCompletion, shouldn't be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7832,7 +7824,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertFalse(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): false when last ResultSet is closed.");
 
         // test implicit resultset (not) close, keeping statement open, when following with an executeBatch()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7849,7 +7841,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertFalse(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): false when last ResultSet is closed.");
 
         // test implicit resultset (not) close keeping statement open, when following with an executeUpdate()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7888,7 +7880,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 2: Multiple ResultSets, sequentially (dontTrackOpenResources=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -7932,7 +7924,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement, although using closeOnCompletion, shouldn't be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         assertTrue(testStatement.execute("CALL testBug68916_proc"), testStep + ".ST:3. There should be some ResultSets.");
@@ -8021,7 +8013,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 4: Generated Keys ResultSet (dontTrackOpenResources=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (1), (2), (3)", Statement.RETURN_GENERATED_KEYS);
@@ -8038,7 +8030,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertFalse(testStatement.isClosed(), testStep + ".ST:4. Statement.isClosed(): false when last ResultSet is closed.");
 
         // test again and combine with simple query
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (4), (5), (6)", Statement.RETURN_GENERATED_KEYS);
@@ -8072,10 +8064,7 @@ public class StatementRegressionTest extends BaseTestCase {
         String testStep;
         ResultSet testResultSet1, testResultSet2, testResultSet3;
 
-        // We are testing against code that was compiled with Java 6, so methods isCloseOnCompletion() and
-        // closeOnCompletion() aren't available in the Statement interface. We need to test directly our
-        // implementations.
-        StatementImpl testStatement = null;
+        Statement testStatement = null;
         PreparedStatement testPrepStatement = null;
         CallableStatement testCallStatement = null;
 
@@ -8090,7 +8079,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // ResultSets should be closed when owning Statement is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
 
         assertFalse(testStatement.isCloseOnCompletion(), testStep + ".ST:0. Statement.isCloseOnCompletion(): false by default.");
         assertFalse(testStatement.isClosed(), testStep + ".ST:0. Statement.isClosed(): false.");
@@ -8150,7 +8139,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -8170,7 +8159,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close, keeping statement open, when following with an executeBatch()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -8187,7 +8176,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:1. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test implicit resultset close keeping statement open, when following with an executeUpdate()
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -8226,7 +8215,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 2: Multiple ResultSets, sequentially (allowMultiQueries=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1");
@@ -8264,7 +8253,7 @@ public class StatementRegressionTest extends BaseTestCase {
          */
         // **testing Statement**
         // Statement using closeOnCompletion should be closed when last ResultSet is closed
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testResultSet1 = testStatement.executeQuery("SELECT 1; SELECT 2; SELECT 3");
@@ -8332,7 +8321,7 @@ public class StatementRegressionTest extends BaseTestCase {
         /*
          * SUB-STEP 4: Generated Keys ResultSet (allowMultiQueries=true)
          */
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (1), (2), (3); INSERT INTO testBug68916_tbl (fld2) VALUES (4), (5), (6)",
@@ -8350,7 +8339,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertTrue(testStatement.isClosed(), testStep + ".ST:4. Statement.isClosed(): true when last ResultSet is closed.");
 
         // test again and combine with simple query
-        testStatement = (StatementImpl) testConnection.createStatement();
+        testStatement = testConnection.createStatement();
         testStatement.closeOnCompletion();
 
         testStatement.executeUpdate("INSERT INTO testBug68916_tbl (fld2) VALUES (4), (5), (6)", Statement.RETURN_GENERATED_KEYS);
@@ -8381,8 +8370,7 @@ public class StatementRegressionTest extends BaseTestCase {
         CompletionService<String> complService = new ExecutorCompletionService<>(executor);
 
         String[] connectionProperties = new String[] { "", "holdResultsOpenOverStatementClose=true", "dontTrackOpenResources=true" };
-        // overridesCloseOnCompletion[n] refers to the effect of connectionProperties[n] on
-        // Statement.closeOnCompletion()
+        // overridesCloseOnCompletion[n] refers to the effect of connectionProperties[n] on Statement.closeOnCompletion()
         boolean[] overridesCloseOnCompletion = new boolean[] { false, false, true };
         String[] sampleQueries = new String[] { "SELECT * FROM mysql.help_topic", "SELECT SLEEP(1)",
                 "SELECT * FROM mysql.time_zone tz INNER JOIN mysql.time_zone_name tzn ON tz.time_zone_id = tzn.time_zone_id "
@@ -14709,6 +14697,53 @@ public class StatementRegressionTest extends BaseTestCase {
                     }
                     assertFalse(this.rs.next(), testCase);
                 }
+            }
+        } while (rwBS = !rwBS);
+    }
+
+    /**
+     * Tests fix for Bug#113336 (Bug#36080226), Inconsistent getUpdateCount() Behavior with allowMultiQueries.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug113336() throws Exception {
+        createTable("testBug113336", "(id INT PRIMARY KEY, txt VARCHAR(100))");
+
+        boolean rwBS = false;
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "true");
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
+            try (Connection testConn = getConnectionWithProps(props)) {
+                int updCount;
+                int[] updCounts;
+
+                Statement testStmt = testConn.createStatement();
+                testStmt.addBatch("INSERT INTO testBug113336 VALUES (1, 'Data1')");
+                testStmt.addBatch("INSERT INTO testBug113336 VALUES (2, 'Data2'), (3, 'Data3')");
+                updCounts = testStmt.executeBatch();
+                assertArrayEquals(new int[] { 1, 2 }, updCounts);
+                assertEquals(2, testStmt.getUpdateCount());
+
+                updCount = testStmt.executeUpdate("UPDATE testBug113336 SET txt=UPPER(txt) WHERE id=1; DELETE FROM testBug113336 WHERE id = 0; "
+                        + "UPDATE testBug113336 SET txt=LOWER(txt) WHERE id >= 2"); // UpdateCount: {1, 0, 2}
+                // It might be that the right updateCount should be 2 (the update count from the last query), but this is not how it currently works.
+                assertEquals(1, updCount);
+                assertEquals(1, testStmt.getUpdateCount());
+
+                testStmt.addBatch("UPDATE testBug113336 SET txt=UPPER(txt) WHERE id <= 2");
+                testStmt.addBatch("DELETE FROM testBug113336 WHERE id = 1");
+                testStmt.addBatch("INSERT INTO testBug113336 VALUES (4, 'Data4')");
+                testStmt.addBatch("DELETE FROM testBug113336 WHERE id <= 3");
+                testStmt.addBatch("INSERT INTO testBug113336 VALUES (5, 'Data5'), (6, 'Data6'), (7, 'Data7')");
+                updCounts = testStmt.executeBatch();
+                assertArrayEquals(new int[] { 2, 1, 1, 2, 3 }, updCounts);
+                assertEquals(3, testStmt.getUpdateCount());
+
+                updCount = testStmt.executeUpdate("TRUNCATE TABLE testBug113336");
+                assertEquals(0, updCount);
+                assertEquals(0, testStmt.getUpdateCount());
             }
         } while (rwBS = !rwBS);
     }
