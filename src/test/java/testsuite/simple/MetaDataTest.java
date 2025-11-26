@@ -468,11 +468,11 @@ public class MetaDataTest extends BaseTestCase {
 
                     if (dbMapsToSchema) {
                         String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
-                        this.rs = dbmd.getPrimaryKeys("", dbPattern, "multikey"); //metaData.getIndexInfo(null, dbPattern, "t1", false, true);
+                        this.rs = dbmd.getPrimaryKeys("", dbPattern, "multikey");
                         assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
                     } else {
                         String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
-                        this.rs = dbmd.getPrimaryKeys(dbPattern, null, "multikey"); //metaData.getIndexInfo(dbPattern, null, "t1", false, true);
+                        this.rs = dbmd.getPrimaryKeys(dbPattern, null, "multikey");
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                     }
 
@@ -687,10 +687,10 @@ public class MetaDataTest extends BaseTestCase {
 
     @Test
     public void testResultSetMetaDataMethods() throws Exception {
-        createTable("t1",
+        createTable("testResultSetMetaDataMethods",
                 "(c1 char(1) CHARACTER SET latin7 COLLATE latin7_general_cs, c2 char(10) CHARACTER SET latin7 COLLATE latin7_general_ci, g1 GEOMETRY)");
 
-        this.rs = this.stmt.executeQuery("SELECT c1 as QQQ, c2, g1 FROM t1");
+        this.rs = this.stmt.executeQuery("SELECT c1 as QQQ, c2, g1 FROM testResultSetMetaDataMethods");
 
         assertThrows(SQLException.class, "Column index out of range.", new Callable<Void>() {
 
@@ -732,7 +732,7 @@ public class MetaDataTest extends BaseTestCase {
         props.setProperty(PropertyKey.useOldAliasMetadataBehavior.getKeyName(), "true");
         Connection con = getConnectionWithProps(props);
 
-        this.rs = con.createStatement().executeQuery("SELECT c1 as QQQ, g1 FROM t1");
+        this.rs = con.createStatement().executeQuery("SELECT c1 as QQQ, g1 FROM testResultSetMetaDataMethods");
         assertEquals("QQQ", this.rs.getMetaData().getColumnLabel(1));
         assertEquals("QQQ", this.rs.getMetaData().getColumnName(1));
     }
@@ -744,7 +744,7 @@ public class MetaDataTest extends BaseTestCase {
      */
     @Test
     public void testGetPrimaryKeysUsingInfoShcema() throws Exception {
-        createTable("t1", "(c1 int(1) primary key)");
+        createTable("testGetPrimaryKeysUsingInfoShcema", "(c1 int(1) primary key)");
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
@@ -753,9 +753,9 @@ public class MetaDataTest extends BaseTestCase {
         try {
             conn1 = getConnectionWithProps(props);
             DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getPrimaryKeys(null, null, "t1");
+            this.rs = metaData.getPrimaryKeys(null, null, "testGetPrimaryKeysUsingInfoShcema");
             this.rs.next();
-            assertEquals("t1", this.rs.getString("TABLE_NAME"));
+            assertEquals("testGetPrimaryKeysUsingInfoShcema", this.rs.getString("TABLE_NAME"));
             assertEquals("c1", this.rs.getString("COLUMN_NAME"));
         } finally {
             if (conn1 != null) {
@@ -766,8 +766,8 @@ public class MetaDataTest extends BaseTestCase {
 
     @Test
     public void testGetIndexInfo() throws Exception {
-        createTable("t1", "(c1 int(1))");
-        this.stmt.executeUpdate("CREATE INDEX index1 ON t1 (c1)");
+        createTable("testGetIndexInfo", "(c1 int(1))");
+        this.stmt.executeUpdate("CREATE INDEX index1 ON testGetIndexInfo (c1)");
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
@@ -785,16 +785,16 @@ public class MetaDataTest extends BaseTestCase {
 
                     if (dbMapsToSchema) {
                         String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
-                        this.rs = metaData.getIndexInfo(null, dbPattern, "t1", false, true);
+                        this.rs = metaData.getIndexInfo(null, dbPattern, "testGetIndexInfo", false, true);
                         assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
                     } else {
                         String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
-                        this.rs = metaData.getIndexInfo(dbPattern, null, "t1", false, true);
+                        this.rs = metaData.getIndexInfo(dbPattern, null, "testGetIndexInfo", false, true);
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                     }
 
-                    this.rs = dbMapsToSchema ? metaData.getIndexInfo(null, testConn.getCatalog(), "t1", false, true)
-                            : metaData.getIndexInfo(testConn.getCatalog(), null, "t1", false, true);
+                    this.rs = dbMapsToSchema ? metaData.getIndexInfo(null, testConn.getCatalog(), "testGetIndexInfo", false, true)
+                            : metaData.getIndexInfo(testConn.getCatalog(), null, "testGetIndexInfo", false, true);
                     this.rs.next();
                     if (dbMapsToSchema) {
                         assertEquals("def", this.rs.getString("TABLE_CAT"));
@@ -803,7 +803,7 @@ public class MetaDataTest extends BaseTestCase {
                         assertEquals(lowerCaseIds ? this.dbName.toLowerCase() : this.dbName, this.rs.getString("TABLE_CAT"));
                         assertNull(this.rs.getString("TABLE_SCHEM"));
                     }
-                    assertEquals("t1", this.rs.getString("TABLE_NAME"));
+                    assertEquals("testGetIndexInfo", this.rs.getString("TABLE_NAME"));
                     assertTrue(this.rs.getBoolean("NON_UNIQUE"));
                     assertNull(this.rs.getString("INDEX_QUALIFIER"));
                     assertEquals("index1", this.rs.getString("INDEX_NAME"));
@@ -831,7 +831,7 @@ public class MetaDataTest extends BaseTestCase {
      */
     @Test
     public void testGetColumns() throws Exception {
-        createTable("t1", "(c1 char(1))");
+        createTable("testGetColumns", "(c1 char(1))");
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
@@ -846,7 +846,7 @@ public class MetaDataTest extends BaseTestCase {
                     testConn = getConnectionWithProps(props);
                     DatabaseMetaData metaData = testConn.getMetaData();
                     boolean lowerCaseIds = metaData.storesLowerCaseIdentifiers();
-                    this.rs = metaData.getColumns(null, null, "t1", null);
+                    this.rs = metaData.getColumns(null, null, "testGetColumns", null);
                     this.rs.next();
 
                     if (dbMapsToSchema) {
@@ -857,18 +857,18 @@ public class MetaDataTest extends BaseTestCase {
                         assertNull(this.rs.getString("TABLE_SCHEM"));
                     }
 
-                    assertEquals("t1", this.rs.getString("TABLE_NAME"));
+                    assertEquals("testGetColumns", this.rs.getString("TABLE_NAME"));
                     assertEquals("c1", this.rs.getString("COLUMN_NAME"));
                     assertEquals("CHAR", this.rs.getString("TYPE_NAME"));
                     assertEquals("1", this.rs.getString("COLUMN_SIZE"));
 
                     if (dbMapsToSchema) {
                         String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
-                        this.rs = metaData.getColumns(null, dbPattern, "t1", null);
+                        this.rs = metaData.getColumns(null, dbPattern, "testGetColumns", null);
                         assertTrue(this.rs.next(), "Schema pattern " + dbPattern + " should be recognized.");
                     } else {
                         String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
-                        this.rs = metaData.getColumns(dbPattern, null, "t1", null);
+                        this.rs = metaData.getColumns(dbPattern, null, "testGetColumns", null);
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                     }
 
@@ -888,12 +888,12 @@ public class MetaDataTest extends BaseTestCase {
      */
     @Test
     public void testGetTablesUsingInfoSchema() throws Exception {
-        createTable("`t1-1`", "(c1 char(1))");
-        createTable("`t1-2`", "(c1 char(1))");
-        createTable("`t2`", "(c1 char(1))");
+        createTable("`testGetTablesUsingInfoSchema1-1`", "(c1 char(1))");
+        createTable("`testGetTablesUsingInfoSchema1-2`", "(c1 char(1))");
+        createTable("`testGetTablesUsingInfoSchema2`", "(c1 char(1))");
         Set<String> tableNames = new HashSet<>();
-        tableNames.add("t1-1");
-        tableNames.add("t1-2");
+        tableNames.add("testGetTablesUsingInfoSchema1-1");
+        tableNames.add("testGetTablesUsingInfoSchema1-2");
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
@@ -903,7 +903,7 @@ public class MetaDataTest extends BaseTestCase {
             conn1 = getConnectionWithProps(props);
             DatabaseMetaData metaData = conn1.getMetaData();
             // pattern matching for table name
-            this.rs = metaData.getTables(this.dbName, null, "t1-_", null);
+            this.rs = metaData.getTables(this.dbName, null, "testGetTablesUsingInfoSchema1-_", null);
             while (this.rs.next()) {
                 assertTrue(tableNames.remove(this.rs.getString("TABLE_NAME")));
             }
@@ -917,9 +917,9 @@ public class MetaDataTest extends BaseTestCase {
 
     @Test
     public void testGetTables() throws Exception {
-        createTable("`t1-1`", "(c1 char(1)) COMMENT 'table1'");
-        createTable("`t1-2`", "(c1 char(1))");
-        createTable("`t2`", "(c1 char(1))");
+        createTable("`testGetTables1-1`", "(c1 char(1)) COMMENT 'table1'");
+        createTable("`testGetTables1-2`", "(c1 char(1))");
+        createTable("`testGetTables2`", "(c1 char(1))");
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
@@ -934,22 +934,22 @@ public class MetaDataTest extends BaseTestCase {
                     testConn = getConnectionWithProps(props);
                     DatabaseMetaData metaData = testConn.getMetaData();
 
-                    this.rs = metaData.getTables(null, null, "t1-_", null);
+                    this.rs = metaData.getTables(null, null, "testGetTables1-_", null);
                     testGetTables_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getTables(null, this.dbName.substring(0, 3) + "%", "t1-_", null);
+                    this.rs = metaData.getTables(null, this.dbName.substring(0, 3) + "%", "testGetTables1-_", null);
                     testGetTables_checkResult(useIS, dbMapsToSchema);
 
-                    this.rs = metaData.getTables(this.dbName, null, "t1-_", null);
+                    this.rs = metaData.getTables(this.dbName, null, "testGetTables1-_", null);
                     testGetTables_checkResult(useIS, dbMapsToSchema);
 
                     if (dbMapsToSchema) {
                         String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
-                        this.rs = metaData.getTables(null, dbPattern, "t1-_", null);
+                        this.rs = metaData.getTables(null, dbPattern, "testGetTables1-_", null);
                         assertTrue(this.rs.next(), "Schema pattern " + dbPattern + " should be recognized.");
                     } else {
                         String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
-                        this.rs = metaData.getTables(dbPattern, null, "t1-_", null);
+                        this.rs = metaData.getTables(dbPattern, null, "testGetTables1-_", null);
                         assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                     }
                 } finally {
@@ -972,7 +972,7 @@ public class MetaDataTest extends BaseTestCase {
             assertEquals(runningOnWindows ? this.dbName.toLowerCase() : this.dbName, this.rs.getString("TABLE_CAT"));
             assertNull(this.rs.getString("TABLE_SCHEM"));
         }
-        assertEquals("t1-1", this.rs.getString("TABLE_NAME"));
+        assertEquals("testGetTables1-1", this.rs.getString("TABLE_NAME"));
         assertEquals("TABLE", this.rs.getString("TABLE_TYPE"));
         assertEquals(useIS ? "table1" : "", this.rs.getString("REMARKS")); // Table comment is available only with I_S
         assertNull(this.rs.getString("TYPE_CAT"));
@@ -989,7 +989,7 @@ public class MetaDataTest extends BaseTestCase {
             assertEquals(runningOnWindows ? this.dbName.toLowerCase() : this.dbName, this.rs.getString("TABLE_CAT"));
             assertNull(this.rs.getString("TABLE_SCHEM"));
         }
-        assertEquals("t1-2", this.rs.getString("TABLE_NAME"));
+        assertEquals("testGetTables1-2", this.rs.getString("TABLE_NAME"));
         assertEquals("TABLE", this.rs.getString("TABLE_TYPE"));
         assertEquals("", this.rs.getString("REMARKS"));
         assertNull(this.rs.getString("TYPE_CAT"));
@@ -1030,7 +1030,7 @@ public class MetaDataTest extends BaseTestCase {
                 try {
                     testConn = getConnectionWithProps(props);
                     testStmt = testConn.createStatement();
-                    createTable("t1", "(c1 int)");
+                    createTable("testGetColumnPrivileges", "(c1 int)");
                     this.rs = testStmt.executeQuery("SELECT CURRENT_USER()");
                     this.rs.next();
                     String user = this.rs.getString(1);
@@ -1040,7 +1040,7 @@ public class MetaDataTest extends BaseTestCase {
                     userHostQuoted = "'" + userHost.get(0) + "'@'" + userHost.get(1) + "'";
 
                     try {
-                        testStmt.executeUpdate("GRANT update (c1) on t1 to " + userHostQuoted);
+                        testStmt.executeUpdate("GRANT update (c1) on testGetColumnPrivileges to " + userHostQuoted);
                         grantFailed = false;
                     } catch (SQLException sqlEx) {
                         fail("This testcase needs to be run with a URL that allows the user to issue GRANTs "
@@ -1051,7 +1051,7 @@ public class MetaDataTest extends BaseTestCase {
                     if (!grantFailed) {
                         DatabaseMetaData metaData = testConn.getMetaData();
                         boolean lowerCaseIds = metaData.storesLowerCaseIdentifiers();
-                        this.rs = metaData.getColumnPrivileges(null, null, "t1", null);
+                        this.rs = metaData.getColumnPrivileges(null, null, "testGetColumnPrivileges", null);
                         this.rs.next();
                         if (dbMapsToSchema) {
                             assertEquals("def", this.rs.getString("TABLE_CAT"));
@@ -1060,25 +1060,25 @@ public class MetaDataTest extends BaseTestCase {
                             assertEquals(lowerCaseIds ? this.dbName.toLowerCase() : this.dbName, this.rs.getString("TABLE_CAT"));
                             assertNull(this.rs.getString("TABLE_SCHEM"));
                         }
-                        assertEquals("t1", this.rs.getString("TABLE_NAME"));
+                        assertEquals("testGetColumnPrivileges", this.rs.getString("TABLE_NAME"));
                         assertEquals("c1", this.rs.getString("COLUMN_NAME"));
                         assertEquals(useIS ? userHostQuoted : userHost.get(0) + "@" + userHost.get(1), this.rs.getString("GRANTEE"));
                         assertEquals("UPDATE", this.rs.getString("PRIVILEGE"));
 
                         if (dbMapsToSchema) {
                             String dbPattern = testConn.getSchema().substring(0, testConn.getSchema().length() - 1) + "%";
-                            this.rs = metaData.getColumnPrivileges(null, dbPattern, "t1", null);
+                            this.rs = metaData.getColumnPrivileges(null, dbPattern, "testGetColumnPrivileges", null);
                             assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
                         } else {
                             String dbPattern = testConn.getCatalog().substring(0, testConn.getCatalog().length() - 1) + "%";
-                            this.rs = metaData.getColumnPrivileges(dbPattern, null, "t1", null);
+                            this.rs = metaData.getColumnPrivileges(dbPattern, null, "testGetColumnPrivileges", null);
                             assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                         }
                     }
                 } finally {
                     if (testStmt != null) {
                         if (!grantFailed) {
-                            testStmt.executeUpdate("REVOKE UPDATE (c1) ON t1 FROM " + userHostQuoted);
+                            testStmt.executeUpdate("REVOKE UPDATE (c1) ON testGetColumnPrivileges FROM " + userHostQuoted);
                         }
                         testStmt.close();
                     }
