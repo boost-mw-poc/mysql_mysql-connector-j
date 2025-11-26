@@ -14748,4 +14748,61 @@ public class StatementRegressionTest extends BaseTestCase {
         } while (rwBS = !rwBS);
     }
 
+    /**
+     * Tests fix for Bug#113130 (Bug#36043125), getGeneratedKeys() returns a zero resultset with non-key-generating statements.
+     *
+     * @throws SQLException
+     */
+    @Test
+    public void testBug113130() throws SQLException {
+        createTable("testBug113130NoAI", "(id INT PRIMARY KEY, data VARCHAR(100))");
+        createTable("testBug113130AI", "(id INT AUTO_INCREMENT PRIMARY KEY, data VARCHAR(100))");
+
+        boolean allowMQ = false;
+        boolean rwBS = false;
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), Boolean.toString(allowMQ));
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
+
+            for (int q = 1; q <= 5; q++) {
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    Statement testStmt = testConn.createStatement();
+                    for (int i = 1; i <= q; i++) {
+                        testStmt.addBatch(String.format("INSERT INTO testBug113130NoAI VALUES (%d, 'Data%d')", i, i));
+                    }
+                    int updCounts[] = testStmt.executeBatch();
+                    assertEquals(q, updCounts.length);
+                    for (int i = 0; i < q; i++) {
+                        assertEquals(1, updCounts[i]);
+                    }
+                    this.rs = testStmt.getGeneratedKeys();
+                    assertFalse(this.rs.next());
+                }
+
+                try (Connection testConn = getConnectionWithProps(props)) {
+                    Statement testStmt = testConn.createStatement();
+                    for (int i = 1; i <= q; i++) {
+                        testStmt.addBatch(String.format("INSERT INTO testBug113130AI (data) VALUES ('Data%d')", i));
+                    }
+                    int updCounts[] = testStmt.executeBatch();
+                    assertEquals(q, updCounts.length);
+                    for (int i = 0; i < q; i++) {
+                        assertEquals(1, updCounts[i]);
+                    }
+                    this.rs = testStmt.getGeneratedKeys();
+                    for (int i = 1; i <= q; i++) {
+                        assertTrue(this.rs.next());
+                        assertEquals(i, this.rs.getInt(1));
+                    }
+                    assertFalse(this.rs.next());
+                }
+
+                this.stmt.execute("TRUNCATE TABLE testBug113130NoAI");
+                this.stmt.execute("TRUNCATE TABLE testBug113130AI");
+                this.stmt.execute("ALTER TABLE testBug113130AI AUTO_INCREMENT = 1");
+            }
+        } while ((allowMQ = !allowMQ) || (rwBS = !rwBS));
+    }
+
 }

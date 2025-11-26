@@ -3,6 +3,8 @@
 
 Version 9.6.0
 
+  - Fix for Bug#113130 (Bug#36043125), getGeneratedKeys() returns a zero resultset with non-key-generating statements.
+
   - Fix for Bug#113336 (Bug#36080226), Inconsistent getUpdateCount() Behavior with allowMultiQueries.
 
   - Fix for Bug#118234 (Bug#37975837), A potential bugs in Mysql Connector/J.

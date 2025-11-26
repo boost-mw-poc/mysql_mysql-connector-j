@@ -1152,10 +1152,11 @@ public class StatementImpl implements JdbcStatement {
 
             if (doGenKeys) {
                 long generatedKey = batchedStatement.getLastInsertID();
-
-                row = new byte[1][];
-                row[0] = StringUtils.getBytes(Long.toString(generatedKey));
-                this.batchedGeneratedKeys.add(new ByteArrayRow(row, getExceptionInterceptor()));
+                if (generatedKey != 0) {
+                    row = new byte[1][];
+                    row[0] = StringUtils.getBytes(Long.toString(generatedKey));
+                    this.batchedGeneratedKeys.add(new ByteArrayRow(row, getExceptionInterceptor()));
+                }
             }
 
             while (batchedStatement.getMoreResults() || batchedStatement.getLargeUpdateCount() != -1) {
@@ -1164,10 +1165,11 @@ public class StatementImpl implements JdbcStatement {
 
                 if (doGenKeys) {
                     long generatedKey = batchedStatement.getLastInsertID();
-
-                    row = new byte[1][];
-                    row[0] = StringUtils.getBytes(Long.toString(generatedKey));
-                    this.batchedGeneratedKeys.add(new ByteArrayRow(row, getExceptionInterceptor()));
+                    if (generatedKey != 0) {
+                        row = new byte[1][];
+                        row[0] = StringUtils.getBytes(Long.toString(generatedKey));
+                        this.batchedGeneratedKeys.add(new ByteArrayRow(row, getExceptionInterceptor()));
+                    }
                 }
             }
 
@@ -1632,7 +1634,7 @@ public class StatementImpl implements JdbcStatement {
 
     /**
      * getLastInsertID returns the value of the auto_incremented key after an
-     * executeQuery() or excute() call.
+     * executeQuery() or execute() call.
      *
      * <p>
      * This gets around the un-threadsafe behavior of "select LAST_INSERT_ID()" which is tied to the Connection that created this Statement, and therefore could
