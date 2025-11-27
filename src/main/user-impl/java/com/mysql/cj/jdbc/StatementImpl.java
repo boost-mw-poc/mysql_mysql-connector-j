@@ -2013,7 +2013,7 @@ public class StatementImpl implements JdbcStatement {
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
-            if (rows < 0 && rows != Integer.MIN_VALUE || this.maxRows > 0 && rows > getMaxRows()) {
+            if (rows < 0 && rows != Integer.MIN_VALUE) {
                 throw SQLError.createSQLException(Messages.getString("Statement.7"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
                         getExceptionInterceptor());
             }
@@ -2345,7 +2345,7 @@ public class StatementImpl implements JdbcStatement {
         connectionLock.lock();
         try {
             if (max > MAX_ROWS || max < 0) {
-                throw SQLError.createSQLException(Messages.getString("Statement.15") + max + (max > MAX_ROWS ? " > " + MAX_ROWS : " < 0") + ".",
+                throw SQLError.createSQLException(Messages.getString("Statement.15") + " " + max + (max > MAX_ROWS ? " > " + MAX_ROWS : " < 0") + ".",
                         MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
             }
 

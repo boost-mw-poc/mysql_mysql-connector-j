@@ -117,8 +117,7 @@ public class StatementsTest extends BaseTestCase {
         accessorStmt.setEscapeProcessing(true);
         accessorStmt.setFetchDirection(java.sql.ResultSet.FETCH_FORWARD);
 
-        int fetchDirection = accessorStmt.getFetchDirection();
-        assertTrue(fetchDirection == java.sql.ResultSet.FETCH_FORWARD, "Set fetch direction != get fetch direction");
+        assertEquals(java.sql.ResultSet.FETCH_FORWARD, accessorStmt.getFetchDirection(), "Set fetch direction != get fetch direction");
 
         assertThrows("Should not be able to set fetch direction to invalid value", SQLException.class, () -> {
             accessorStmt.setFetchDirection(Integer.MAX_VALUE);
@@ -136,19 +135,11 @@ public class StatementsTest extends BaseTestCase {
         });
 
         int fetchSize = this.stmt.getFetchSize();
-
-        accessorStmt.setMaxRows(4);
-        assertThrows("Should not be able to set FetchSize > max rows", SQLException.class, () -> {
-            accessorStmt.setFetchSize(Integer.MAX_VALUE);
-            return null;
-        });
-
         assertThrows("Should not be able to set FetchSize < 0", SQLException.class, () -> {
             accessorStmt.setFetchSize(-2);
             return null;
         });
-
-        assertTrue(fetchSize == this.stmt.getFetchSize(), "Fetch size before invalid setFetchSize() calls should match fetch size now");
+        assertEquals(fetchSize, this.stmt.getFetchSize(), "Fetch size before invalid setFetchSize() calls should match fetch size now");
     }
 
     @Test

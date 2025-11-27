@@ -14712,6 +14712,8 @@ public class StatementRegressionTest extends BaseTestCase {
 
         boolean rwBS = false;
         do {
+            String testCase = String.format("Case [rwBS: %s]", rwBS ? "Y" : "N");
+
             Properties props = new Properties();
             props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "true");
             props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
@@ -14723,14 +14725,14 @@ public class StatementRegressionTest extends BaseTestCase {
                 testStmt.addBatch("INSERT INTO testBug113336 VALUES (1, 'Data1')");
                 testStmt.addBatch("INSERT INTO testBug113336 VALUES (2, 'Data2'), (3, 'Data3')");
                 updCounts = testStmt.executeBatch();
-                assertArrayEquals(new int[] { 1, 2 }, updCounts);
-                assertEquals(2, testStmt.getUpdateCount());
+                assertArrayEquals(new int[] { 1, 2 }, updCounts, testCase);
+                assertEquals(2, testStmt.getUpdateCount(), testCase);
 
                 updCount = testStmt.executeUpdate("UPDATE testBug113336 SET txt=UPPER(txt) WHERE id=1; DELETE FROM testBug113336 WHERE id = 0; "
                         + "UPDATE testBug113336 SET txt=LOWER(txt) WHERE id >= 2"); // UpdateCount: {1, 0, 2}
                 // It might be that the right updateCount should be 2 (the update count from the last query), but this is not how it currently works.
-                assertEquals(1, updCount);
-                assertEquals(1, testStmt.getUpdateCount());
+                assertEquals(1, updCount, testCase);
+                assertEquals(1, testStmt.getUpdateCount(), testCase);
 
                 testStmt.addBatch("UPDATE testBug113336 SET txt=UPPER(txt) WHERE id <= 2");
                 testStmt.addBatch("DELETE FROM testBug113336 WHERE id = 1");
@@ -14738,12 +14740,12 @@ public class StatementRegressionTest extends BaseTestCase {
                 testStmt.addBatch("DELETE FROM testBug113336 WHERE id <= 3");
                 testStmt.addBatch("INSERT INTO testBug113336 VALUES (5, 'Data5'), (6, 'Data6'), (7, 'Data7')");
                 updCounts = testStmt.executeBatch();
-                assertArrayEquals(new int[] { 2, 1, 1, 2, 3 }, updCounts);
-                assertEquals(3, testStmt.getUpdateCount());
+                assertArrayEquals(new int[] { 2, 1, 1, 2, 3 }, updCounts, testCase);
+                assertEquals(3, testStmt.getUpdateCount(), testCase);
 
                 updCount = testStmt.executeUpdate("TRUNCATE TABLE testBug113336");
-                assertEquals(0, updCount);
-                assertEquals(0, testStmt.getUpdateCount());
+                assertEquals(0, updCount, testCase);
+                assertEquals(0, testStmt.getUpdateCount(), testCase);
             }
         } while (rwBS = !rwBS);
     }
@@ -14761,6 +14763,8 @@ public class StatementRegressionTest extends BaseTestCase {
         boolean allowMQ = false;
         boolean rwBS = false;
         do {
+            String testCase = String.format("Case [allowMQ: %s, rwBS: %s]", allowMQ ? "Y" : "N", rwBS ? "Y" : "N");
+
             Properties props = new Properties();
             props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), Boolean.toString(allowMQ));
             props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), Boolean.toString(rwBS));
@@ -14772,12 +14776,12 @@ public class StatementRegressionTest extends BaseTestCase {
                         testStmt.addBatch(String.format("INSERT INTO testBug113130NoAI VALUES (%d, 'Data%d')", i, i));
                     }
                     int updCounts[] = testStmt.executeBatch();
-                    assertEquals(q, updCounts.length);
+                    assertEquals(q, updCounts.length, testCase);
                     for (int i = 0; i < q; i++) {
-                        assertEquals(1, updCounts[i]);
+                        assertEquals(1, updCounts[i], testCase);
                     }
                     this.rs = testStmt.getGeneratedKeys();
-                    assertFalse(this.rs.next());
+                    assertFalse(this.rs.next(), testCase);
                 }
 
                 try (Connection testConn = getConnectionWithProps(props)) {
@@ -14786,16 +14790,16 @@ public class StatementRegressionTest extends BaseTestCase {
                         testStmt.addBatch(String.format("INSERT INTO testBug113130AI (data) VALUES ('Data%d')", i));
                     }
                     int updCounts[] = testStmt.executeBatch();
-                    assertEquals(q, updCounts.length);
+                    assertEquals(q, updCounts.length, testCase);
                     for (int i = 0; i < q; i++) {
-                        assertEquals(1, updCounts[i]);
+                        assertEquals(1, updCounts[i], testCase);
                     }
                     this.rs = testStmt.getGeneratedKeys();
                     for (int i = 1; i <= q; i++) {
-                        assertTrue(this.rs.next());
-                        assertEquals(i, this.rs.getInt(1));
+                        assertTrue(this.rs.next(), testCase);
+                        assertEquals(i, this.rs.getInt(1), testCase);
                     }
-                    assertFalse(this.rs.next());
+                    assertFalse(this.rs.next(), testCase);
                 }
 
                 this.stmt.execute("TRUNCATE TABLE testBug113130NoAI");
@@ -14803,6 +14807,54 @@ public class StatementRegressionTest extends BaseTestCase {
                 this.stmt.execute("ALTER TABLE testBug113130AI AUTO_INCREMENT = 1");
             }
         } while ((allowMQ = !allowMQ) || (rwBS = !rwBS));
+    }
+
+    /**
+     * Tests fix for Bug#118002 (Bug#37843004), The setFetchSize() method in the Statement class may have a potential bug.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug118002() throws Exception {
+        assumeTrue(versionMeetsMinimum(8, 1), "MySQL 8.1+ is required to run this test.");
+
+        createTable("testBug118002", "(id INT)");
+        assertEquals(100, this.stmt.executeUpdate(
+                "INSERT INTO testBug118002 (id) WITH RECURSIVE nums AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM nums WHERE n < 100) SELECT n FROM nums"));
+
+        boolean useCF = false;
+        boolean useSPS = false;
+        do {
+            String testCase = String.format("Case [useCF: %s, useSPS: %s]", useCF ? "Y" : "N", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useCursorFetch.getKeyName(), Boolean.toString(useCF));
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+
+            try (Connection testConn = getConnectionWithProps(props)) {
+                Statement testStmt = testConn.createStatement();
+                testStmt.setMaxRows(10);
+                assertEquals(10, testStmt.getMaxRows(), testCase);
+                testStmt.setFetchSize(50);
+                assertEquals(50, testStmt.getFetchSize(), testCase);
+                this.rs = testStmt.executeQuery("SELECT * FROM testBug118002");
+                for (int i = 1; i <= 10; i++) {
+                    assertTrue(this.rs.next(), testCase);
+                    assertEquals(i, this.rs.getInt(1), testCase);
+                }
+                assertFalse(this.rs.next(), testCase);
+
+                PreparedStatement testPStmt = testConn.prepareStatement("SELECT * FROM testBug118002");
+                testPStmt.setMaxRows(12);
+                testPStmt.setFetchSize(60);
+                this.rs = testPStmt.executeQuery();
+                for (int i = 1; i <= 12; i++) {
+                    assertTrue(this.rs.next(), testCase);
+                    assertEquals(i, this.rs.getInt(1), testCase);
+                }
+                assertFalse(this.rs.next(), testCase);
+            }
+        } while ((useCF = !useCF) || (useSPS = !useSPS));
     }
 
 }

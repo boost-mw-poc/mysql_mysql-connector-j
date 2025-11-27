@@ -2095,9 +2095,9 @@ public class ResultSetImpl extends NativeResultset implements ResultSetInternalM
         Lock connectionLock = checkClosed().getConnectionLock();
         connectionLock.lock();
         try {
-            if (rows < 0 && rows != Integer.MIN_VALUE) { /* || rows > getMaxRows() */
-                throw SQLError.createSQLException(Messages.getString("ResultSet.Value_must_be_between_0_and_getMaxRows()_66"),
-                        MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT, getExceptionInterceptor());
+            if (rows < 0 && rows != Integer.MIN_VALUE) {
+                throw SQLError.createSQLException(Messages.getString("ResultSet.Value_out_of_range_66"), MysqlErrorNumbers.SQLSTATE_CONNJ_ILLEGAL_ARGUMENT,
+                        getExceptionInterceptor());
             }
 
             this.fetchSize = rows;
