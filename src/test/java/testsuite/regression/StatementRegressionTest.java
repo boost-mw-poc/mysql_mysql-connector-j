@@ -9850,10 +9850,6 @@ public class StatementRegressionTest extends BaseTestCase {
                 final String testCase = String.format("Case: [Close STMTs: %s, Use cache: %s, Poolable: %s ]", closeStmt ? "Y" : "N", useCache ? "Y" : "N",
                         poolable ? "Y" : "N");
 
-                System.out.println();
-                System.out.println(testCase);
-                System.out.println("********************************************************************************");
-
                 createTable("testBug80615", "(id INT)");
 
                 props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
@@ -12088,15 +12084,14 @@ public class StatementRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug96900() throws Exception {
+        assumeTrue("ON".equalsIgnoreCase(getMysqlVariable("performance_schema")), "PERFORMANCE_SCHEMA must be enabled to run this this.");
         assumeTrue(versionMeetsMinimum(5, 7), "MySQL 5.7+ is required to run this test.");
 
         Supplier<Integer> sessionCount = () -> {
             try {
-                this.stmt.execute("FLUSH STATUS");
-                TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
-                this.rs = this.stmt.executeQuery("SHOW GLOBAL STATUS LIKE 'threads_connected'");
+                this.rs = this.stmt.executeQuery("SELECT COUNT(*) FROM performance_schema.threads WHERE TYPE='FOREGROUND' AND CONNECTION_TYPE='TCP/IP'");
                 this.rs.next();
-                return this.rs.getInt(2);
+                return this.rs.getInt(1);
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
@@ -12106,7 +12101,6 @@ public class StatementRegressionTest extends BaseTestCase {
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
-        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
 
         Connection testConn = getConnectionWithProps(props);
         Statement testStmt = testConn.createStatement();
@@ -12137,15 +12131,14 @@ public class StatementRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug99260() throws Exception {
+        assumeTrue("ON".equalsIgnoreCase(getMysqlVariable("performance_schema")), "PERFORMANCE_SCHEMA must be enabled to run this this.");
         assumeTrue(versionMeetsMinimum(5, 7), "MySQL 5.7+ is required to run this test.");
 
         Supplier<Integer> sessionCount = () -> {
             try {
-                this.stmt.execute("FLUSH STATUS");
-                TimeUnit.SECONDS.sleep(1); // Status values don't update immediately.
-                this.rs = this.stmt.executeQuery("SHOW GLOBAL STATUS LIKE 'threads_connected'");
+                this.rs = this.stmt.executeQuery("SELECT COUNT(*) FROM performance_schema.threads WHERE TYPE='FOREGROUND' AND CONNECTION_TYPE='TCP/IP'");
                 this.rs.next();
-                return this.rs.getInt(2);
+                return this.rs.getInt(1);
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
