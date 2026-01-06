@@ -1,6 +1,8 @@
 # Changelog
 # https://dev.mysql.com/doc/relnotes/connector-j/en/
 
+Version 9.7.0
+
 Version 9.6.0
 
   - Fix for Bug#118002 (Bug#37843004), The setFetchSize() method in the Statement class may have a potential bug.
