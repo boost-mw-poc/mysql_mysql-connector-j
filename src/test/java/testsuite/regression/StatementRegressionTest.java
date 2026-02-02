@@ -14850,4 +14850,46 @@ public class StatementRegressionTest extends BaseTestCase {
         } while ((useCF = !useCF) || (useSPS = !useSPS));
     }
 
+    /**
+     * Tests fix for Bug#119659 (Bug#38916595), BinaryResultsetReader fails to consume EOF packet after column definitions when EOF is not deprecated.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug119659() throws Exception {
+        createTable("testBug119659", "(id INT)");
+        this.stmt.executeUpdate("INSERT INTO testBug119659 VALUES (1), (2), (3)");
+
+        boolean useCF = false;
+        boolean useSPS = false;
+        do {
+            String testCase = String.format("Case [useCF: %s, useSPS: %s]", useCF ? "Y" : "N", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useCursorFetch.getKeyName(), Boolean.toString(useCF));
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            try (Connection testConn = getConnectionWithProps(props)) {
+                PreparedStatement testPstmt = testConn.prepareStatement("SELECT * FROM testBug119659");
+                testPstmt.setFetchSize(3);
+                this.rs = testPstmt.executeQuery();
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(1, this.rs.getInt(1));
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(2, this.rs.getInt(1));
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(3, this.rs.getInt(1));
+                assertFalse(this.rs.next(), testCase);
+
+                this.rs = testConn.createStatement().executeQuery("SELECT * FROM testBug119659");
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(1, this.rs.getInt(1));
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(2, this.rs.getInt(1));
+                assertTrue(this.rs.next(), testCase);
+                assertEquals(3, this.rs.getInt(1));
+                assertFalse(this.rs.next(), testCase);
+            }
+        } while ((useCF = !useCF) || (useSPS = !useSPS));
+    }
+
 }

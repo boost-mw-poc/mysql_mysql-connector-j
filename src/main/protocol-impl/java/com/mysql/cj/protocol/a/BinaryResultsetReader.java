@@ -68,7 +68,7 @@ public class BinaryResultsetReader implements ProtocolEntityReader<Resultset, Na
             // 2. If CLIENT_DEPRECATE_EOF is set and a cursor was created then the next packet is an OK with 0xFE signature.
             // 3. If CLIENT_DEPRECATE_EOF is set and a cursor was not created then the next packet is either a ProtocolBinary::ResultsetRow or an OK packet
             // signaling the end of the (empty) results.
-            if (isCursorPossible || !this.protocol.getServerSession().isEOFDeprecated()) {
+            if (isCursorPossible) {
                 // Read the next packet but leave it in the reader cache. In case it's not the OK or EOF one it will be read again by ResultSet factories.
                 NativePacketPayload rowPacket = this.protocol.probeMessage(this.protocol.getReusablePacket());
                 this.protocol.checkErrorMessage(rowPacket);
@@ -84,6 +84,9 @@ public class BinaryResultsetReader implements ProtocolEntityReader<Resultset, Na
                     // Retain the packet in the reader cache.
                     isCursorPossible = false;
                 }
+            } else if (!this.protocol.getServerSession().isEOFDeprecated()) {
+                // There can't be a cursor and CLIENT_DEPRECATE_EOF was not set, therefore consume next (EOF) packet.
+                this.protocol.readMessage(this.protocol.getReusablePacket());
             }
 
             ResultsetRows rows = null;
