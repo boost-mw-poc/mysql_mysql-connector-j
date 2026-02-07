@@ -14648,11 +14648,24 @@ public class StatementRegressionTest extends BaseTestCase {
      */
     @Test
     void testBug119245() throws Exception {
-        createTable("testBug119245", "(preINTO INT, preINTOpos INT, INTOpos INT)");
-        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTO, preINTOpos, INTOpos FROM testBug119245").close());
+        createTable("testBug119245", "(preINTO INT, preINTOpos INT, INTOpos INT, pre_INTO INT, pre_INTO_pos INT, INTO_pos INT, _INTO INT, "
+                + "_INTO_ INT, INTO_ INT, pre$INTO INT, pre$INTO$ INT, INTO$ INT, `INTO` INT, \uD83D\uDC2C INT)");
+
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTO, preINTOpos, INTOpos, pre_INTO FROM testBug119245").close());
         assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTO FROM testBug119245").close());
         assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT preINTOpos FROM testBug119245").close());
         assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTOpos FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT pre_INTO FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTO_pos FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT pre_INTO_pos FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT _INTO FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT _INTO_ FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTO_ FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT pre$INTO FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT pre$INTO$ FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT INTO$ FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT `INTO` FROM testBug119245").close());
+        assertDoesNotThrow(() -> this.stmt.executeQuery("SELECT \uD83D\uDC2C FROM testBug119245").close());
     }
 
     /**

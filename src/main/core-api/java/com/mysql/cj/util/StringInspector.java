@@ -536,7 +536,7 @@ public class StringInspector {
     }
 
     /**
-     * Returns the position of the next alphanumeric character regardless the default search mode originally specified. This method does not increment the
+     * Returns the position of the next alphanumeric character regardless of the default search mode originally specified. This method does not increment the
      * current position automatically, i.e., if already positioned in a valid character then repeated calls return always the same index.
      * If the character in the current position matches one of the prefixes that determine a skipping block, then the position marker advances to the first
      * alphanumeric character after the block to skip.
@@ -557,14 +557,17 @@ public class StringInspector {
 
         while (this.pos < this.stopAt) {
             int prevPos = this.pos;
+
+            // Seek to the next character of interest.
             if (indexOfNextChar(searchMode) == -1) {
                 return -1;
             }
             if (Character.isLetterOrDigit(this.source.charAt(this.pos))) {
                 return this.pos;
             }
+
+            // If position has not advanced, ensure progression.
             if (this.pos == prevPos) {
-                // Position didn't move but also not yet at an alphanumeric.
                 incrementPosition(searchMode);
             }
         }
@@ -572,7 +575,46 @@ public class StringInspector {
     }
 
     /**
-     * Returns the position of the next non-whitespace character regardless the default search mode originally specified. This method does not increment the
+     * Returns the position of the next character that is valid in a MySQL identifier, regardless of the default search mode originally specified. This method
+     * does not increment the current position automatically, i.e., if already positioned in a valid character then repeated calls return always the same index.
+     * If the character in the current position matches one of the prefixes that determine a skipping block, then the position marker advances to the first
+     * alphanumeric character after the block to skip.
+     *
+     * @return
+     *         the position of the next valid character, or the current position if already on a valid character
+     */
+    public int indexOfNextValidIdentifierChar() {
+        if (this.source == null || this.pos >= this.stopAt) {
+            return -1;
+        }
+
+        Set<SearchMode> searchMode = this.defaultSearchMode;
+        if (!this.defaultSearchMode.contains(SearchMode.SKIP_WHITE_SPACE)) {
+            searchMode = EnumSet.copyOf(this.defaultSearchMode);
+            searchMode.add(SearchMode.SKIP_WHITE_SPACE);
+        }
+
+        while (this.pos < this.stopAt) {
+            int prevPos = this.pos;
+
+            // Seek to the next character of interest.
+            if (indexOfNextChar(searchMode) == -1) {
+                return -1;
+            }
+            if (StringUtils.isValidIdentifierChar(this.source.charAt(this.pos))) {
+                return this.pos;
+            }
+
+            // If position has not advanced, ensure progression.
+            if (this.pos == prevPos) {
+                incrementPosition(searchMode);
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Returns the position of the next non-whitespace character regardless of the default search mode originally specified. This method does not increment the
      * current position automatically, i.e., if already positioned in a valid character then repeated calls return always the same index.
      * If the character in the current position matches one of the prefixes that determine a skipping block, then the position marker advances to the first
      * non-whitespace character after the block to skip.
@@ -591,11 +633,12 @@ public class StringInspector {
             searchMode.add(SearchMode.SKIP_WHITE_SPACE);
         }
 
+        // Seek to the next character of interest.
         return indexOfNextChar(searchMode);
     }
 
     /**
-     * Returns the position of the next whitespace character regardless the default search mode originally specified. This method does not increment the
+     * Returns the position of the next whitespace character regardless of the default search mode originally specified. This method does not increment the
      * current position automatically, i.e., if already positioned in a valid character then repeated calls return always the same index.
      * If the character in the current position matches one of the prefixes that determine a skipping block, then the position marker advances to the first
      * whitespace character after the block to skip.

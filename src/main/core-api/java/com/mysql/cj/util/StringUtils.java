@@ -1372,6 +1372,37 @@ public class StringUtils {
         return identifier;
     }
 
+    /**
+     * Tests whether a single Java char is allowed in an unquoted MySQL identifier.
+     *
+     * @param ch
+     *            the character to test
+     * @return true if permitted, false otherwise
+     */
+    public static boolean isValidIdentifierChar(char ch) {
+        // ASCII characters: letters or numbers or '$' or '_'.
+        // Extended BMP characters range: U+0080 .. U+FFFF; Java char is always <= 0xFFFF.
+        return ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch == '$' || ch == '_' || ch >= 0x0080;
+    }
+
+    /**
+     * Tests whether a single Unicode code-point is allowed in an unquoted MySQL identifier. (Useful when iterating a String with codePoint APIs).
+     * Surrogates above U+FFFF are not accepted per MySQL's documented range.
+     *
+     * @param codePoint
+     *            Unicode code-point
+     * @return true if permitted, false otherwise
+     */
+    public static boolean isValidIdentifierCodePoint(int codePoint) {
+        // ASCII characters: letters or numbers or '$' or '_'.
+        // Extended BMP characters range: U+0080 .. U+FFFF.
+        // Supplementary Multilingual Plane (code points > U+FFFF):
+        // - Although not supported in MySQL, the server replaces these characters by '?'.
+        // - Allowing them aligns behavior with isValidIdentifierChar(char)
+        return codePoint >= '0' && codePoint <= '9' || codePoint >= 'a' && codePoint <= 'z' || codePoint >= 'A' && codePoint <= 'Z' || codePoint == '$'
+                || codePoint == '_' || codePoint >= 0x0080;
+    }
+
     public static int indexOfQuoteDoubleAware(String searchIn, String quoteChar, int startFrom) {
         if (searchIn == null || quoteChar == null || quoteChar.length() == 0 || startFrom > searchIn.length()) {
             return -1;

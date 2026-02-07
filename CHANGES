@@ -3,6 +3,8 @@
 
 Version 9.7.0
 
+  - Fix for Bug#119245 (Bug#38599240), Select into fix breaks queries with 'into' in them. (reopened)
+
   - Fix for Bug#119659 (Bug#38916595), BinaryResultsetReader fails to consume EOF packet after column definitions when EOF is not deprecated.
 
 Version 9.6.0
