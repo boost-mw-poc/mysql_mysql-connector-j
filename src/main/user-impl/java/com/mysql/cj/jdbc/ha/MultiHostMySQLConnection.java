@@ -749,4 +749,24 @@ public class MultiHostMySQLConnection implements JdbcConnection {
         return getActiveMySQLConnection().getServerSessionStateController();
     }
 
+    @Override
+    public boolean isSimpleIdentifier(String identifier) throws SQLException {
+        return getActiveMySQLConnection().isSimpleIdentifier(identifier);
+    }
+
+    @Override
+    public String enquoteIdentifier(String identifier, boolean alwaysDelimit) throws SQLException {
+        return getActiveMySQLConnection().enquoteIdentifier(identifier, alwaysDelimit);
+    }
+
+    @Override
+    public String enquoteLiteral(String val) throws SQLException {
+        return getActiveMySQLConnection().enquoteLiteral(val);
+    }
+
+    @Override
+    public String enquoteNCharLiteral(String val) throws SQLException {
+        return getActiveMySQLConnection().enquoteNCharLiteral(val);
+    }
+
 }

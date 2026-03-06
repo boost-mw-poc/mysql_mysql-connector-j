@@ -107,7 +107,7 @@ public class UpdatableResultSet extends ResultSetImpl {
     private StringBuilder keyValues = null;
     private String qualifiedAndQuotedTableName;
 
-    private String quotedIdChar = null;
+    private char quoteChar = Character.MIN_VALUE;
 
     /** PreparedStatement used to refresh data */
     private ClientPreparedStatement refresher;
@@ -581,7 +581,7 @@ public class UpdatableResultSet extends ResultSetImpl {
             throw new NotUpdatable(this.notUpdatableReason);
         }
 
-        String quotedId = getQuotedIdChar();
+        char quoteChar = getQuoteChar();
 
         Map<String, String> tableNamesSoFar = null;
 
@@ -613,7 +613,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                 String databaseName = fields[i].getDatabaseName();
                 String tableOnlyName = fields[i].getOriginalTableName();
 
-                String fqTableName = StringUtils.getFullyQualifiedName(databaseName, tableOnlyName, quotedId, this.pedantic);
+                String fqTableName = StringUtils.getFullyQualifiedName(databaseName, tableOnlyName, quoteChar, this.pedantic);
 
                 if (!tableNamesSoFar.containsKey(fqTableName)) {
                     if (!tableNamesSoFar.isEmpty()) {
@@ -632,7 +632,7 @@ public class UpdatableResultSet extends ResultSetImpl {
 
                 if (tableOnlyName != null) {
 
-                    String fqTableName = StringUtils.quoteIdentifier(tableOnlyName, quotedId, this.pedantic);
+                    String fqTableName = StringUtils.quoteIdentifier(tableOnlyName, quoteChar, this.pedantic);
 
                     if (!tableNamesSoFar.containsKey(fqTableName)) {
                         if (!tableNamesSoFar.isEmpty()) {
@@ -663,9 +663,9 @@ public class UpdatableResultSet extends ResultSetImpl {
 
             String databaseName = fields[i].getDatabaseName();
             String qualifiedColumnName = new StringBuilder() //
-                    .append(StringUtils.getFullyQualifiedName(databaseName, tableName, quotedId, this.pedantic)) //
+                    .append(StringUtils.getFullyQualifiedName(databaseName, tableName, quoteChar, this.pedantic)) //
                     .append('.') //
-                    .append(StringUtils.quoteIdentifier(columnName, quotedId, this.pedantic)).toString();
+                    .append(StringUtils.quoteIdentifier(columnName, quoteChar, this.pedantic)).toString();
 
             if (fields[i].isPrimaryKey()) {
                 this.primaryKeyIndices.add(Integer.valueOf(i));
@@ -739,12 +739,11 @@ public class UpdatableResultSet extends ResultSetImpl {
         }
     }
 
-    private String getQuotedIdChar() throws SQLException {
-        if (this.quotedIdChar == null) {
-            this.quotedIdChar = this.session.getIdentifierQuoteString();
+    private char getQuoteChar() throws SQLException {
+        if (this.quoteChar == Character.MIN_VALUE) {
+            this.quoteChar = this.session.getIdentifierQuoteChar();
         }
-
-        return this.quotedIdChar;
+        return this.quoteChar;
     }
 
     @Override

@@ -73,6 +73,9 @@ public class TestUtils {
     /**
      * Get all IPv6 addresses of the given host.
      *
+     * @param hostname
+     *            The host name.
+     *
      * @return a list of {@link Inet6Address}s
      */
     public static List<Inet6Address> getIpv6List(String hostname) {

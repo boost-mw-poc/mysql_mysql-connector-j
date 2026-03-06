@@ -232,7 +232,7 @@ public abstract class CoreSession implements Session {
     }
 
     @Override
-    public String getIdentifierQuoteString() {
+    public char getIdentifierQuoteChar() {
         throw ExceptionFactory.createException(CJOperationNotSupportedException.class, "Not supported");
     }
 

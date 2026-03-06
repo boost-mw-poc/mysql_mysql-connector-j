@@ -209,7 +209,7 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
     private final ExceptionInterceptor exceptionInterceptor;
     private final ResultSetFactory resultSetFactory;
     private final String database;
-    private final String quoteId;
+    private final char quoteChar;
 
     private final RuntimeProperty<DatabaseTerm> databaseTermProp;
     private final RuntimeProperty<Boolean> getProceduresReturnsFunctionsProp;
@@ -231,13 +231,28 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return new DatabaseMetaDataMysqlSchema(conn, database, resultSetFactory);
     }
 
+    /**
+     * Determines whether the supplied token is a reserved MySQL keyword.
+     * <p>
+     * This method normalizes the input by converting it to upper case before checking membership in the {@code MYSQL_KEYWORDS} list.
+     *
+     * @param keyword
+     *            the token to test; will be converted to upper case prior to lookup
+     * @return {@code true} if {@code keyword.toUpperCase()} is contained in {@code MYSQL_KEYWORDS}; {@code false} otherwise
+     * @throws NullPointerException
+     *             if {@code keyword} is {@code null}
+     */
+    public static boolean isReservedWord(String keyword) {
+        return MYSQL_KEYWORDS.contains(keyword.toUpperCase(Locale.ROOT));
+    }
+
     DatabaseMetaData(JdbcConnection conn, String database, ResultSetFactory resultSetFactory) {
         this.conn = conn;
         this.session = (NativeSession) this.conn.getSession();
         this.exceptionInterceptor = this.conn.getExceptionInterceptor();
         this.database = normalizeIdentifierCase(database);
         this.resultSetFactory = resultSetFactory;
-        this.quoteId = this.session.getIdentifierQuoteString();
+        this.quoteChar = this.session.getIdentifierQuoteChar();
 
         this.databaseTermProp = this.conn.getPropertySet().<DatabaseTerm>getEnumProperty(PropertyKey.databaseTerm);
         this.getProceduresReturnsFunctionsProp = this.conn.getPropertySet().getBooleanProperty(PropertyKey.getProceduresReturnsFunctions);
@@ -270,8 +285,12 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return this.database;
     }
 
-    String getQuoteId() {
-        return this.quoteId;
+    char getQuoteChar() {
+        return this.quoteChar;
+    }
+
+    String getQuoteCharAsStr() {
+        return String.valueOf(this.quoteChar);
     }
 
     /**
@@ -482,7 +501,7 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
      *         The unquoted version of the identifier name, depending on the pedantic mode set.
      */
     String normalizeIdentifierQuoting(String identifier) {
-        return pedanticValue() ? identifier : StringUtils.unquoteIdentifier(identifier, this.quoteId);
+        return pedanticValue() ? identifier : StringUtils.unquoteIdentifier(identifier, this.quoteChar);
     }
 
     /**
@@ -494,7 +513,7 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
      *         A quoted version of the identifier.
      */
     String quoteIdentifier(String identifier) {
-        return StringUtils.quoteIdentifier(identifier, this.quoteId, true);
+        return StringUtils.quoteIdentifier(identifier, this.quoteChar, true);
     }
 
     /**
@@ -1050,7 +1069,7 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getIdentifierQuoteString() throws SQLException {
-        return this.quoteId;
+        return String.valueOf(this.quoteChar);
     }
 
     // @Override

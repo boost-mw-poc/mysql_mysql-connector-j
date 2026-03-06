@@ -1233,4 +1233,24 @@ public class ConnectionWrapper extends WrapperBase implements JdbcConnection {
         return this.mc.getServerSessionStateController();
     }
 
+    @Override
+    public boolean isSimpleIdentifier(String identifier) throws SQLException {
+        return this.mc.isSimpleIdentifier(identifier);
+    }
+
+    @Override
+    public String enquoteIdentifier(String identifier, boolean alwaysDelimit) throws SQLException {
+        return this.mc.enquoteIdentifier(identifier, alwaysDelimit);
+    }
+
+    @Override
+    public String enquoteLiteral(String val) throws SQLException {
+        return this.mc.enquoteLiteral(val);
+    }
+
+    @Override
+    public String enquoteNCharLiteral(String val) throws SQLException {
+        return this.mc.enquoteNCharLiteral(val);
+    }
+
 }

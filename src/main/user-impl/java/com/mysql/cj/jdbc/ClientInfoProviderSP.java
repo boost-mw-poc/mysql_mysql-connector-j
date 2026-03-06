@@ -49,7 +49,7 @@ public class ClientInfoProviderSP implements ClientInfoProvider {
     public void initialize(Connection conn, Properties configurationProps) throws SQLException {
         this.lock.lock();
         try {
-            String identifierQuote = ((JdbcConnection) conn).getSession().getIdentifierQuoteString();
+            char quoteChar = ((JdbcConnection) conn).getSession().getIdentifierQuoteChar();
             String setClientInfoSpName = configurationProps.getProperty(PNAME_clientInfoSetSPName, "setClientInfo");
             String getClientInfoSpName = configurationProps.getProperty(PNAME_clientInfoGetSPName, "getClientInfo");
             String getClientInfoBulkSpName = configurationProps.getProperty(PNAME_clientInfoGetBulkSPName, "getClientInfoBulk");
@@ -57,14 +57,14 @@ public class ClientInfoProviderSP implements ClientInfoProvider {
 
             String db = "".equals(clientInfoDatabase) ? ((JdbcConnection) conn).getDatabase() : clientInfoDatabase;
 
-            this.setClientInfoSp = ((JdbcConnection) conn).clientPrepareStatement(
-                    "CALL " + identifierQuote + db + identifierQuote + "." + identifierQuote + setClientInfoSpName + identifierQuote + "(?, ?)");
+            this.setClientInfoSp = ((JdbcConnection) conn)
+                    .clientPrepareStatement("CALL " + quoteChar + db + quoteChar + "." + quoteChar + setClientInfoSpName + quoteChar + "(?, ?)");
 
-            this.getClientInfoSp = ((JdbcConnection) conn).clientPrepareStatement(
-                    "CALL" + identifierQuote + db + identifierQuote + "." + identifierQuote + getClientInfoSpName + identifierQuote + "(?)");
+            this.getClientInfoSp = ((JdbcConnection) conn)
+                    .clientPrepareStatement("CALL " + quoteChar + db + quoteChar + "." + quoteChar + getClientInfoSpName + quoteChar + "(?)");
 
-            this.getClientInfoBulkSp = ((JdbcConnection) conn).clientPrepareStatement(
-                    "CALL " + identifierQuote + db + identifierQuote + "." + identifierQuote + getClientInfoBulkSpName + identifierQuote + "()");
+            this.getClientInfoBulkSp = ((JdbcConnection) conn)
+                    .clientPrepareStatement("CALL " + quoteChar + db + quoteChar + "." + quoteChar + getClientInfoBulkSpName + quoteChar + "()");
         } finally {
             this.lock.unlock();
         }

@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.IntPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.mysql.cj.Messages;
@@ -44,7 +46,7 @@ import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.WrongArgumentException;
 
 /**
- * Various utility methods for converting to/from byte arrays in the platform encoding and several other String operations.
+ * Utility methods for converting to/from byte arrays in the platform encoding and several other String operations.
  */
 public class StringUtils {
 
@@ -55,8 +57,6 @@ public class StringUtils {
     static final char WILDCARD_MANY = '%';
     static final char WILDCARD_ONE = '_';
     static final char WILDCARD_ESCAPE = '\\';
-
-    private static final String VALID_ID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIGKLMNOPQRSTUVWXYZ0123456789$_#@";
 
     /**
      * Returns the given bytes as a hex and ASCII dump (up to length bytes).
@@ -1082,17 +1082,18 @@ public class StringUtils {
      *            the source string
      * @param db
      *            database, if available
-     * @param quoteId
+     * @param quoteChar
      *            quote character as defined on server
      * @param isNoBslashEscSet
      *            is our connection in no BackSlashEscape mode
      * @return an array with the database name as first element and the object name as second.
      */
-    public static List<String> splitDBdotName(String source, String db, String quoteId, boolean isNoBslashEscSet) {
+    public static List<String> splitDbDotName(String source, String db, char quoteChar, boolean isNoBslashEscSet) {
         if (source == null || source.equals("%")) {
             return Collections.emptyList();
         }
-        int dotIndex = indexOfIgnoreCase(0, source, ".", quoteId, quoteId, isNoBslashEscSet ? SearchMode.__MRK_WS : SearchMode.__BSE_MRK_WS);
+        String quoteCharAsStr = String.valueOf(quoteChar);
+        int dotIndex = indexOfIgnoreCase(0, source, ".", quoteCharAsStr, quoteCharAsStr, isNoBslashEscSet ? SearchMode.__MRK_WS : SearchMode.__BSE_MRK_WS);
         String dbName = db;
         String objectName = source;
         if (dotIndex != -1) {
@@ -1109,16 +1110,16 @@ public class StringUtils {
      *            database name
      * @param entity
      *            identifier
-     * @param quoteId
+     * @param quoteChar
      *            quote character as defined on server
      * @param isPedantic
      *            are we in pedantic mode
      * @return fully qualified name
      */
-    public static String getFullyQualifiedName(String db, String entity, String quoteId, boolean isPedantic) {
-        StringBuilder fullyQualifiedName = new StringBuilder(StringUtils.quoteIdentifier(db == null ? "" : db, quoteId, isPedantic));
+    public static String getFullyQualifiedName(String db, String entity, char quoteChar, boolean isPedantic) {
+        StringBuilder fullyQualifiedName = new StringBuilder(StringUtils.quoteIdentifier(db == null ? "" : db, quoteChar, isPedantic));
         fullyQualifiedName.append('.');
-        fullyQualifiedName.append(StringUtils.quoteIdentifier(entity, quoteId, isPedantic));
+        fullyQualifiedName.append(StringUtils.quoteIdentifier(entity, quoteChar, isPedantic));
         return fullyQualifiedName.toString();
     }
 
@@ -1176,8 +1177,8 @@ public class StringUtils {
      * @param quoteChar
      *            ` or "
      * @param identifier
-     *            in pedantic mode (connection property pedantic=true) identifier is treated as unquoted
-     *            (as it is stored in the database) even if it starts and ends with quoteChar;
+     *            in pedantic mode (connection property pedantic=true) identifier is treated as unquoted (as it is stored in the database) even if it starts and
+     *            ends with quoteChar;
      *            in non-pedantic mode if identifier starts and ends with quoteChar method treats it as already quoted and doesn't modify.
      * @param isPedantic
      *            operating in pedantic mode?
@@ -1200,31 +1201,27 @@ public class StringUtils {
      *         <li>"ab""c" {@code ->} "ab""c" in non-pedantic mode or """ab""""c""" in pedantic mode</li>
      *         </ul>
      */
-    public static String quoteIdentifier(String identifier, String quoteChar, boolean isPedantic) {
+    public static String quoteIdentifier(String identifier, char quoteChar, boolean isPedantic) {
         if (identifier == null) {
             return null;
         }
 
         identifier = identifier.trim();
-
-        int quoteCharLength = quoteChar.length();
-        if (quoteCharLength == 0) {
-            return identifier;
-        }
+        int len = identifier.length();
 
         // Check if the identifier is correctly quoted and if quotes within are correctly escaped. If not, quote and escape it.
-        if (!isPedantic && identifier.startsWith(quoteChar) && identifier.endsWith(quoteChar)) {
+        if (!isPedantic && len > 1 && identifier.charAt(0) == quoteChar && identifier.charAt(len - 1) == quoteChar) {
             // Trim outermost quotes from the identifier.
-            String identifierQuoteTrimmed = identifier.substring(quoteCharLength, identifier.length() - quoteCharLength);
+            String identifierQuoteTrimmed = identifier.substring(1, len - 1);
 
             // Check for pairs of quotes.
             int quoteCharPosition = identifierQuoteTrimmed.indexOf(quoteChar);
             while (quoteCharPosition >= 0) {
-                int quoteCharNextExpectedPosition = quoteCharPosition + quoteCharLength;
+                int quoteCharNextExpectedPosition = quoteCharPosition + 1;
                 int quoteCharNextPosition = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextExpectedPosition);
 
                 if (quoteCharNextPosition == quoteCharNextExpectedPosition) {
-                    quoteCharPosition = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextPosition + quoteCharLength);
+                    quoteCharPosition = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextPosition + 1);
                 } else {
                     // Not a pair of quotes!
                     break;
@@ -1235,7 +1232,8 @@ public class StringUtils {
             }
         }
 
-        return quoteChar + identifier.replaceAll(quoteChar, quoteChar + quoteChar) + quoteChar;
+        String quoteCharAsStr = String.valueOf(quoteChar);
+        return quoteCharAsStr + identifier.replace(quoteCharAsStr, quoteCharAsStr + quoteCharAsStr) + quoteCharAsStr;
     }
 
     /**
@@ -1258,7 +1256,7 @@ public class StringUtils {
      *         </ul>
      */
     public static String quoteIdentifier(String identifier, boolean isPedantic) {
-        return quoteIdentifier(identifier, "`", isPedantic);
+        return quoteIdentifier(identifier, '`', isPedantic);
     }
 
     /**
@@ -1335,38 +1333,35 @@ public class StringUtils {
      *         <td>ab`c</td>
      *         </table>
      */
-    public static String unquoteIdentifier(String identifier, String quoteChar) {
+    public static String unquoteIdentifier(String identifier, char quoteChar) {
         if (identifier == null) {
             return null;
         }
 
         identifier = identifier.trim();
-
-        int quoteCharLength = quoteChar.length();
-        if (quoteCharLength == 0) {
-            return identifier;
-        }
+        int len = identifier.length();
 
         // Check if the identifier is really quoted or if it simply contains quote chars in it (assuming that the value is a valid identifier).
-        if (identifier.startsWith(quoteChar) && identifier.endsWith(quoteChar)) {
+        if (len > 1 && identifier.charAt(0) == quoteChar && identifier.charAt(len - 1) == quoteChar) {
             // Trim outermost quotes from the identifier.
-            String identifierQuoteTrimmed = identifier.substring(quoteCharLength, identifier.length() - quoteCharLength);
+            String identifierQuoteTrimmed = identifier.substring(1, len - 1);
 
             // Check for pairs of quotes.
             int quoteCharPos = identifierQuoteTrimmed.indexOf(quoteChar);
             while (quoteCharPos >= 0) {
-                int quoteCharNextExpectedPos = quoteCharPos + quoteCharLength;
+                int quoteCharNextExpectedPos = quoteCharPos + 1;
                 int quoteCharNextPosition = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextExpectedPos);
 
                 if (quoteCharNextPosition == quoteCharNextExpectedPos) {
-                    quoteCharPos = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextPosition + quoteCharLength);
+                    quoteCharPos = identifierQuoteTrimmed.indexOf(quoteChar, quoteCharNextPosition + 1);
                 } else {
                     // Not a pair of quotes! Return as it is...
                     return identifier;
                 }
             }
 
-            return identifier.substring(quoteCharLength, identifier.length() - quoteCharLength).replaceAll(quoteChar + quoteChar, quoteChar);
+            String quoteCharAsStr = String.valueOf(quoteChar);
+            return identifier.substring(1, len - 1).replace(quoteCharAsStr + quoteCharAsStr, quoteCharAsStr);
         }
 
         return identifier;
@@ -1403,8 +1398,8 @@ public class StringUtils {
                 || codePoint == '_' || codePoint >= 0x0080;
     }
 
-    public static int indexOfQuoteDoubleAware(String searchIn, String quoteChar, int startFrom) {
-        if (searchIn == null || quoteChar == null || quoteChar.length() == 0 || startFrom > searchIn.length()) {
+    public static int indexOfQuoteDoubleAware(String searchIn, char quoteChar, int startFrom) {
+        if (searchIn == null || startFrom > searchIn.length()) {
             return -1;
         }
 
@@ -1413,7 +1408,7 @@ public class StringUtils {
         int pos = -1;
         while (true) {
             pos = searchIn.indexOf(quoteChar, startPos);
-            if (pos == -1 || pos == stopAt || !searchIn.startsWith(quoteChar, pos + 1)) {
+            if (pos == -1 || pos == stopAt || searchIn.charAt(pos + 1) != quoteChar) {
                 return pos;
             }
             startPos = pos + 2;
@@ -1534,10 +1529,6 @@ public class StringUtils {
         } catch (UnsupportedEncodingException uee) {
             throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("StringUtils.0", new Object[] { encoding }), uee);
         }
-    }
-
-    public static final boolean isValidIdChar(char c) {
-        return VALID_ID_CHARS.indexOf(c) != -1;
     }
 
     private static final char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
@@ -1933,6 +1924,257 @@ public class StringUtils {
             // Won't happen.
             return null;
         }
+    }
+
+    /**
+     * Enquotes and/or validates an SQL literal/identifier-like value by (a) detecting whether the input is already surrounded by an allowed quote character and
+     * is internally well-formed, and (b) otherwise producing a freshly quoted string using {@code quoteChar}.
+     *
+     * <p>
+     * Behavior summary:
+     * <ul>
+     * <li><b>Pedantic mode without backslash escapes</b>: always returns the value surrounded by {@code quoteChar} and doubles every occurrence of
+     * {@code quoteChar} inside the value.</li>
+     * <li><b>Non-pedantic mode</b>: if the value starts with an allowed opening quote character (as defined by {@code quoteRule}), this method attempts to
+     * treat the input as already quoted and validates:
+     * <ul>
+     * <li>that it ends with the same quote character,</li>
+     * <li>that the closing quote is not escaped by an odd number of trailing backslashes when {@code backslashEscape} is enabled, and</li>
+     * <li>that internal quote characters are properly doubled (or escaped with backslash when enabled) according to the detected quote delimiter.</li>
+     * </ul>
+     * </li>
+     * <li>If all validations succeed, the original {@code value} is returned unchanged.</li>
+     * <li>If validation fails (or the input is not already quoted), the method returns a newly quoted string using {@code quoteChar}. Any occurrences of
+     * {@code quoteChar} encountered while scanning are doubled in the produced output (unless escaped by backslash when {@code backslashEscape} is
+     * enabled).</li>
+     * </ul>
+     * <p>
+     * The quote delimiter that is validated inside the input is the <em>detected</em> opening quote character (if any), whereas the quote delimiter used when
+     * producing a new quoted value is always {@code quoteChar}.
+     *
+     * @param value
+     *            The input string to validate and/or quote.
+     * @param quoteChar
+     *            The quote character to use when generating a new quoted value (e.g. {@code '\''}, {@code '"'}, or {@code '`'})
+     * @param pedantic
+     *            Whether to disable "already quoted" detection and force stricter quoting behavior.
+     * @param backslashEscape
+     *            Whether to treat backslash ({@code \}) as an escape character when validating internal quotes and when determining whether a closing quote is
+     *            escaped.
+     * @param quoteRule
+     *            Predicate that returns {@code true} for character that should be treated as a valid quote delimiter for "already quoted" detection (typically
+     *            by capturing session/sql-mode state such as ANSI_QUOTES in the caller).
+     * @return {@code value} unchanged if it is detected to be already properly quoted and internally well-formed; otherwise, a newly quoted representation
+     *         surrounded by {@code quoteChar}.
+     */
+    private static String enquoteValue(String value, char quoteChar, boolean pedantic, boolean backslashEscape, IntPredicate quoteRule) {
+        if (pedantic && !backslashEscape) { // Just quote and double every quoteChar.
+            String q = String.valueOf(quoteChar);
+            return quoteChar + value.replace(q, q + q) + quoteChar;
+        }
+
+        StringBuilder quotedValueHead = new StringBuilder().append(quoteChar);
+        StringBuilder quotedValueTail = new StringBuilder();
+        char detectedQuoteChar = quoteChar;
+        int startIndex = 0;
+        int endIndex = value.length() - 1;
+        boolean isProperlyQuoted = false;
+
+        if (!pedantic && endIndex > 0) {  // In non-pedantic mode, check if already surrounded by quote chars.
+            char firstChar = value.charAt(startIndex);
+
+            if (quoteRule.test(firstChar)) {
+                detectedQuoteChar = firstChar;
+                startIndex++;
+                quotedValueHead.append(detectedQuoteChar);
+                if (detectedQuoteChar == quoteChar) {
+                    quotedValueHead.append(detectedQuoteChar);
+                }
+
+                if (value.charAt(endIndex) == detectedQuoteChar) {
+                    endIndex = value.length() - 2; // The char before the closing quote.
+                    isProperlyQuoted = true;
+
+                    if (backslashEscape) { // Ensure closing quote is not escaped by odd number of backslashes.
+                        boolean escaped = false;
+                        for (; value.charAt(endIndex) == '\\'; endIndex--) {
+                            quotedValueTail.append('\\');
+                            escaped = !escaped;
+                        }
+                        isProperlyQuoted = !escaped;
+                    }
+                    quotedValueTail.append(detectedQuoteChar);
+                    if (isProperlyQuoted && detectedQuoteChar == quoteChar) {
+                        quotedValueTail.append(detectedQuoteChar);
+                    }
+                }
+            }
+            if (!isProperlyQuoted) {
+                detectedQuoteChar = quoteChar;
+            }
+        }
+        quotedValueTail.append(quoteChar);
+
+        // Validate (and fix) internal quoting: quoteChar inside must be doubled unless escaped by backslash.
+        boolean escaped = false;
+        boolean needSecondQuote = false;
+        for (int i = startIndex; i <= endIndex; i++) {
+            char c = value.charAt(i);
+            quotedValueHead.append(c);
+            if (!escaped && c == quoteChar) { // When not escaped, auto-double the delimiter used in the output.
+                quotedValueHead.append(c);
+            }
+            if (backslashEscape && escaped) {
+                escaped = false;
+            } else if (backslashEscape && c == '\\') {
+                escaped = true;
+                if (needSecondQuote) {
+                    isProperlyQuoted = false;
+                    needSecondQuote = false;
+                }
+            } else if (c == detectedQuoteChar) {
+                needSecondQuote = !needSecondQuote;
+            } else if (needSecondQuote) {
+                isProperlyQuoted = false;
+                needSecondQuote = false;
+            }
+        }
+        if (needSecondQuote) { // Ended right after a single quote.
+            isProperlyQuoted = false;
+        }
+        if (escaped) { // Ended with a backslash.
+            escaped = false;
+            quotedValueHead.append('\\');
+        }
+
+        return isProperlyQuoted ? value : quotedValueHead.append(quotedValueTail).toString();
+    }
+
+    /**
+     * Enquotes and/or validates an SQL <em>string literal</em> value.
+     * <p>
+     * In non-pedantic mode, if {@code value} appears to be already quoted, this method attempts to validate it and will return it unchanged when it is
+     * considered properly quoted. Otherwise it will generate a new SQL literal quoted with single quotes ({@code '}).
+     * <p>
+     * Quote detection rules (non-pedantic):
+     * <ul>
+     * <li>Always recognizes {@code '...'} as a quoted literal.</li>
+     * <li>Recognizes {@code "..."} as a quoted literal only when {@code ansiQuotes == false} (i.e., {@code "} is treated as a string delimiter, not an
+     * identifier delimiter).</li>
+     * </ul>
+     * <p>
+     * Escaping rules:
+     * <ul>
+     * <li>If {@code backslashEscape == false}: internal single quotes are handled by doubling ({@code ''}).</li>
+     * <li>If {@code backslashEscape == true}: backslash escaping is honored when validating whether quotes are escaped, and the closing quote is considered
+     * invalid if escaped by an odd number of trailing backslashes.</li>
+     * </ul>
+     *
+     * @param value
+     *            The input value to quote and/or validate as a SQL string literal.
+     * @param pedantic
+     *            If {@code true}, disables "already quoted" detection and forces generation of a quoted literal (with escaping rules applied).
+     * @param ansiQuotes
+     *            Whether ANSI_QUOTES is enabled for the target SQL mode; affects whether {@code "..."} is treated as an already-quoted literal (only when
+     *            {@code false})
+     * @param backslashEscape
+     *            Whether backslash ({@code \}) is treated as an escape character for quote validation and closing-quote detection.
+     * @return {@code value} unchanged if it is detected to be already properly quoted; otherwise a newly generated single-quoted SQL literal.
+     */
+    public static String enquoteLiteral(String value, boolean pedantic, boolean ansiQuotes, boolean backslashEscape) {
+        // Allow '...' always; allow "..." only when ANSI_QUOTES is OFF.
+        return enquoteValue(value, '\'', pedantic, backslashEscape, c -> c == '\'' || !ansiQuotes && c == '"');
+    }
+
+    /**
+     * Enquotes and/or validates an SQL <em>identifier</em> (e.g., table/column name) using the provided quote character.
+     * <p>
+     * In non-pedantic mode, if {@code value} appears to be already quoted with an allowed identifier quote delimiter, this method attempts to validate it and
+     * will return it unchanged when it is considered properly quoted. Otherwise it will generate a newly quoted identifier using {@code quoteChar}.
+     * <p>
+     * Quote detection rules (non-pedantic):
+     * <ul>
+     * <li>Always recognizes {@code `...`} (backticks) as a quoted identifier.</li>
+     * <li>Recognizes {@code "..."} as a quoted identifier only when {@code ansiQuotes == true} (i.e., {@code "} is treated as an identifier delimiter).</li>
+     * </ul>
+     * <p>
+     * Escaping rules:
+     * <ul>
+     * <li>If {@code pedantic == true} and {@code backslashEscape == false}: the method simply surrounds the value with {@code quoteChar} and doubles every
+     * occurrence of {@code quoteChar} inside the value.</li>
+     * <li>If {@code backslashEscape == true}: backslash escaping is honored when validating whether quotes are escaped, and the closing quote is considered
+     * invalid if escaped by an odd number of trailing backslashes.</li>
+     * </ul>
+     * <p>
+     * Note: This method does not validate identifier semantics (allowed characters, reserved words, qualification, etc.); it only deals with
+     * quoting/escaping/validation of the delimiter characters.
+     *
+     * @param value
+     *            The identifier text to quote and/or validate.
+     * @param quoteChar
+     *            The quote character to use when generating a new quoted identifier (commonly {@code '`'} or {@code '"'}, depending on SQL dialect/mode).
+     * @param pedantic
+     *            If {@code true}, disables "already quoted" detection and forces generation of a quoted identifier (with escaping rules applied).
+     * @param ansiQuotes
+     *            Whether ANSI_QUOTES is enabled for the target SQL mode; affects whether {@code "..."} is treated as an already-quoted identifier (only when
+     *            {@code true}).
+     * @param backslashEscape
+     *            Whether backslash ({@code \}) is treated as an escape character for quote validation and closing-quote detection.
+     * @return {@code value} unchanged if it is detected to be already properly quoted; otherwise a newly generated quoted identifier using {@code quoteChar}.
+     */
+    public static String enquoteIdentifier(String value, char quoteChar, boolean pedantic, boolean ansiQuotes, boolean backslashEscape) {
+        // Allow `...` always; allow "..." only when ANSI_QUOTES is ON.
+        return enquoteValue(value, quoteChar, pedantic, backslashEscape, c -> c == '`' || ansiQuotes && c == '"');
+    }
+
+    /**
+     * Checks whether the supplied string is a "simple" (unquoted) MySQL identifier.
+     * <p>
+     * The method enforces the following constraints:
+     * <ul>
+     * <li>The identifier must be non-{@code null} and non-empty.</li>
+     * <li>The identifier length must not exceed 64 characters (MySQL's common maximum identifier length).</li>
+     * <li>Every character must satisfy {@link StringUtils#isValidIdentifierChar(char)}.</li>
+     * <li>The identifier must not consist solely of digits.</li>
+     * <li>If {@code reservedWordChecker} is provided (non-{@code null}), the identifier must not be a reserved word as determined by
+     * {@code reservedWordChecker.test(identifier)}.</li>
+     * </ul>
+     *
+     * <p>
+     * Reserved word handling is delegated to the optional {@code reservedWordChecker} to avoid hard dependencies on metadata/JDBC layers and to allow callers
+     * to apply the correct rules for their context (e.g., server version, SQL mode, or a specific reserved word set). If {@code reservedWordChecker} is
+     * {@code null}, reserved word checks are skipped.
+     *
+     * @param identifier
+     *            The candidate identifier string to validate.
+     * @param reservedWordChecker
+     *            Optional predicate used to determine whether {@code identifier} is a reserved word; if {@code null}, reserved word checks are not performed.
+     *            Callers typically implement this predicate as a case-insensitive check (preferably using {@code Locale.ROOT} when performing case
+     *            conversions).
+     * @return {@code true} if {@code identifier} meets this method's definition of a simple MySQL identifier; {@code false} otherwise.
+     */
+    public static boolean isSimpleIdentifier(String identifier, Predicate<String> reservedWordChecker) {
+        if (StringUtils.isNullOrEmpty(identifier)) {
+            return false;
+        }
+        int length = identifier.length();
+        if (length > 64) { // Maximum MySQL identifier length is 64 characters.
+            return false;
+        }
+        boolean allDigits = true;
+        for (int i = 0; i < length; i++) {
+            char ch = identifier.charAt(i);
+            if (!StringUtils.isValidIdentifierChar(ch)) {
+                return false;
+            }
+            if (allDigits && !Character.isDigit(identifier.charAt(i))) {
+                allDigits = false;
+            }
+        }
+        if (allDigits || reservedWordChecker != null && reservedWordChecker.test(identifier)) {
+            return false;
+        }
+        return true;
     }
 
 }

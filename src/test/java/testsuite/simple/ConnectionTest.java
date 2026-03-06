@@ -65,8 +65,10 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -2371,6 +2373,357 @@ public class ConnectionTest extends BaseTestCase {
         assertTrue(((MysqlConnection) con).getSession().isSSLEstablished());
         assertSessionStatusEquals(con.createStatement(), "ssl_version", "TLSv1.2");
         con.close();
+    }
+
+    /**
+     * Tests WL#17215, Implement JDBC 4.3/4.5 Statement/Connection.enquote* methods: isSimpleIdentifier().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testIsSimpleIdentifier() throws Exception {
+        JdbcConnection testConn = this.conn.unwrap(JdbcConnection.class);
+
+        IntFunction<String> repeatX = n -> IntStream.range(0, n).mapToObj(i -> "X").collect(Collectors.joining());
+
+        // Valid examples.
+        assertTrue(testConn.isSimpleIdentifier("a"));
+        assertTrue(testConn.isSimpleIdentifier("abc"));
+        assertTrue(testConn.isSimpleIdentifier("ab_cd"));
+        assertTrue(testConn.isSimpleIdentifier("ab$cd"));
+        assertTrue(testConn.isSimpleIdentifier("123abc"));
+        assertTrue(testConn.isSimpleIdentifier("_123"));
+        assertTrue(testConn.isSimpleIdentifier("$123"));
+        assertTrue(testConn.isSimpleIdentifier(repeatX.apply(64)));
+
+        // Invalid examples.
+        assertFalse(testConn.isSimpleIdentifier(null));
+        assertFalse(testConn.isSimpleIdentifier(""));
+        assertFalse(testConn.isSimpleIdentifier(" "));
+        assertFalse(testConn.isSimpleIdentifier("."));
+        assertFalse(testConn.isSimpleIdentifier("ab cd"));
+        assertFalse(testConn.isSimpleIdentifier("ab.cd"));
+        assertFalse(testConn.isSimpleIdentifier("ab-cd"));
+        assertFalse(testConn.isSimpleIdentifier("ab`cd"));
+        assertFalse(testConn.isSimpleIdentifier("ab\"cd"));
+        assertFalse(testConn.isSimpleIdentifier("`abc`"));
+        assertFalse(testConn.isSimpleIdentifier("123456"));
+        assertFalse(testConn.isSimpleIdentifier("\"abc\""));
+        assertFalse(testConn.isSimpleIdentifier(repeatX.apply(65)));
+
+        assertTrue(com.mysql.cj.jdbc.DatabaseMetaData.isReservedWord("SELECT"));
+        assertFalse(testConn.isSimpleIdentifier("SELECT"));
+        assertTrue(com.mysql.cj.jdbc.DatabaseMetaData.isReservedWord("update"));
+        assertFalse(testConn.isSimpleIdentifier("update"));
+    }
+
+    /**
+     * Tests WL#17215, Implement JDBC 4.3/4.5 Statement/Connection.enquote* methods: enquoteIdentifier().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testenquoteIdentifier() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean ald = false; // Always delimit - delimits simple identifiers.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        String sqlMode = getMysqlVariable("sql_mode");
+        sqlMode = removeSqlMode("ANSI_QUOTES", sqlMode);
+        sqlMode = removeSqlMode("NO_BACKSLASH_ESCAPES", sqlMode);
+        if (sqlMode.length() > 0) {
+            sqlMode += ",";
+        }
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, alwaysDelimit: %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", ald ? "Y" : "N",
+                    asq ? "Y" : "N", bse ? "Y" : "N");
+
+            StringBuilder newSqlMode = new StringBuilder(sqlMode);
+            if (asq && !bse) {
+                newSqlMode.append("ANSI_QUOTES,NO_BACKSLASH_ESCAPES");
+            } else if (asq) {
+                newSqlMode.append("ANSI_QUOTES");
+            } else if (!bse) {
+                newSqlMode.append("NO_BACKSLASH_ESCAPES");
+            }
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.pedantic.getKeyName(), Boolean.toString(pdn));
+            props.setProperty(PropertyKey.sessionVariables.getKeyName(), "sql_mode='" + newSqlMode + "'");
+
+            try (JdbcConnection testConn = getConnectionWithProps(props).unwrap(JdbcConnection.class)) {
+                // No quotes.
+                boolean localAld = ald;
+                assertThrows(testCase, SQLException.class, "Value 'null' is not a valid identifier\\.", () -> testConn.enquoteIdentifier(null, localAld));
+                assertEquals(asq ? "\"\"" : "``", testConn.enquoteIdentifier("", ald), testCase);
+                assertEquals(asq ? "\" \"" : "` `", testConn.enquoteIdentifier(" ", ald), testCase);
+                assertEquals(ald ? asq ? "\"abc\"" : "`abc`" : "abc", testConn.enquoteIdentifier("abc", ald), testCase);
+                assertEquals(asq ? "\"abc\ndef\"" : "`abc\ndef`", testConn.enquoteIdentifier("abc\ndef", ald), testCase);
+                assertEquals(asq ? "\"abc\\\"" : "`abc\\`", testConn.enquoteIdentifier("abc\\", ald), testCase);
+                assertEquals(asq ? "\"abc\\\\\"" : "`abc\\\\`", testConn.enquoteIdentifier("abc\\\\", ald), testCase);
+                assertEquals(asq ? "\"abc\\\\\\\"" : "`abc\\\\\\`", testConn.enquoteIdentifier("abc\\\\\\", ald), testCase);
+                assertEquals(asq ? "\"SELECT\"" : "`SELECT`", testConn.enquoteIdentifier("SELECT", ald));
+                assertEquals(asq ? "\"update\"" : "`update`", testConn.enquoteIdentifier("update", ald));
+
+                // Backquote.
+                assertEquals(asq ? "\"`\"" : "````", testConn.enquoteIdentifier("`", ald), testCase);
+                assertEquals(asq ? "\"\\`\"" : "`\\```", testConn.enquoteIdentifier("\\`", ald), testCase);
+                assertEquals(asq ? "\"\\\\`\"" : "`\\\\```", testConn.enquoteIdentifier("\\\\`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"``\"" : "``````" : "``", testConn.enquoteIdentifier("``", ald), testCase);
+                assertEquals(asq ? "\"\\`abc`\"" : "`\\``abc```", testConn.enquoteIdentifier("\\`abc`", ald), testCase);
+                assertEquals(asq ? "\"\\\\`abc`\"" : "`\\\\``abc```", testConn.enquoteIdentifier("\\\\`abc`", ald), testCase);
+                assertEquals(asq ? "\"\\\\\\`abc`\"" : "`\\\\\\``abc```", testConn.enquoteIdentifier("\\\\\\`abc`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\\`\"" : "```abc\\```" : "`abc\\`", testConn.enquoteIdentifier("`abc\\`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\\\\`\"" : "```abc\\\\```" : "`abc\\\\`", testConn.enquoteIdentifier("`abc\\\\`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\\\\\\`\"" : "```abc\\\\\\```" : "`abc\\\\\\`", testConn.enquoteIdentifier("`abc\\\\\\`", ald), testCase);
+                assertEquals(asq ? "\"abc`def\"" : "`abc``def`", testConn.enquoteIdentifier("abc`def", ald), testCase);
+                assertEquals(asq ? "\"abc\\`def\"" : "`abc\\``def`", testConn.enquoteIdentifier("abc\\`def", ald), testCase);
+                assertEquals(asq ? "\"abc\\\\`def\"" : "`abc\\\\``def`", testConn.enquoteIdentifier("abc\\\\`def", ald), testCase);
+                assertEquals(asq ? "\"abc``def\"" : "`abc````def`", testConn.enquoteIdentifier("abc``def", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc`\"" : "```abc```" : "`abc`", testConn.enquoteIdentifier("`abc`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\ndef`\"" : "```abc\ndef```" : "`abc\ndef`", testConn.enquoteIdentifier("`abc\ndef`", ald), testCase);
+                assertEquals(asq ? "\"`abc`def`\"" : "```abc``def```", testConn.enquoteIdentifier("`abc`def`", ald), testCase);
+                assertEquals(asq ? "\"`abc\\`def`\"" : "```abc\\``def```", testConn.enquoteIdentifier("`abc\\`def`", ald), testCase);
+                assertEquals(asq ? "\"`abc\\\\`def`\"" : "```abc\\\\``def```", testConn.enquoteIdentifier("`abc\\\\`def`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc``def`\"" : "```abc````def```" : "`abc``def`", testConn.enquoteIdentifier("`abc``def`", ald), testCase);
+                assertEquals(asq ? "\"abc`def\\`ghi\"" : "`abc``def\\``ghi`", testConn.enquoteIdentifier("abc`def\\`ghi", ald), testCase);
+                assertEquals(asq ? "\"abc`def\\\\`ghi\"" : "`abc``def\\\\``ghi`", testConn.enquoteIdentifier("abc`def\\\\`ghi", ald), testCase);
+                assertEquals(asq ? "\"abc``def\\`ghi\"" : "`abc````def\\``ghi`", testConn.enquoteIdentifier("abc``def\\`ghi", ald), testCase);
+                assertEquals(asq ? "\"abc``def\\\\`ghi\"" : "`abc````def\\\\``ghi`", testConn.enquoteIdentifier("abc``def\\\\`ghi", ald), testCase);
+                assertEquals(asq ? "\"`abc\"\"\"" : "```abc\"`", testConn.enquoteIdentifier("`abc\"", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\"\"def`\"" : "```abc\"def```" : "`abc\"def`", testConn.enquoteIdentifier("`abc\"def`", ald), testCase);
+                assertEquals(asq ? "\"`abc\"\"def``ghi\"\"\"" : "```abc\"def````ghi\"`", testConn.enquoteIdentifier("`abc\"def``ghi\"", ald), testCase);
+                assertEquals(asq ? "\"`abc\"\"def`ghi`\"" : "```abc\"def``ghi```", testConn.enquoteIdentifier("`abc\"def`ghi`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`abc\"\"def``ghi`\"" : "```abc\"def````ghi```" : "`abc\"def``ghi`",
+                        testConn.enquoteIdentifier("`abc\"def``ghi`", ald), testCase);
+                assertEquals(pdn ? asq ? "\"`SELECT`\"" : "```SELECT```" : "`SELECT`", testConn.enquoteIdentifier("`SELECT`", ald));
+                assertEquals(pdn ? asq ? "\"`update`\"" : "```update```" : "`update`", testConn.enquoteIdentifier("`update`", ald));
+
+                // Double quote.
+                assertEquals(asq ? "\"\"\"\"" : "`\"`", testConn.enquoteIdentifier("\"", ald), testCase);
+                assertEquals(asq ? "\"\\\"\"\"" : "`\\\"`", testConn.enquoteIdentifier("\\\"", ald), testCase);
+                assertEquals(asq ? "\"\\\\\"\"\"" : "`\\\\\"`", testConn.enquoteIdentifier("\\\\\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"\"\"\"" : "\"\"" : "`\"\"`", testConn.enquoteIdentifier("\"\"", ald), testCase);
+                assertEquals(asq ? "\"\\\"\"abc\"\"\"" : "`\\\"abc\"`", testConn.enquoteIdentifier("\\\"abc\"", ald), testCase);
+                assertEquals(asq ? "\"\\\\\"\"abc\"\"\"" : "`\\\\\"abc\"`", testConn.enquoteIdentifier("\\\\\"abc\"", ald), testCase);
+                assertEquals(asq ? "\"\\\\\\\"\"abc\"\"\"" : "`\\\\\\\"abc\"`", testConn.enquoteIdentifier("\\\\\\\"abc\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\\\"\"\"" : "\"abc\\\"" : "`\"abc\\\"`", testConn.enquoteIdentifier("\"abc\\\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\\\\\"\"\"" : "\"abc\\\\\"" : "`\"abc\\\\\"`", testConn.enquoteIdentifier("\"abc\\\\\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\\\\\\\"\"\"" : "\"abc\\\\\\\"" : "`\"abc\\\\\\\"`", testConn.enquoteIdentifier("\"abc\\\\\\\"", ald),
+                        testCase);
+                assertEquals(asq ? "\"abc\"\"def\"" : "`abc\"def`", testConn.enquoteIdentifier("abc\"def", ald), testCase);
+                assertEquals(asq ? "\"abc\\\"\"def\"" : "`abc\\\"def`", testConn.enquoteIdentifier("abc\\\"def", ald), testCase);
+                assertEquals(asq ? "\"abc\\\\\"\"def\"" : "`abc\\\\\"def`", testConn.enquoteIdentifier("abc\\\\\"def", ald), testCase);
+                assertEquals(asq ? "\"abc\"\"\"\"def\"" : "`abc\"\"def`", testConn.enquoteIdentifier("abc\"\"def", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\"\"\"" : "\"abc\"" : "`\"abc\"`", testConn.enquoteIdentifier("\"abc\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\ndef\"\"\"" : "\"abc\ndef\"" : "`\"abc\ndef\"`", testConn.enquoteIdentifier("\"abc\ndef\"", ald), testCase);
+                assertEquals(asq ? "\"\"\"abc\"\"def\"\"\"" : "`\"abc\"def\"`", testConn.enquoteIdentifier("\"abc\"def\"", ald), testCase);
+                assertEquals(asq ? "\"\"\"abc\\\"\"def\"\"\"" : "`\"abc\\\"def\"`", testConn.enquoteIdentifier("\"abc\\\"def\"", ald), testCase);
+                assertEquals(asq ? "\"\"\"abc\\\\\"\"def\"\"\"" : "`\"abc\\\\\"def\"`", testConn.enquoteIdentifier("\"abc\\\\\"def\"", ald), testCase);
+                assertEquals(asq ? pdn ? "\"\"\"abc\"\"\"\"def\"\"\"" : "\"abc\"\"def\"" : "`\"abc\"\"def\"`",
+                        testConn.enquoteIdentifier("\"abc\"\"def\"", ald), testCase);
+                assertEquals(asq ? "\"abc\"\"def\\\"\"ghi\"" : "`abc\"def\\\"ghi`", testConn.enquoteIdentifier("abc\"def\\\"ghi", ald), testCase);
+                assertEquals(asq ? "\"abc\"\"def\\\\\"\"ghi\"" : "`abc\"def\\\\\"ghi`", testConn.enquoteIdentifier("abc\"def\\\\\"ghi", ald), testCase);
+                assertEquals(asq ? "\"abc\"\"\"\"def\\\"\"ghi\"" : "`abc\"\"def\\\"ghi`", testConn.enquoteIdentifier("abc\"\"def\\\"ghi", ald), testCase);
+                assertEquals(asq ? "\"abc\"\"\"\"def\\\\\"\"ghi\"" : "`abc\"\"def\\\\\"ghi`", testConn.enquoteIdentifier("abc\"\"def\\\\\"ghi", ald), testCase);
+                assertEquals(asq ? "\"\"\"abc`\"" : "`\"abc```", testConn.enquoteIdentifier("\"abc`", ald), testCase);
+                assertEquals(pdn || !asq ? asq ? "\"\"\"abc`def\"\"\"" : "`\"abc``def\"`" : "\"abc`def\"", testConn.enquoteIdentifier("\"abc`def\"", ald),
+                        testCase);
+                assertEquals(asq ? "\"\"\"abc`def\"\"\"\"ghi`\"" : "`\"abc``def\"\"ghi```", testConn.enquoteIdentifier("\"abc`def\"\"ghi`", ald), testCase);
+                assertEquals(asq ? "\"\"\"abc`def\"\"ghi\"\"\"" : "`\"abc``def\"ghi\"`", testConn.enquoteIdentifier("\"abc`def\"ghi\"", ald), testCase);
+                assertEquals(pdn || !asq ? asq ? "\"\"\"abc`def\"\"\"\"ghi\"\"\"" : "`\"abc``def\"\"ghi\"`" : "\"abc`def\"\"ghi\"",
+                        testConn.enquoteIdentifier("\"abc`def\"\"ghi\"", ald), testCase);
+                assertEquals(pdn || !asq ? asq ? "\"\"\"SELECT\"\"\"" : "`\"SELECT\"`" : "\"SELECT\"", testConn.enquoteIdentifier("\"SELECT\"", ald));
+                assertEquals(pdn || !asq ? asq ? "\"\"\"update\"\"\"" : "`\"update\"`" : "\"update\"", testConn.enquoteIdentifier("\"update\"", ald));
+            }
+        } while ((pdn = !pdn) || (ald = !ald) || (asq = !asq) || (bse = !bse));
+    }
+
+    /**
+     * Tests WL#17215, Implement JDBC 4.3/4.5 Statement/Connection.enquote* methods: enquoteLiteral().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testEnquoteLiteral() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        String sqlMode = getMysqlVariable("sql_mode");
+        sqlMode = removeSqlMode("ANSI_QUOTES", sqlMode);
+        sqlMode = removeSqlMode("NO_BACKSLASH_ESCAPES", sqlMode);
+        if (sqlMode.length() > 0) {
+            sqlMode += ",";
+        }
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", asq ? "Y" : "N", bse ? "Y" : "N");
+
+            StringBuilder newSqlMode = new StringBuilder(sqlMode);
+            if (asq && !bse) {
+                newSqlMode.append("ANSI_QUOTES,NO_BACKSLASH_ESCAPES");
+            } else if (asq) {
+                newSqlMode.append("ANSI_QUOTES");
+            } else if (!bse) {
+                newSqlMode.append("NO_BACKSLASH_ESCAPES");
+            }
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.pedantic.getKeyName(), Boolean.toString(pdn));
+            props.setProperty(PropertyKey.sessionVariables.getKeyName(), "sql_mode='" + newSqlMode + "'");
+
+            try (JdbcConnection testConn = getConnectionWithProps(props).unwrap(JdbcConnection.class)) {
+                // No quotes.
+                assertEquals("NULL", testConn.enquoteLiteral(null));
+                assertEquals("''", testConn.enquoteLiteral(""), testCase);
+                assertEquals("' '", testConn.enquoteLiteral(" "), testCase);
+                assertEquals("'abc'", testConn.enquoteLiteral("abc"), testCase);
+                assertEquals("'abc\ndef'", testConn.enquoteLiteral("abc\ndef"), testCase);
+                assertEquals(bse ? "'abc\\\\'" : "'abc\\'", testConn.enquoteLiteral("abc\\"), testCase);
+                assertEquals("'abc\\\\'", testConn.enquoteLiteral("abc\\\\"), testCase);
+                assertEquals(bse ? "'abc\\\\\\\\'" : "'abc\\\\\\'", testConn.enquoteLiteral("abc\\\\\\"), testCase);
+
+                // Single quote.
+                assertEquals("''''", testConn.enquoteLiteral("'"), testCase);
+                assertEquals(bse ? "'\\''" : "'\\'''", testConn.enquoteLiteral("\\'"), testCase);
+                assertEquals("'\\\\'''", testConn.enquoteLiteral("\\\\'"), testCase);
+                assertEquals(pdn ? "''''''" : "''", testConn.enquoteLiteral("''"), testCase);
+                assertEquals(bse ? "'\\'abc'''" : "'\\''abc'''", testConn.enquoteLiteral("\\'abc'"), testCase);
+                assertEquals("'\\\\''abc'''", testConn.enquoteLiteral("\\\\'abc'"), testCase);
+                assertEquals(bse ? "'\\\\\\'abc'''" : "'\\\\\\''abc'''", testConn.enquoteLiteral("\\\\\\'abc'"), testCase);
+                assertEquals(bse ? "'''abc\\''" : pdn ? "'''abc\\'''" : "'abc\\'", testConn.enquoteLiteral("'abc\\'"), testCase);
+                assertEquals(pdn ? "'''abc\\\\'''" : "'abc\\\\'", testConn.enquoteLiteral("'abc\\\\'"), testCase);
+                assertEquals(bse ? "'''abc\\\\\\''" : pdn ? "'''abc\\\\\\'''" : "'abc\\\\\\'", testConn.enquoteLiteral("'abc\\\\\\'"), testCase);
+                assertEquals("'abc''def'", testConn.enquoteLiteral("abc'def"), testCase);
+                assertEquals(bse ? "'abc\\'def'" : "'abc\\''def'", testConn.enquoteLiteral("abc\\'def"), testCase);
+                assertEquals("'abc\\\\''def'", testConn.enquoteLiteral("abc\\\\'def"), testCase);
+                assertEquals("'abc''''def'", testConn.enquoteLiteral("abc''def"), testCase);
+                assertEquals(pdn ? "'''abc'''" : "'abc'", testConn.enquoteLiteral("'abc'"), testCase);
+                assertEquals(pdn ? "'''abc\ndef'''" : "'abc\ndef'", testConn.enquoteLiteral("'abc\ndef'"), testCase);
+                assertEquals("'''abc''def'''", testConn.enquoteLiteral("'abc'def'"), testCase);
+                assertEquals(bse ? pdn ? "'''abc\\'def'''" : "'abc\\'def'" : "'''abc\\''def'''", testConn.enquoteLiteral("'abc\\'def'"), testCase);
+                assertEquals("'''abc\\\\''def'''", testConn.enquoteLiteral("'abc\\\\'def'"), testCase);
+                assertEquals(pdn ? "'''abc''''def'''" : "'abc''def'", testConn.enquoteLiteral("'abc''def'"), testCase);
+                assertEquals(bse ? "'abc''def\\'ghi'" : "'abc''def\\''ghi'", testConn.enquoteLiteral("abc'def\\'ghi"), testCase);
+                assertEquals("'abc''def\\\\''ghi'", testConn.enquoteLiteral("abc'def\\\\'ghi"), testCase);
+                assertEquals(bse ? "'abc''''def\\'ghi'" : "'abc''''def\\''ghi'", testConn.enquoteLiteral("abc''def\\'ghi"), testCase);
+                assertEquals("'abc''''def\\\\''ghi'", testConn.enquoteLiteral("abc''def\\\\'ghi"), testCase);
+                assertEquals("'''abc\"'", testConn.enquoteLiteral("'abc\""), testCase);
+                assertEquals(pdn ? "'''abc\"def'''" : "'abc\"def'", testConn.enquoteLiteral("'abc\"def'"), testCase);
+                assertEquals("'''abc\"def''''ghi\"'", testConn.enquoteLiteral("'abc\"def''ghi\""), testCase);
+                assertEquals("'''abc\"def''ghi'''", testConn.enquoteLiteral("'abc\"def'ghi'"), testCase);
+                assertEquals(pdn ? "'''abc\"def''''ghi'''" : "'abc\"def''ghi'", testConn.enquoteLiteral("'abc\"def''ghi'"), testCase);
+
+                // Double quote.
+                assertEquals("'\"'", testConn.enquoteLiteral("\""), testCase);
+                assertEquals("'\\\"'", testConn.enquoteLiteral("\\\""), testCase);
+                assertEquals("'\\\\\"'", testConn.enquoteLiteral("\\\\\""), testCase);
+                assertEquals(pdn || asq ? "'\"\"'" : "\"\"", testConn.enquoteLiteral("\"\""), testCase);
+                assertEquals("'\\\"abc\"'", testConn.enquoteLiteral("\\\"abc\""), testCase);
+                assertEquals("'\\\\\"abc\"'", testConn.enquoteLiteral("\\\\\"abc\""), testCase);
+                assertEquals("'\\\\\\\"abc\"'", testConn.enquoteLiteral("\\\\\\\"abc\""), testCase);
+                assertEquals(pdn || asq || bse ? "'\"abc\\\"'" : "\"abc\\\"", testConn.enquoteLiteral("\"abc\\\""), testCase);
+                assertEquals(pdn || asq ? "'\"abc\\\\\"'" : "\"abc\\\\\"", testConn.enquoteLiteral("\"abc\\\\\""), testCase);
+                assertEquals(pdn || asq || bse ? "'\"abc\\\\\\\"'" : "\"abc\\\\\\\"", testConn.enquoteLiteral("\"abc\\\\\\\""), testCase);
+                assertEquals("'abc\"def'", testConn.enquoteLiteral("abc\"def"), testCase);
+                assertEquals("'abc\\\"def'", testConn.enquoteLiteral("abc\\\"def"), testCase);
+                assertEquals("'abc\\\\\"def'", testConn.enquoteLiteral("abc\\\\\"def"), testCase);
+                assertEquals("'abc\"\"def'", testConn.enquoteLiteral("abc\"\"def"), testCase);
+                assertEquals(pdn || asq ? "'\"abc\"'" : "\"abc\"", testConn.enquoteLiteral("\"abc\""), testCase);
+                assertEquals(pdn || asq ? "'\"abc\ndef\"'" : "\"abc\ndef\"", testConn.enquoteLiteral("\"abc\ndef\""), testCase);
+                assertEquals("'\"abc\"def\"'", testConn.enquoteLiteral("\"abc\"def\""), testCase);
+                assertEquals(pdn || asq || !bse ? "'\"abc\\\"def\"'" : "\"abc\\\"def\"", testConn.enquoteLiteral("\"abc\\\"def\""), testCase);
+                assertEquals("'\"abc\\\\\"def\"'", testConn.enquoteLiteral("\"abc\\\\\"def\""), testCase);
+                assertEquals(pdn || asq ? "'\"abc\"\"def\"'" : "\"abc\"\"def\"", testConn.enquoteLiteral("\"abc\"\"def\""), testCase);
+                assertEquals("'abc\"def\\\"ghi'", testConn.enquoteLiteral("abc\"def\\\"ghi"), testCase);
+                assertEquals("'abc\"def\\\\\"ghi'", testConn.enquoteLiteral("abc\"def\\\\\"ghi"), testCase);
+                assertEquals("'abc\"\"def\\\"ghi'", testConn.enquoteLiteral("abc\"\"def\\\"ghi"), testCase);
+                assertEquals("'abc\"\"def\\\\\"ghi'", testConn.enquoteLiteral("abc\"\"def\\\\\"ghi"), testCase);
+                assertEquals("'\"abc'''", testConn.enquoteLiteral("\"abc'"), testCase);
+                assertEquals(pdn || asq ? "'\"abc''def\"'" : "\"abc'def\"", testConn.enquoteLiteral("\"abc'def\""), testCase);
+                assertEquals("'\"abc''def\"\"ghi'''", testConn.enquoteLiteral("\"abc'def\"\"ghi'"), testCase);
+                assertEquals("'\"abc''def\"ghi\"'", testConn.enquoteLiteral("\"abc'def\"ghi\""), testCase);
+                assertEquals(pdn || asq ? "'\"abc''def\"\"ghi\"'" : "\"abc'def\"\"ghi\"", testConn.enquoteLiteral("\"abc'def\"\"ghi\""), testCase);
+            }
+        } while ((pdn = !pdn) || (asq = !asq) || (bse = !bse));
+    }
+
+    /**
+     * Tests WL#17215, Implement JDBC 4.3/4.5 Statement/Connection.enquote* methods: enquoteNCharLiteral().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testEnquoteNCharLiteral() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        String sqlMode = getMysqlVariable("sql_mode");
+        sqlMode = removeSqlMode("ANSI_QUOTES", sqlMode);
+        sqlMode = removeSqlMode("NO_BACKSLASH_ESCAPES", sqlMode);
+        if (sqlMode.length() > 0) {
+            sqlMode += ",";
+        }
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", asq ? "Y" : "N", bse ? "Y" : "N");
+
+            StringBuilder newSqlMode = new StringBuilder(sqlMode);
+            if (asq && !bse) {
+                newSqlMode.append("ANSI_QUOTES,NO_BACKSLASH_ESCAPES");
+            } else if (asq) {
+                newSqlMode.append("ANSI_QUOTES");
+            } else if (!bse) {
+                newSqlMode.append("NO_BACKSLASH_ESCAPES");
+            }
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.pedantic.getKeyName(), Boolean.toString(pdn));
+            props.setProperty(PropertyKey.sessionVariables.getKeyName(), "sql_mode='" + newSqlMode + "'");
+
+            try (JdbcConnection testConn = getConnectionWithProps(props).unwrap(JdbcConnection.class)) {
+                // No quotes.
+                assertEquals("NULL", testConn.enquoteNCharLiteral(null));
+                assertEquals("N''", testConn.enquoteNCharLiteral(""), testCase);
+                assertEquals("N' '", testConn.enquoteNCharLiteral(" "), testCase);
+                assertEquals("N'abc'", testConn.enquoteNCharLiteral("abc"), testCase);
+                assertEquals("N'abc\ndef'", testConn.enquoteNCharLiteral("abc\ndef"), testCase);
+                assertEquals(bse ? "N'abc\\\\'" : "N'abc\\'", testConn.enquoteNCharLiteral("abc\\"), testCase);
+                assertEquals("N'abc\\\\'", testConn.enquoteNCharLiteral("abc\\\\"), testCase);
+                assertEquals(bse ? "N'abc\\\\\\\\'" : "N'abc\\\\\\'", testConn.enquoteNCharLiteral("abc\\\\\\"), testCase);
+
+                // Single quote.
+                assertEquals("N''''", testConn.enquoteNCharLiteral("'"), testCase);
+                assertEquals(bse ? "N'\\''" : "N'\\'''", testConn.enquoteNCharLiteral("\\'"), testCase);
+                assertEquals("N'\\\\'''", testConn.enquoteNCharLiteral("\\\\'"), testCase);
+                assertEquals(pdn ? "N''''''" : "N''", testConn.enquoteNCharLiteral("''"), testCase);
+                assertEquals(pdn ? "N'''abc'''" : "N'abc'", testConn.enquoteNCharLiteral("'abc'"), testCase);
+                assertEquals(pdn ? "N'N''abc'''" : "N'abc'", testConn.enquoteNCharLiteral("N'abc'"), testCase);
+                assertEquals(pdn ? "N'n''abc'''" : "N'abc'", testConn.enquoteNCharLiteral("n'abc'"), testCase);
+                assertEquals("N'N''abc''def'''", testConn.enquoteNCharLiteral("N'abc'def'"), testCase);
+                assertEquals(pdn ? "N'N''abc''''def'''" : "N'abc''def'", testConn.enquoteNCharLiteral("N'abc''def'"), testCase);
+                assertEquals(bse ? pdn ? "N'N''abc\\'def'''" : "N'abc\\'def'" : "N'N''abc\\''def'''", testConn.enquoteNCharLiteral("N'abc\\'def'"), testCase);
+                assertEquals(pdn ? "N'N''abc\"def'''" : "N'abc\"def'", testConn.enquoteNCharLiteral("N'abc\"def'"), testCase);
+                assertEquals(pdn ? "N'N''abc\"\"def'''" : "N'abc\"\"def'", testConn.enquoteNCharLiteral("N'abc\"\"def'"), testCase);
+                assertEquals(pdn ? "N'N''abc\\\"def'''" : "N'abc\\\"def'", testConn.enquoteNCharLiteral("N'abc\\\"def'"), testCase);
+
+                // Double quote.
+                assertEquals("N'\"'", testConn.enquoteNCharLiteral("\""), testCase);
+                assertEquals("N'\\\"'", testConn.enquoteNCharLiteral("\\\""), testCase);
+                assertEquals("N'\\\\\"'", testConn.enquoteNCharLiteral("\\\\\""), testCase);
+                assertEquals("N'\"\"'", testConn.enquoteNCharLiteral("\"\""), testCase);
+                assertEquals("N'\"abc\"'", testConn.enquoteNCharLiteral("\"abc\""), testCase);
+                assertEquals("N'N\"abc\"'", testConn.enquoteNCharLiteral("N\"abc\""), testCase);
+                assertEquals("N'n\"abc\"'", testConn.enquoteNCharLiteral("n\"abc\""), testCase);
+                assertEquals("N'N\"abc\"def\"'", testConn.enquoteNCharLiteral("N\"abc\"def\""), testCase);
+                assertEquals("N'N\"abc\"\"def\"'", testConn.enquoteNCharLiteral("N\"abc\"\"def\""), testCase);
+                assertEquals("N'N\"abc\\\"def\"'", testConn.enquoteNCharLiteral("N\"abc\\\"def\""), testCase);
+                assertEquals("N'N\"abc''def\"'", testConn.enquoteNCharLiteral("N\"abc'def\""), testCase);
+                assertEquals("N'N\"abc''''def\"'", testConn.enquoteNCharLiteral("N\"abc''def\""), testCase);
+                assertEquals(bse ? "N'N\"abc\\'def\"'" : "N'N\"abc\\''def\"'", testConn.enquoteNCharLiteral("N\"abc\\'def\""), testCase);
+            }
+        } while ((pdn = !pdn) || (asq = !asq) || (bse = !bse));
     }
 
 }

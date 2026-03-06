@@ -2489,4 +2489,132 @@ public class StatementImpl implements JdbcStatement {
         }
     }
 
+    /**
+     * Determines whether the supplied identifier is "simple", meaning it can be used in SQL without quoting under the rules implemented by
+     * {@link StringUtils#isSimpleIdentifier(String, java.util.function.Predicate)}.
+     * <p>
+     * This is typically used as a fast-path to avoid quoting identifiers that consist only of allowed characters and do not require delimiter quoting for
+     * correctness.
+     *
+     * @param identifier
+     *            The identifier text to test (for example a column or table name).
+     * @return {@code true} if the identifier is considered simple and can be used unquoted; {@code false} otherwise.
+     * @throws SQLException
+     *             Declared for interface/override compatibility; this implementation does not throw based on the current logic but callers should still handle
+     *             it per the contract.
+     *
+     * @see StringUtils#isSimpleIdentifier(String, java.util.function.Predicate)
+     */
+    @Override
+    public boolean isSimpleIdentifier(String identifier) throws SQLException {
+        return this.connection.isSimpleIdentifier(identifier);
+    }
+
+    /**
+     * Returns an SQL identifier rendered for inclusion in a statement, applying quoting rules based on the current session configuration.
+     * <p>
+     * The identifier quote character is derived from the session/server configuration (for example {@code `} or {@code "} depending on SQL mode such as
+     * ANSI_QUOTES).
+     * <p>
+     * Fast-path behavior for "simple" identifiers:
+     * <ul>
+     * <li>If {@code identifier} is considered a simple identifier (per {@code isSimpleIdentifier}), then:
+     * <ul>
+     * <li>when {@code alwaysDelimit} is {@code true}, the identifier is surrounded with the session's identifier quote character,</li>
+     * <li>otherwise it is returned unchanged (unquoted).</li>
+     * </ul>
+     * </li>
+     * </ul>
+     * <p>
+     * General behavior for non-simple identifiers:
+     * <ul>
+     * <li>Determines whether ANSI quoted identifiers are enabled (ANSI_QUOTES) and whether backslash escapes are permitted (NO_BACKSLASH_ESCAPES).</li>
+     * <li>Delegates to {@link StringUtils#enquoteIdentifier(String, char, boolean, boolean, boolean)} to validate and/or quote the identifier accordingly.</li>
+     * </ul>
+     * <p>
+     * Note: This method is intended for rendering identifiers (for example schema/table/column names). It does not validate object existence and does not
+     * perform SQL parsing; callers should ensure the provided identifier is trusted or otherwise handled safely.
+     *
+     * @param identifier
+     *            The identifier text to render (for example a table or column name).
+     * @param alwaysDelimit
+     *            If {@code true}, always quote simple identifiers; if {@code false}, simple identifiers are returned unquoted
+     * @return The rendered identifier, quoted as needed for the current session's identifier quoting and escaping rules.
+     * @throws SQLException
+     *             If an error occurs.
+     *
+     * @see StringUtils#quoteIdentifier(String, boolean)
+     */
+    @Override
+    public String enquoteIdentifier(String identifier, boolean alwaysDelimit) throws SQLException {
+        return this.connection.enquoteIdentifier(identifier, alwaysDelimit);
+    }
+
+    /**
+     * Returns an SQL string literal representation of the supplied value, rendered for inclusion in a statement and using quoting/escaping rules derived from
+     * the current session configuration.
+     * <p>
+     * Behavior:
+     * <ul>
+     * <li>If {@code val} is {@code null}, returns the SQL {@code NULL} keyword (unquoted).</li>
+     * <li>Otherwise determines session SQL-mode settings that influence quoting/escaping:
+     * <ul>
+     * <li>ANSI_QUOTES: affects whether {@code "} may be treated as a string delimiter vs. identifier delimiter, depending on the quoting rules.</li>
+     * <li>NO_BACKSLASH_ESCAPES: controls whether backslash escaping is recognized when validating/producing a literal.</li>
+     * </ul>
+     * </li>
+     * <li>Delegates to {@link StringUtils#enquoteLiteral(String, boolean, boolean, boolean)} (or equivalent) to perform the actual quoting and escaping,
+     * honoring
+     * the session's pedantic mode setting.</li>
+     * </ul>
+     *
+     * @param val
+     *            The value to render as an SQL string literal; {@code null} is rendered as {@code NULL}.
+     * @return An SQL literal suitable for embedding in a statement (e.g., {@code 'text'}), or {@code NULL} when {@code val} is {@code null}.
+     * @throws SQLException
+     *             Declared for interface/override compatibility and to allow callers to handle session-related failures consistently.
+     *
+     * @see StringUtils#enquoteLiteral(String, boolean, boolean, boolean)
+     */
+    @Override
+    public String enquoteLiteral(String val) throws SQLException {
+        return this.connection.enquoteLiteral(val);
+    }
+
+    /**
+     * Returns an SQL national character set string literal (NCHAR literal) representation of the supplied value, rendered for inclusion in a statement.
+     * <p>
+     * Behavior:
+     * <ul>
+     * <li>If {@code val} is {@code null}, returns the SQL {@code NULL} keyword (unquoted).</li>
+     * <li>Determines whether backslash escapes are enabled based on the current session's SQL_MODE containing {@code NO_BACKSLASH_ESCAPES} setting.</li>
+     * <li>In non-pedantic mode, if {@code val} already appears to be prefixed as an NCHAR literal (i.e., {@code N'...'} or {@code n'...'}), the method:
+     * <ul>
+     * <li>extracts the quoted literal portion (starting at the {@code '}),</li>
+     * <li>delegates to {@link StringUtils#enquoteLiteral(String, boolean, boolean, boolean)} to validate/fix the quoting/escaping of that portion, and</li>
+     * <li>returns the original value unchanged if it was already properly quoted.</li>
+     * </ul>
+     * </li>
+     * <li>Otherwise, treats {@code val} as raw content, quotes it as a standard single-quoted literal, and prefixes the result with {@code N}.</li>
+     * </ul>
+     * <p>
+     * Notes:
+     * <ul>
+     * <li>Double quotes are not considered valid delimiters for NCHAR literals; this method only accepts/produces the {@code N'...'} form.</li>
+     * <li>This method forces the literal-quoting helper to treat {@code "} as <em>not</em> a string delimiter (passes {@code ansiQuotes=true} to the helper),
+     * because the national character literal syntax is always single-quoted.</li>
+     * </ul>
+     *
+     * @param val
+     *            The value to render as an SQL national character set string literal; {@code null} is rendered as {@code NULL}. The input may be raw content or
+     *            may already be in {@code N'...'} / {@code n'...'} form.
+     * @return A national character set literal suitable for embedding in SQL (e.g., {@code N'text'}), or {@code NULL} when {@code val} is {@code null}.
+     * @throws SQLException
+     *             Declared for interface/override compatibility and to allow callers to handle session-related failures consistently.
+     */
+    @Override
+    public String enquoteNCharLiteral(String val) throws SQLException {
+        return this.connection.enquoteNCharLiteral(val);
+    }
+
 }

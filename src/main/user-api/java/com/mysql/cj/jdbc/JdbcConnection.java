@@ -536,4 +536,40 @@ public interface JdbcConnection extends java.sql.Connection, MysqlConnection, Tr
      */
     String getDatabase();
 
+    /*
+     * Method signature mirrors the corresponding java.sql.Connection method introduced in JDBC 4.5/JDK 26. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 26+ (and the default becomes usable).
+     */
+    boolean isSimpleIdentifier(String identifier) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Connection method introduced in JDBC 4.5/JDK 26. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 26+ (and the default becomes usable).
+     */
+    String enquoteIdentifier(String identifier, boolean alwaysDelimit) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Connection method introduced in JDBC 4.5/JDK 26. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 26+ (and the default becomes usable).
+     */
+    String enquoteLiteral(String val) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Connection method introduced in JDBC 4.5/JDK 26. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 26+ (and the default becomes usable).
+     */
+    String enquoteNCharLiteral(String val) throws SQLException;
+
 }

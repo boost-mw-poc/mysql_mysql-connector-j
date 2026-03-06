@@ -409,8 +409,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
 
         StringBuilder paramNameBuf = new StringBuilder(1 + PARAMETER_NAMESPACE_PREFIX.length() + origParameterName.length());
         paramNameBuf.append("@");
-        paramNameBuf.append(StringUtils.quoteIdentifier(PARAMETER_NAMESPACE_PREFIX + origParameterName.substring(offset),
-                this.session.getIdentifierQuoteString(), this.pedantic));
+        paramNameBuf.append(StringUtils.quoteIdentifier(PARAMETER_NAMESPACE_PREFIX + origParameterName.substring(offset), this.session.getIdentifierQuoteChar(),
+                this.pedantic));
 
         return paramNameBuf.toString();
     }
@@ -798,19 +798,19 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                 //Bug#57022, we need to check for db.SPname notation first and pass on only SPname
                 String dbName = "";
                 String objectName = extractRoutineName();
-                String quotedId = this.session.getIdentifierQuoteString();
-                List<String> objectNameParts = StringUtils.splitDBdotName(objectName, "", quotedId, this.session.getServerSession().isNoBackslashEscapesSet());
+                char quoteChar = this.session.getIdentifierQuoteChar();
+                List<String> objectNameParts = StringUtils.splitDbDotName(objectName, "", quoteChar, this.session.getServerSession().isNoBackslashEscapesSet());
                 if (objectNameParts.size() == 2) {
                     dbName = objectNameParts.get(0);
                     objectName = objectNameParts.get(1);
                 }
                 if (this.pedantic) {
-                    dbName = StringUtils.unquoteIdentifier(dbName, quotedId);
-                    objectName = StringUtils.unquoteIdentifier(objectName, quotedId);
+                    dbName = StringUtils.unquoteIdentifier(dbName, quoteChar);
+                    objectName = StringUtils.unquoteIdentifier(objectName, quoteChar);
                 }
 
                 if (dbName.isEmpty()) {
-                    dbName = StringUtils.quoteIdentifier(getCurrentDatabase(), quotedId, !this.pedantic);
+                    dbName = StringUtils.quoteIdentifier(getCurrentDatabase(), quoteChar, !this.pedantic);
                 }
 
                 java.sql.DatabaseMetaData dbmd = this.connection.getMetaData();

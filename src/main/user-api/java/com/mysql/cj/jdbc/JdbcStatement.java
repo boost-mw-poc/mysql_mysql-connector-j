@@ -118,4 +118,40 @@ public interface JdbcStatement extends java.sql.Statement, Query {
      */
     void doClose(CloseOption... options) throws SQLException;
 
+    /*
+     * Method signature mirrors the corresponding java.sql.Statement method introduced in JDBC 4.3/JDK 9. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 9+ (and the default becomes usable).
+     */
+    boolean isSimpleIdentifier(String identifier) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Statement method introduced in JDBC 4.3/JDK 9. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 9+ (and the default becomes usable).
+     */
+    String enquoteLiteral(String val) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Statement method introduced in JDBC 4.3/JDK 9. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 9+ (and the default becomes usable).
+     */
+    String enquoteIdentifier(String identifier, boolean alwaysDelimit) throws SQLException;
+
+    /*
+     * Method signature mirrors the corresponding java.sql.Statement method introduced in JDBC 4.3/JDK 9. MySQL Connector/J is compiled with Java 8, but must
+     * remain source/binary-compatible while also supporting APIs added after Java 8. When running on newer Java versions, code can call this method using the
+     * standard signature.
+     *
+     * TODO: Remove once MySQL Connector/J is built/compiled with Java 9+ (and the default becomes usable).
+     */
+    String enquoteNCharLiteral(String val) throws SQLException;
+
 }

@@ -439,7 +439,7 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
             ResultSet rs = null;
             try {
                 // If not pedantic mode then quote database name before calling #getTables().
-                String quotedDbName = pedanticValue() ? dbName : StringUtils.quoteIdentifier(dbName, getQuoteId(), true);
+                String quotedDbName = pedanticValue() ? dbName : StringUtils.quoteIdentifier(dbName, getQuoteChar(), true);
                 rs = chooseBasedOnDatabaseTerm(() -> getTables(quotedDbName, null, null, new String[] { "TABLE" }),
                         () -> getTables(null, quotedDbName, null, new String[] { "TABLE" }));
                 while (rs.next()) {
@@ -462,7 +462,7 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
         try (Statement stmt = getJdbcConnection().getMetaDataSafeStatement()) {
             for (String tableToExtract : tableList) {
                 StringBuilder query = new StringBuilder("SHOW CREATE TABLE ");
-                query.append(StringUtils.getFullyQualifiedName(dbName, tableToExtract, getQuoteId(), true));
+                query.append(StringUtils.getFullyQualifiedName(dbName, tableToExtract, getQuoteChar(), true));
                 try {
                     rs = stmt.executeQuery(query.toString());
                 } catch (SQLException e) {
@@ -531,71 +531,72 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
             String line = lineTokenizer.nextToken().trim();
             String constraintName = null;
             List<String> referencingColumnNames;
-            String referencedDbName = StringUtils.quoteIdentifier(dbName, getQuoteId(), true);
+            String referencedDbName = StringUtils.quoteIdentifier(dbName, getQuoteChar(), true);
             String referencedTableName = "";
             List<String> referencedColumnNames;
             int referentialActionOnDelete = importedKeyRestrict;
             int referentialActionOnUpdate = importedKeyRestrict;
 
             if (StringUtils.startsWithIgnoreCase(line, "CONSTRAINT")) {
-                int beginPos = line.indexOf(getQuoteId());
+                int beginPos = line.indexOf(getQuoteChar());
                 if (beginPos != -1) {
                     int endPos = -1;
-                    endPos = StringUtils.indexOfQuoteDoubleAware(line, getQuoteId(), beginPos + 1);
+                    endPos = StringUtils.indexOfQuoteDoubleAware(line, getQuoteChar(), beginPos + 1);
                     if (endPos != -1) {
-                        constraintName = StringUtils.unquoteIdentifier(line.substring(beginPos + 1, endPos), getQuoteId());
+                        constraintName = StringUtils.unquoteIdentifier(line.substring(beginPos + 1, endPos), getQuoteChar());
                         line = line.substring(endPos + 1, line.length()).trim();
                     }
                 }
             }
             if (line.startsWith("FOREIGN KEY")) {
                 int afterFk = "FOREIGN KEY".length();
-                int referencingColumnsBegin = StringUtils.indexOfIgnoreCase(afterFk, line, "(", getQuoteId(), getQuoteId(),
+                int referencingColumnsBegin = StringUtils.indexOfIgnoreCase(afterFk, line, "(", getQuoteCharAsStr(), getQuoteCharAsStr(),
                         SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
                 if (referencingColumnsBegin == -1) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.14"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
-                int referencingColumnsEnd = StringUtils.indexOfIgnoreCase(referencingColumnsBegin, line, ")", getQuoteId(), getQuoteId(),
+                int referencingColumnsEnd = StringUtils.indexOfIgnoreCase(referencingColumnsBegin, line, ")", getQuoteCharAsStr(), getQuoteCharAsStr(),
                         SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
                 if (referencingColumnsEnd == -1) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.15"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
                 String referencingColumnNamesToken = line.substring(referencingColumnsBegin + 1, referencingColumnsEnd);
-                referencingColumnNames = StringUtils.split(referencingColumnNamesToken, ",", getQuoteId(), getQuoteId(), false).stream()
-                        .map(c -> StringUtils.unquoteIdentifier(c, getQuoteId())).collect(Collectors.toList());
+                referencingColumnNames = StringUtils.split(referencingColumnNamesToken, ",", getQuoteCharAsStr(), getQuoteCharAsStr(), false).stream()
+                        .map(c -> StringUtils.unquoteIdentifier(c, getQuoteChar())).collect(Collectors.toList());
 
-                int indexOfRef = StringUtils.indexOfIgnoreCase(afterFk, line, "REFERENCES", getQuoteId(), getQuoteId(), SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
+                int indexOfRef = StringUtils.indexOfIgnoreCase(afterFk, line, "REFERENCES", getQuoteCharAsStr(), getQuoteCharAsStr(),
+                        SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
                 if (indexOfRef == -1) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.16"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
                 int afterRef = indexOfRef + "REFERENCES".length();
-                int referencedColumnsBegin = StringUtils.indexOfIgnoreCase(afterRef, line, "(", getQuoteId(), getQuoteId(),
+                int referencedColumnsBegin = StringUtils.indexOfIgnoreCase(afterRef, line, "(", getQuoteCharAsStr(), getQuoteCharAsStr(),
                         SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
                 if (referencedColumnsBegin == -1) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.17"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
                 referencedTableName = line.substring(afterRef, referencedColumnsBegin).trim();
-                int referencedColumnsEnd = StringUtils.indexOfIgnoreCase(referencedColumnsBegin + 1, line, ")", getQuoteId(), getQuoteId(),
+                int referencedColumnsEnd = StringUtils.indexOfIgnoreCase(referencedColumnsBegin + 1, line, ")", getQuoteCharAsStr(), getQuoteCharAsStr(),
                         SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
                 if (referencedColumnsEnd == -1) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.18"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
                 String referencedColumnNamesToken = line.substring(referencedColumnsBegin + 1, referencedColumnsEnd);
-                referencedColumnNames = StringUtils.split(referencedColumnNamesToken, ",", getQuoteId(), getQuoteId(), false).stream()
-                        .map(c -> StringUtils.unquoteIdentifier(c, getQuoteId())).collect(Collectors.toList());
+                referencedColumnNames = StringUtils.split(referencedColumnNamesToken, ",", getQuoteCharAsStr(), getQuoteCharAsStr(), false).stream()
+                        .map(c -> StringUtils.unquoteIdentifier(c, getQuoteChar())).collect(Collectors.toList());
                 if (referencedColumnNames.size() != referencingColumnNames.size()) {
                     throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.12"), MysqlErrorNumbers.SQLSTATE_CONNJ_GENERAL_ERROR,
                             getExceptionInterceptor());
                 }
 
-                List<String> tableRef = StringUtils.splitDBdotName(referencedTableName, referencedDbName, getQuoteId(), true);
-                referencedDbName = StringUtils.unquoteIdentifier(tableRef.get(0), getQuoteId());
-                referencedTableName = StringUtils.unquoteIdentifier(tableRef.get(1), getQuoteId());
+                List<String> tableRef = StringUtils.splitDbDotName(referencedTableName, referencedDbName, getQuoteChar(), true);
+                referencedDbName = StringUtils.unquoteIdentifier(tableRef.get(0), getQuoteChar());
+                referencedTableName = StringUtils.unquoteIdentifier(tableRef.get(1), getQuoteChar());
                 String referentialActions = line.substring(referencedColumnsEnd + 1);
                 int onDeletePos = referentialActions.indexOf("ON DELETE");
                 if (onDeletePos != -1) {
@@ -839,9 +840,9 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 fieldName = "Create Function";
                 query.append("SHOW CREATE FUNCTION ");
             }
-            query.append(StringUtils.quoteIdentifier(dbName, getQuoteId(), true));
+            query.append(StringUtils.quoteIdentifier(dbName, getQuoteChar(), true));
             query.append('.');
-            query.append(StringUtils.quoteIdentifier(routineName, getQuoteId(), true));
+            query.append(StringUtils.quoteIdentifier(routineName, getQuoteChar(), true));
 
             paramRetrievalRs = paramRetrievalStmt.executeQuery(query.toString());
             if (paramRetrievalRs.next()) {
@@ -866,13 +867,13 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                     // Sanitize/normalize by stripping out comments.
                     routineCode = StringUtils.stripCommentsAndHints(routineCode, identifierAndStringMarkers, identifierAndStringMarkers,
                             !getSession().getServerSession().isNoBackslashEscapesSet());
-                    int startOfParamDeclaration = StringUtils.indexOfIgnoreCase(0, routineCode, "(", getQuoteId(), getQuoteId(),
+                    int startOfParamDeclaration = StringUtils.indexOfIgnoreCase(0, routineCode, "(", getQuoteCharAsStr(), getQuoteCharAsStr(),
                             getSession().getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL);
                     int endOfParamDeclaration = indexOfParameterDeclarationEnd(startOfParamDeclaration, routineCode, identifierMarkers);
 
                     if (routineType == StoredRoutineType.FUNCTION) {
                         // Grab the return column since it needs to go first in the output result set.
-                        int returnsIndex = StringUtils.indexOfIgnoreCase(0, routineCode, " RETURNS ", getQuoteId(), getQuoteId(),
+                        int returnsIndex = StringUtils.indexOfIgnoreCase(0, routineCode, " RETURNS ", getQuoteCharAsStr(), getQuoteCharAsStr(),
                                 getSession().getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL);
                         int endReturnsDef = indexOfEndOfReturnsClause(routineCode, returnsIndex, identifierMarkers);
 
@@ -974,9 +975,9 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                     }
 
                     if (paramName.startsWith("`") && paramName.endsWith("`")) {
-                        paramName = StringUtils.unquoteIdentifier(paramName, "`");
+                        paramName = StringUtils.unquoteIdentifier(paramName, '`');
                     } else if (isRoutineInAnsiMode && paramName.startsWith("\"") && paramName.endsWith("\"")) {
-                        paramName = StringUtils.unquoteIdentifier(paramName, "\"");
+                        paramName = StringUtils.unquoteIdentifier(paramName, '\"');
                     }
 
                     final String paramNameFilter = normalizeIdentifierQuoting(parameterNamePattern);
@@ -1450,14 +1451,16 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 }
             }
 
+            boolean noBackslashEscapes = getSession().getServerSession().isNoBackslashEscapesSet();
+            boolean ansiQuotes = getSession().getServerSession().useAnsiQuotedIdentifiers();
             for (String dbName : tableNamesPerDb.keySet()) {
                 for (String tableName : tableNamesPerDb.get(dbName)) {
                     ResultSet rs = null;
                     try {
                         StringBuilder query = new StringBuilder("SHOW FULL COLUMNS FROM ");
-                        query.append(StringUtils.quoteIdentifier(tableName, getQuoteId(), true));
+                        query.append(StringUtils.quoteIdentifier(tableName, getQuoteChar(), true));
                         query.append(" FROM ");
-                        query.append(StringUtils.quoteIdentifier(dbName, getQuoteId(), true));
+                        query.append(StringUtils.quoteIdentifier(dbName, getQuoteChar(), true));
 
                         // Find column ordinals if column name pattern is not '%'.
                         // SHOW COLUMNS does not include ordinal information so another round trip is required to return all columns in the table and compute
@@ -1478,7 +1481,7 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
 
                         if (columnNameFilter != null) {
                             query.append(" LIKE ");
-                            query.append(StringUtils.quoteIdentifier(columnNameFilter, "'", true));
+                            query.append(StringUtils.enquoteLiteral(columnNameFilter, true, ansiQuotes, !noBackslashEscapes));
                         }
                         rs = stmt.executeQuery(query.toString());
 
@@ -1609,11 +1612,11 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                         row[0] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencedDatabase), () -> s2b("def"));     // PKTABLE_CAT
                         row[1] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencedDatabase));           // PKTABLE_SCHEM
                         row[2] = s2b(foreignKey.referencedTable);                                                           // PKTABLE_NAME
-                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteId()));                // PKCOLUMN_NAME
+                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteChar()));                // PKCOLUMN_NAME
                         row[4] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencingDatabase), () -> s2b("def"));    // FKTABLE_CAT
                         row[5] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencingDatabase));          // FKTABLE_SCHEM
                         row[6] = s2b(foreignKey.referencingTable);                                                          // FKTABLE_NAME
-                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteId()));               // FKCOLUMN_NAME
+                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteChar()));               // FKCOLUMN_NAME
                         row[8] = n2b(keySeq++);                                                                             // KEY_SEQ
                         row[9] = n2b(foreignKey.referentialActionOnUpdate);                                                 // UPDATE_RULE
                         row[10] = n2b(foreignKey.referentialActionOnDelete);                                                // DELETE_RULE
@@ -1664,11 +1667,11 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                         row[0] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencedDatabase), () -> s2b("def"));     // PKTABLE_CAT
                         row[1] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencedDatabase));           // PKTABLE_SCHEM
                         row[2] = s2b(foreignKey.referencedTable);                                                           // PKTABLE_NAME
-                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteId()));                // PKCOLUMN_NAME
+                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteChar()));                // PKCOLUMN_NAME
                         row[4] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencingDatabase), () -> s2b("def"));    // FKTABLE_CAT
                         row[5] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencingDatabase));          // FKTABLE_SCHEM
                         row[6] = s2b(foreignKey.referencingTable);                                                          // FKTABLE_NAME
-                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteId()));               // FKCOLUMN_NAME
+                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteChar()));               // FKCOLUMN_NAME
                         row[8] = n2b(keySeq++);                                                                             // KEY_SEQ
                         row[9] = n2b(foreignKey.referentialActionOnUpdate);                                                 // UPDATE_RULE
                         row[10] = n2b(foreignKey.referentialActionOnDelete);                                                // DELETE_RULE
@@ -1720,11 +1723,11 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                         row[0] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencedDatabase), () -> s2b("def"));     // PKTABLE_CAT
                         row[1] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencedDatabase));           // PKTABLE_SCHEM
                         row[2] = s2b(foreignKey.referencedTable);                                                           // PKTABLE_NAME
-                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteId()));                // PKCOLUMN_NAME
+                        row[3] = s2b(StringUtils.unquoteIdentifier(referencedColumns.next(), getQuoteChar()));                // PKCOLUMN_NAME
                         row[4] = chooseBasedOnDatabaseTerm(() -> s2b(foreignKey.referencingDatabase), () -> s2b("def"));    // FKTABLE_CAT
                         row[5] = chooseBasedOnDatabaseTerm(() -> null, () -> s2b(foreignKey.referencingDatabase));          // FKTABLE_SCHEM
                         row[6] = s2b(foreignKey.referencingTable);                                                          // FKTABLE_NAME
-                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteId()));               // FKCOLUMN_NAME
+                        row[7] = s2b(StringUtils.unquoteIdentifier(referencingColumns.next(), getQuoteChar()));               // FKCOLUMN_NAME
                         row[8] = n2b(keySeq++);                                                                             // KEY_SEQ
                         row[9] = n2b(foreignKey.referentialActionOnUpdate);                                                 // UPDATE_RULE
                         row[10] = n2b(foreignKey.referentialActionOnDelete);                                                // DELETE_RULE
@@ -1759,9 +1762,9 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 try {
                     // MySQL stores index information in the fields: Table Non_unique Key_name Seq_in_index Column_name Collation Cardinality Sub_part.
                     StringBuilder query = new StringBuilder("SHOW INDEX FROM ");
-                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteId(), pedanticValue()));
+                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteChar(), pedanticValue()));
                     query.append(" FROM ");
-                    query.append(StringUtils.quoteIdentifier(db, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(db, getQuoteChar(), true));
 
                     rs = stmt.executeQuery(query.toString());
                     while (rs.next()) {
@@ -1837,9 +1840,9 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 ResultSet rs = null;
                 try {
                     StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
-                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteChar(), true));
                     query.append(" FROM ");
-                    query.append(StringUtils.quoteIdentifier(db, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(db, getQuoteChar(), true));
 
                     rs = stmt.executeQuery(query.toString());
                     while (rs.next()) {
@@ -1972,7 +1975,7 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                             // Loop through every column in the table.
                             ResultSet columnRs = null;
                             try {
-                                columnRs = getColumns(catalog, schemaPattern, StringUtils.quoteIdentifier(table, getQuoteId(), !pedanticValue()), null);
+                                columnRs = getColumns(catalog, schemaPattern, StringUtils.quoteIdentifier(table, getQuoteChar(), !pedanticValue()), null);
                                 while (columnRs.next()) {
                                     byte[][] row = new byte[8][];
                                     row[0] = chooseBasedOnDatabaseTerm(() -> s2b(db), () -> s2b("def"));                    // TABLE_CAT
@@ -2021,6 +2024,8 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
         final SortedMap<MultiComparable, Row> sortedRows = new TreeMap<>();
         try (Statement stmt = getJdbcConnection().getMetaDataSafeStatement()) {
             List<String> dbList = chooseBasedOnDatabaseTerm(() -> getDatabasesByLiteral(dbFilter), () -> getDatabasesByPattern(dbFilter));
+            boolean noBackslashEscapes = getSession().getServerSession().isNoBackslashEscapesSet();
+            boolean ansiQuotes = getSession().getServerSession().useAnsiQuotedIdentifiers();
             for (String db : dbList) {
                 boolean operatingOnSystemDB = "information_schema".equalsIgnoreCase(db) || "mysql".equalsIgnoreCase(db)
                         || "performance_schema".equalsIgnoreCase(db) || "sys".equalsIgnoreCase(db);
@@ -2028,10 +2033,10 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 ResultSet rs = null;
                 try {
                     StringBuilder query = new StringBuilder("SHOW FULL TABLES FROM ");
-                    query.append(StringUtils.quoteIdentifier(db, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(db, getQuoteChar(), true));
                     if (tableNameFilter != null) {
                         query.append(" LIKE ");
-                        query.append(StringUtils.quoteIdentifier(tableNameFilter, "'", true));
+                        query.append(StringUtils.enquoteLiteral(tableNameFilter, true, ansiQuotes, !noBackslashEscapes));
                     }
                     rs = stmt.executeQuery(query.toString());
 
@@ -2169,9 +2174,9 @@ public class DatabaseMetaDataMysqlSchema extends DatabaseMetaData {
                 ResultSet rs = null;
                 try {
                     StringBuilder query = new StringBuilder("SHOW COLUMNS FROM ");
-                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(tableFilter, getQuoteChar(), true));
                     query.append(" FROM ");
-                    query.append(StringUtils.quoteIdentifier(db, getQuoteId(), true));
+                    query.append(StringUtils.quoteIdentifier(db, getQuoteChar(), true));
                     query.append(" WHERE Extra LIKE '%on update CURRENT_TIMESTAMP%'");
 
                     rs = stmt.executeQuery(query.toString());

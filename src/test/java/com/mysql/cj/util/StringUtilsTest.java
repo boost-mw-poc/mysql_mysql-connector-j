@@ -22,17 +22,26 @@ package com.mysql.cj.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+
+import com.mysql.cj.jdbc.DatabaseMetaData;
 
 import testsuite.BaseTestCase;
 
@@ -531,27 +540,25 @@ public class StringUtilsTest extends BaseTestCase {
         final String[] searchInDoubledQt = new String[] { "A 'strange' \"STRONG\" `SsStRiNg` to be searched in",
                 "A ''strange'' \"\"STRONG\"\" ``SsStRiNg`` to be searched in" };
 
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(null, null, 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(null, "'", 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware("abc", null, 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware("abc", "", 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware("abc", "bcd", 0));
-        assertEquals(0, StringUtils.indexOfQuoteDoubleAware("abc", "abc", 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(null, '\'', 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware("abc", '\"', 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware("abc", 'e', 0));
+        assertEquals(0, StringUtils.indexOfQuoteDoubleAware("abc", 'a', 0));
 
         int qtPos = 0;
-        assertEquals(2, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "'", 0));
-        assertEquals(10, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "'", qtPos + 1));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "'", qtPos + 1));
-        assertEquals(12, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "\"", 0));
-        assertEquals(19, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "\"", qtPos + 1));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "\"", qtPos + 1));
-        assertEquals(21, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "`", 0));
-        assertEquals(30, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "`", qtPos + 1));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], "`", qtPos + 1));
+        assertEquals(2, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '\'', 0));
+        assertEquals(10, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '\'', qtPos + 1));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '\'', qtPos + 1));
+        assertEquals(12, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '"', 0));
+        assertEquals(19, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '"', qtPos + 1));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '"', qtPos + 1));
+        assertEquals(21, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '`', 0));
+        assertEquals(30, qtPos = StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '`', qtPos + 1));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[0], '`', qtPos + 1));
 
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], "'", 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], "\"", 0));
-        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], "`", 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], '\'', 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], '"', 0));
+        assertEquals(-1, StringUtils.indexOfQuoteDoubleAware(searchInDoubledQt[1], '`', 0));
     }
 
     /**
@@ -651,7 +658,7 @@ public class StringUtilsTest extends BaseTestCase {
     }
 
     /**
-     * Tests StringUtil.quoteIdentifier() and StringUtil.unQuoteIdentifier() methods using back quote marks.
+     * Tests StringUtil.quoteIdentifier() and StringUtil.unQuoteIdentifier() methods using backquote marks.
      *
      * @throws Exception
      */
@@ -708,7 +715,7 @@ public class StringUtilsTest extends BaseTestCase {
         // Quoting rules (non-pedantic mode):
         // * identifiers[n] --> identifiersQuotedNonPedantic[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiers[i], "`", false),
+            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiers[i], '`', false),
                     i + 1 + ". " + identifiers[i] + ". non-pedantic quoting");
             assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiers[i], false),
                     i + 1 + ". " + identifiers[i] + ". non-pedantic quoting");
@@ -718,11 +725,11 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiers[n] --> identifiersQuotedPedantic[n]
         // * identifiersUnQuoted[n] --> identifiersQuotedNonPedantic[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersQuotedPedantic[i], StringUtils.quoteIdentifier(identifiers[i], "`", true),
+            assertEquals(identifiersQuotedPedantic[i], StringUtils.quoteIdentifier(identifiers[i], '`', true),
                     i + 1 + ". " + identifiers[i] + ". pedantic quoting");
             assertEquals(identifiersQuotedPedantic[i], StringUtils.quoteIdentifier(identifiers[i], true), i + 1 + ". " + identifiers[i] + ". pedantic quoting");
 
-            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiersUnQuoted[i], "`", true),
+            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiersUnQuoted[i], '`', true),
                     i + 1 + ". " + identifiersUnQuoted[i] + ". pedantic quoting");
             assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiersUnQuoted[i], true),
                     i + 1 + ". " + identifiersUnQuoted[i] + ". pedantic quoting");
@@ -733,10 +740,10 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiersQuotedNonPedantic[n] --> identifiersUnQuoted[n]
         // * identifiersQuotedPedantic[n] --> identifiers[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], "`"), i + 1 + ". " + identifiers[i] + ". unquoting");
-            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], "`"),
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], '`'), i + 1 + ". " + identifiers[i] + ". unquoting");
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], '`'),
                     i + 1 + ". " + identifiersQuotedNonPedantic[i] + ". non-pedantic unquoting");
-            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], "`"),
+            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], '`'),
                     i + 1 + ". " + identifiersQuotedPedantic[i] + ". pedantic unquoting");
         }
     }
@@ -805,7 +812,7 @@ public class StringUtilsTest extends BaseTestCase {
         // Quoting rules (non-pedantic mode):
         // * identifiers[n] --> identifiersQuotedNonPedantic[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiers[i], "\"", false),
+            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiers[i], '"', false),
                     i + 1 + ". " + identifiers[i] + ". non-pedantic quoting");
         }
 
@@ -813,10 +820,10 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiers[n] --> identifiersQuotedPedantic[n]
         // * identifiersUnQuoted[n] --> identifiersQuotedNonPedantic[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersQuotedPedantic[i], StringUtils.quoteIdentifier(identifiers[i], "\"", true),
+            assertEquals(identifiersQuotedPedantic[i], StringUtils.quoteIdentifier(identifiers[i], '"', true),
                     i + 1 + ". " + identifiers[i] + ". pedantic quoting");
 
-            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiersUnQuoted[i], "\"", true),
+            assertEquals(identifiersQuotedNonPedantic[i], StringUtils.quoteIdentifier(identifiersUnQuoted[i], '"', true),
                     i + 1 + ". " + identifiersUnQuoted[i] + ". pedantic quoting");
         }
 
@@ -825,10 +832,10 @@ public class StringUtilsTest extends BaseTestCase {
         // * identifiersQuotedNonPedantic[n] --> identifiersUnQuoted[n]
         // * identifiersQuotedPedantic[n] --> identifiers[n]
         for (int i = 0; i < identifiers.length; i++) {
-            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], "\""), i + 1 + ". " + identifiers[i] + ". unquoting");
-            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], "\""),
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiers[i], '"'), i + 1 + ". " + identifiers[i] + ". unquoting");
+            assertEquals(identifiersUnQuoted[i], StringUtils.unquoteIdentifier(identifiersQuotedNonPedantic[i], '"'),
                     i + 1 + ". " + identifiersQuotedNonPedantic[i] + ". non-pedantic unquoting");
-            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], "\""),
+            assertEquals(identifiers[i], StringUtils.unquoteIdentifier(identifiersQuotedPedantic[i], '"'),
                     i + 1 + ". " + identifiersQuotedPedantic[i] + ". pedantic unquoting");
         }
     }
@@ -1096,6 +1103,50 @@ public class StringUtilsTest extends BaseTestCase {
     }
 
     /**
+     * Tests StringUtils.sanitizeProcOrFuncName() and StringUtils.splitDBdotName() methods.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSanitizeAndSplitDot() throws Exception {
+        String src = null;
+        String resString = null;
+        List<String> results = new ArrayList<>();
+
+        // Test 1.1, weird DB.SP name.
+        src = "`MyDatabase 1.0.1.0`.`Proc 1.v1`";
+        resString = StringUtils.sanitizeProcOrFuncName(src);
+        assertNotNull(resString, "Test 1.1 returned null resString");
+        results = StringUtils.splitDbDotName(resString, null, '`', true);
+        assertEquals("`MyDatabase 1.0.1.0`", results.get(0));
+        assertEquals("`Proc 1.v1`", results.get(1));
+
+        // Test 1.2, toggle isNoBslashEscSet.
+        src = "`MyDatabase 1.0.1.0`.`Proc 1.v1`";
+        resString = StringUtils.sanitizeProcOrFuncName(src);
+        assertNotNull(resString, "Test 1.2 returned null resString");
+        results = StringUtils.splitDbDotName(resString, null, '`', false);
+        assertEquals("`MyDatabase 1.0.1.0`", results.get(0));
+        assertEquals("`Proc 1.v1`", results.get(1));
+
+        // Test 2.1, weird SP name, no DB parameter.
+        src = "`Proc 1.v1`";
+        resString = StringUtils.sanitizeProcOrFuncName(src);
+        assertNotNull(resString, "Test 2.1 returned null resString");
+        results = StringUtils.splitDbDotName(resString, null, '`', true);
+        assertNull(results.get(0));
+        assertEquals("`Proc 1.v1`", results.get(1));
+
+        // Test 2.2, toggle isNoBslashEscSet.
+        src = "`Proc 1.v1`";
+        resString = StringUtils.sanitizeProcOrFuncName(src);
+        assertNotNull(resString, "Test 2.2 returned null resString");
+        results = StringUtils.splitDbDotName(resString, null, '`', false);
+        assertNull(results.get(0));
+        assertEquals("`Proc 1.v1`", results.get(1));
+    }
+
+    /**
      * Tests StringUtils.split() methods.
      *
      * @throws Exception
@@ -1332,7 +1383,7 @@ public class StringUtilsTest extends BaseTestCase {
     }
 
     /**
-     * Tests StringUtils.quoteBytes()
+     * Tests StringUtils.unquoteBytes().
      *
      * @throws Exception
      */
@@ -1354,69 +1405,333 @@ public class StringUtilsTest extends BaseTestCase {
     }
 
     @Test
-    public void testStringUtils001() throws Exception {
-        char[] cdata = new char[26];
-        byte[] bdata = new byte[26];
-        String s1 = "String Consist of some small Sample Data";
-        for (int i = 0; i < 26; i++) {
-            cdata[i] = (char) ('A' + i);
-        }
-
-        byte[] bdata3 = new byte[26];
-        for (int i = 0; i < 26; i++) {
-            bdata3[i] = (byte) ('a' + i % 6);
-        }
-
-        System.out.print("\n StringUtils.escapeQuote(XabXcX) :" + StringUtils.escapeQuote("XXabcX", "X"));
-        System.out.print("\n StringUtils.escapeQuote('ab'c') :" + StringUtils.escapeQuote("'ab'c'", "'"));
-        System.out.print("\n StringUtils.escapeQuote('select \\1\\, \\6\\') :" + StringUtils.escapeQuote("select \\1\\, \\6\\", "\\"));
-
-        assertEquals("''abc", StringUtils.escapeQuote("''abc'", "'"), "escapeQuote() returns Wrong result");
-        assertEquals('R', StringUtils.firstNonWsCharUc("  \t  Raj"), "firstNonWsCharUc() returns Wrong result");
-        assertEquals("select \\\\1\\\\, \\\\6\\\\", StringUtils.escapeQuote("select \\1\\, \\6\\", "\\"), "escapeQuote() returns Wrong result");
-        String s2 = null;
-        assertEquals(null, StringUtils.escapeQuote(s2, "'"), "escapeQuote() returns Wrong result");
-        bdata = StringUtils.getBytes(cdata, 5, 5);
-
-        System.out.print("\n indexOf(bdata2,'F') (0):" + StringUtils.indexOf(bdata, 'F'));
-        System.out.print("\n indexOf(bdata2,'I') (3):" + StringUtils.indexOf(bdata, 'I'));
-        System.out.print("\n isValidIdChar('+') (false) : " + StringUtils.isValidIdChar('+'));
-        System.out.print("\n isValidIdChar('X')(true) : " + StringUtils.isValidIdChar('X'));
-        System.out.print("\n lastIndexOf(bdata3,'d')(21) :" + StringUtils.lastIndexOf(bdata3, 'd'));
-        System.out.print("\n indexOf(bdata3,'d') (3):" + StringUtils.indexOf(bdata3, 'd'));
-        System.out.print("\n wildCompareIgnoreCase(s1,'some%mal') (false):" + StringUtils.wildCompareIgnoreCase(s1, "some%mal"));
-        System.out.print("\n wildCompareIgnoreCase(s1,'some_s_al_') (false):" + StringUtils.wildCompareIgnoreCase(s1, "some_s_al_"));
-        System.out.print("\n wildCompareIgnoreCase(s1,'some') (false):" + StringUtils.wildCompareIgnoreCase(s1, "some"));
-        System.out.print("\n wildCompareIgnoreCase(s1,'S_%s_%S_%Da%'):" + StringUtils.wildCompareIgnoreCase(s1, "S_%s_%S_%Da%"));
-        System.out.print("\n wildCompareIgnoreCase(s1,'S_r_n_ C_n_i_t%'):" + StringUtils.wildCompareIgnoreCase(s1, "S_r_n_ C_n_i_t%"));
-        assertEquals(0, StringUtils.indexOf(bdata, 'F'), "indexOf() returns Wrong result");
-        assertEquals(false, StringUtils.isValidIdChar('+'), "isValidIdChar() returns Wrong result");
-        assertEquals(true, StringUtils.isValidIdChar('X'), "isValidIdChar() returns Wrong result");
-        assertEquals(21, StringUtils.lastIndexOf(bdata3, 'd'), "lastIndexOf() returns Wrong result");
-        assertEquals(3, StringUtils.indexOf(bdata3, 'd'), "indexOf() returns Wrong result");
-
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "some"), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "small"), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "Data"), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "amp"), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, " "), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "some_s_al_"), "wildCompareIgnoreCase() returns Wrong result");
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "some%mal"), "wildCompareIgnoreCase() returns Wrong result");
-
-        assertFalse(StringUtils.wildCompareIgnoreCase(s1, "some_s_al_"), "wildCompareIgnoreCase() returns Wrong result");
-        assertTrue(StringUtils.wildCompareIgnoreCase(s1, "S_r_n_ C_n_i_t%"), "wildCompareIgnoreCase() returns Wrong result");
-
-        System.out.print("\n firstNonWsCharUc('  \t  Raj') : " + StringUtils.firstNonWsCharUc("  \t  Raj"));
-        System.out.print("\n escapeQuote('select '1', '6'') : " + StringUtils.escapeQuote("select '1', '6'", "'"));
-    }
-
-    @Test
     public void testStripComments() throws Exception {
         String testString = "-- 1st comment\nthis\nis/* 2nd comment */not # 3rd \"comment\"\n-- 4th comment\r\n  /* 5th comment */a 'comment'"
                 + "--neither this! nor '# this is a comment'";
         String expected = "this\nis not   a 'comment'--neither this! nor '# this is a comment'";
 
         assertEquals(expected, StringUtils.stripCommentsAndHints(testString, "\"'", "\"'", true));
+    }
+
+    /**
+     * Tests StringUtils.enquoteLiteral().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testEnquoteLiteral() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", asq ? "Y" : "N", bse ? "Y" : "N");
+
+            // No quotes.
+            assertEquals("''", StringUtils.enquoteLiteral("", pdn, asq, bse), testCase);
+            assertEquals("' '", StringUtils.enquoteLiteral(" ", pdn, asq, bse), testCase);
+            assertEquals("'abc'", StringUtils.enquoteLiteral("abc", pdn, asq, bse), testCase);
+            assertEquals("'abc\ndef'", StringUtils.enquoteLiteral("abc\ndef", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'abc\\\\'" : "'abc\\'", StringUtils.enquoteLiteral("abc\\", pdn, asq, bse), testCase);
+            assertEquals("'abc\\\\'", StringUtils.enquoteLiteral("abc\\\\", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'abc\\\\\\\\'" : "'abc\\\\\\'", StringUtils.enquoteLiteral("abc\\\\\\", pdn, asq, bse), testCase);
+
+            // Single quote.
+            assertEquals("''''", StringUtils.enquoteLiteral("'", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'\\''" : "'\\'''", StringUtils.enquoteLiteral("\\'", pdn, asq, bse), testCase);
+            assertEquals("'\\\\'''", StringUtils.enquoteLiteral("\\\\'", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "''''''" : "''", StringUtils.enquoteLiteral("''", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'\\'abc'''" : "'\\''abc'''", StringUtils.enquoteLiteral("\\'abc'", pdn, asq, bse), testCase);
+            assertEquals("'\\\\''abc'''", StringUtils.enquoteLiteral("\\\\'abc'", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'\\\\\\'abc'''" : "'\\\\\\''abc'''", StringUtils.enquoteLiteral("\\\\\\'abc'", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'''abc\\''" : pdn ? "'''abc\\'''" : "'abc\\'", StringUtils.enquoteLiteral("'abc\\'", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc\\\\'''" : "'abc\\\\'", StringUtils.enquoteLiteral("'abc\\\\'", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'''abc\\\\\\''" : pdn ? "'''abc\\\\\\'''" : "'abc\\\\\\'", StringUtils.enquoteLiteral("'abc\\\\\\'", pdn, asq, bse), testCase);
+            assertEquals("'abc''def'", StringUtils.enquoteLiteral("abc'def", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'abc\\'def'" : "'abc\\''def'", StringUtils.enquoteLiteral("abc\\'def", pdn, asq, bse), testCase);
+            assertEquals("'abc\\\\''def'", StringUtils.enquoteLiteral("abc\\\\'def", pdn, asq, bse), testCase);
+            assertEquals("'abc''''def'", StringUtils.enquoteLiteral("abc''def", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc'''" : "'abc'", StringUtils.enquoteLiteral("'abc'", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc\ndef'''" : "'abc\ndef'", StringUtils.enquoteLiteral("'abc\ndef'", pdn, asq, bse), testCase);
+            assertEquals("'''abc''def'''", StringUtils.enquoteLiteral("'abc'def'", pdn, asq, bse), testCase);
+            assertEquals(bse ? pdn ? "'''abc\\'def'''" : "'abc\\'def'" : "'''abc\\''def'''", StringUtils.enquoteLiteral("'abc\\'def'", pdn, asq, bse),
+                    testCase);
+            assertEquals("'''abc\\\\''def'''", StringUtils.enquoteLiteral("'abc\\\\'def'", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc''''def'''" : "'abc''def'", StringUtils.enquoteLiteral("'abc''def'", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'abc''def\\'ghi'" : "'abc''def\\''ghi'", StringUtils.enquoteLiteral("abc'def\\'ghi", pdn, asq, bse), testCase);
+            assertEquals("'abc''def\\\\''ghi'", StringUtils.enquoteLiteral("abc'def\\\\'ghi", pdn, asq, bse), testCase);
+            assertEquals(bse ? "'abc''''def\\'ghi'" : "'abc''''def\\''ghi'", StringUtils.enquoteLiteral("abc''def\\'ghi", pdn, asq, bse), testCase);
+            assertEquals("'abc''''def\\\\''ghi'", StringUtils.enquoteLiteral("abc''def\\\\'ghi", pdn, asq, bse), testCase);
+            assertEquals("'''abc\"'", StringUtils.enquoteLiteral("'abc\"", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc\"def'''" : "'abc\"def'", StringUtils.enquoteLiteral("'abc\"def'", pdn, asq, bse), testCase);
+            assertEquals("'''abc\"def''''ghi\"'", StringUtils.enquoteLiteral("'abc\"def''ghi\"", pdn, asq, bse), testCase);
+            assertEquals("'''abc\"def''ghi'''", StringUtils.enquoteLiteral("'abc\"def'ghi'", pdn, asq, bse), testCase);
+            assertEquals(pdn ? "'''abc\"def''''ghi'''" : "'abc\"def''ghi'", StringUtils.enquoteLiteral("'abc\"def''ghi'", pdn, asq, bse), testCase);
+
+            // Double quote.
+            assertEquals("'\"'", StringUtils.enquoteLiteral("\"", pdn, asq, bse), testCase);
+            assertEquals("'\\\"'", StringUtils.enquoteLiteral("\\\"", pdn, asq, bse), testCase);
+            assertEquals("'\\\\\"'", StringUtils.enquoteLiteral("\\\\\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"\"'" : "\"\"", StringUtils.enquoteLiteral("\"\"", pdn, asq, bse), testCase);
+            assertEquals("'\\\"abc\"'", StringUtils.enquoteLiteral("\\\"abc\"", pdn, asq, bse), testCase);
+            assertEquals("'\\\\\"abc\"'", StringUtils.enquoteLiteral("\\\\\"abc\"", pdn, asq, bse), testCase);
+            assertEquals("'\\\\\\\"abc\"'", StringUtils.enquoteLiteral("\\\\\\\"abc\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq || bse ? "'\"abc\\\"'" : "\"abc\\\"", StringUtils.enquoteLiteral("\"abc\\\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc\\\\\"'" : "\"abc\\\\\"", StringUtils.enquoteLiteral("\"abc\\\\\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq || bse ? "'\"abc\\\\\\\"'" : "\"abc\\\\\\\"", StringUtils.enquoteLiteral("\"abc\\\\\\\"", pdn, asq, bse), testCase);
+            assertEquals("'abc\"def'", StringUtils.enquoteLiteral("abc\"def", pdn, asq, bse), testCase);
+            assertEquals("'abc\\\"def'", StringUtils.enquoteLiteral("abc\\\"def", pdn, asq, bse), testCase);
+            assertEquals("'abc\\\\\"def'", StringUtils.enquoteLiteral("abc\\\\\"def", pdn, asq, bse), testCase);
+            assertEquals("'abc\"\"def'", StringUtils.enquoteLiteral("abc\"\"def", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc\"'" : "\"abc\"", StringUtils.enquoteLiteral("\"abc\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc\ndef\"'" : "\"abc\ndef\"", StringUtils.enquoteLiteral("\"abc\ndef\"", pdn, asq, bse), testCase);
+            assertEquals("'\"abc\"def\"'", StringUtils.enquoteLiteral("\"abc\"def\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq || !bse ? "'\"abc\\\"def\"'" : "\"abc\\\"def\"", StringUtils.enquoteLiteral("\"abc\\\"def\"", pdn, asq, bse), testCase);
+            assertEquals("'\"abc\\\\\"def\"'", StringUtils.enquoteLiteral("\"abc\\\\\"def\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc\"\"def\"'" : "\"abc\"\"def\"", StringUtils.enquoteLiteral("\"abc\"\"def\"", pdn, asq, bse), testCase);
+            assertEquals("'abc\"def\\\"ghi'", StringUtils.enquoteLiteral("abc\"def\\\"ghi", pdn, asq, bse), testCase);
+            assertEquals("'abc\"def\\\\\"ghi'", StringUtils.enquoteLiteral("abc\"def\\\\\"ghi", pdn, asq, bse), testCase);
+            assertEquals("'abc\"\"def\\\"ghi'", StringUtils.enquoteLiteral("abc\"\"def\\\"ghi", pdn, asq, bse), testCase);
+            assertEquals("'abc\"\"def\\\\\"ghi'", StringUtils.enquoteLiteral("abc\"\"def\\\\\"ghi", pdn, asq, bse), testCase);
+            assertEquals("'\"abc'''", StringUtils.enquoteLiteral("\"abc'", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc''def\"'" : "\"abc'def\"", StringUtils.enquoteLiteral("\"abc'def\"", pdn, asq, bse), testCase);
+            assertEquals("'\"abc''def\"\"ghi'''", StringUtils.enquoteLiteral("\"abc'def\"\"ghi'", pdn, asq, bse), testCase);
+            assertEquals("'\"abc''def\"ghi\"'", StringUtils.enquoteLiteral("\"abc'def\"ghi\"", pdn, asq, bse), testCase);
+            assertEquals(pdn || asq ? "'\"abc''def\"\"ghi\"'" : "\"abc'def\"\"ghi\"", StringUtils.enquoteLiteral("\"abc'def\"\"ghi\"", pdn, asq, bse),
+                    testCase);
+        } while ((pdn = !pdn) || (asq = !asq) || (bse = !bse));
+    }
+
+    /**
+     * Tests StringUtils.enquoteIdentifier() using the backquote char.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testEnquoteIdentifierUsingBackquote() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", asq ? "Y" : "N", bse ? "Y" : "N");
+
+            // No quotes.
+            assertEquals("``", StringUtils.enquoteIdentifier("", '`', pdn, asq, bse), testCase);
+            assertEquals("` `", StringUtils.enquoteIdentifier(" ", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc`", StringUtils.enquoteIdentifier("abc", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\ndef`", StringUtils.enquoteIdentifier("abc\ndef", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`abc\\\\`" : "`abc\\`", StringUtils.enquoteIdentifier("abc\\", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\\\\`", StringUtils.enquoteIdentifier("abc\\\\", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`abc\\\\\\\\`" : "`abc\\\\\\`", StringUtils.enquoteIdentifier("abc\\\\\\", '`', pdn, asq, bse), testCase);
+
+            // Backquote.
+            assertEquals("````", StringUtils.enquoteIdentifier("`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`\\``" : "`\\```", StringUtils.enquoteIdentifier("\\`", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\\```", StringUtils.enquoteIdentifier("\\\\`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "``````" : "``", StringUtils.enquoteIdentifier("``", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`\\`abc```" : "`\\``abc```", StringUtils.enquoteIdentifier("\\`abc`", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\\``abc```", StringUtils.enquoteIdentifier("\\\\`abc`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`\\\\\\`abc```" : "`\\\\\\``abc```", StringUtils.enquoteIdentifier("\\\\\\`abc`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "```abc\\``" : pdn ? "```abc\\```" : "`abc\\`", StringUtils.enquoteIdentifier("`abc\\`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc\\\\```" : "`abc\\\\`", StringUtils.enquoteIdentifier("`abc\\\\`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "```abc\\\\\\``" : pdn ? "```abc\\\\\\```" : "`abc\\\\\\`", StringUtils.enquoteIdentifier("`abc\\\\\\`", '`', pdn, asq, bse),
+                    testCase);
+            assertEquals("`abc``def`", StringUtils.enquoteIdentifier("abc`def", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`abc\\`def`" : "`abc\\``def`", StringUtils.enquoteIdentifier("abc\\`def", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\\\\``def`", StringUtils.enquoteIdentifier("abc\\\\`def", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc````def`", StringUtils.enquoteIdentifier("abc``def", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc```" : "`abc`", StringUtils.enquoteIdentifier("`abc`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc\ndef```" : "`abc\ndef`", StringUtils.enquoteIdentifier("`abc\ndef`", '`', pdn, asq, bse), testCase);
+            assertEquals("```abc``def```", StringUtils.enquoteIdentifier("`abc`def`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? pdn ? "```abc\\`def```" : "`abc\\`def`" : "```abc\\``def```", StringUtils.enquoteIdentifier("`abc\\`def`", '`', pdn, asq, bse),
+                    testCase);
+            assertEquals("```abc\\\\``def```", StringUtils.enquoteIdentifier("`abc\\\\`def`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc````def```" : "`abc``def`", StringUtils.enquoteIdentifier("`abc``def`", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`abc``def\\`ghi`" : "`abc``def\\``ghi`", StringUtils.enquoteIdentifier("abc`def\\`ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc``def\\\\``ghi`", StringUtils.enquoteIdentifier("abc`def\\\\`ghi", '`', pdn, asq, bse), testCase);
+            assertEquals(bse ? "`abc````def\\`ghi`" : "`abc````def\\``ghi`", StringUtils.enquoteIdentifier("abc``def\\`ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc````def\\\\``ghi`", StringUtils.enquoteIdentifier("abc``def\\\\`ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("```abc\"`", StringUtils.enquoteIdentifier("`abc\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc\"def```" : "`abc\"def`", StringUtils.enquoteIdentifier("`abc\"def`", '`', pdn, asq, bse), testCase);
+            assertEquals("```abc\"def````ghi\"`", StringUtils.enquoteIdentifier("`abc\"def``ghi\"", '`', pdn, asq, bse), testCase);
+            assertEquals("```abc\"def``ghi```", StringUtils.enquoteIdentifier("`abc\"def`ghi`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "```abc\"def````ghi```" : "`abc\"def``ghi`", StringUtils.enquoteIdentifier("`abc\"def``ghi`", '`', pdn, asq, bse), testCase);
+
+            // Double quote.
+            assertEquals("`\"`", StringUtils.enquoteIdentifier("\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\"`", StringUtils.enquoteIdentifier("\\\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\\\"`", StringUtils.enquoteIdentifier("\\\\\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"\"`" : "\"\"", StringUtils.enquoteIdentifier("\"\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\"abc\"`", StringUtils.enquoteIdentifier("\\\"abc\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\\\"abc\"`", StringUtils.enquoteIdentifier("\\\\\"abc\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\\\\\\\"abc\"`", StringUtils.enquoteIdentifier("\\\\\\\"abc\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq || bse ? "`\"abc\\\"`" : "\"abc\\\"", StringUtils.enquoteIdentifier("\"abc\\\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc\\\\\"`" : "\"abc\\\\\"", StringUtils.enquoteIdentifier("\"abc\\\\\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq || bse ? "`\"abc\\\\\\\"`" : "\"abc\\\\\\\"", StringUtils.enquoteIdentifier("\"abc\\\\\\\"", '`', pdn, asq, bse),
+                    testCase);
+            assertEquals("`abc\"def`", StringUtils.enquoteIdentifier("abc\"def", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\\\"def`", StringUtils.enquoteIdentifier("abc\\\"def", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\\\\\"def`", StringUtils.enquoteIdentifier("abc\\\\\"def", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\"\"def`", StringUtils.enquoteIdentifier("abc\"\"def", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc\"`" : "\"abc\"", StringUtils.enquoteIdentifier("\"abc\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc\ndef\"`" : "\"abc\ndef\"", StringUtils.enquoteIdentifier("\"abc\ndef\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\"abc\"def\"`", StringUtils.enquoteIdentifier("\"abc\"def\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq || !bse ? "`\"abc\\\"def\"`" : "\"abc\\\"def\"", StringUtils.enquoteIdentifier("\"abc\\\"def\"", '`', pdn, asq, bse),
+                    testCase);
+            assertEquals("`\"abc\\\\\"def\"`", StringUtils.enquoteIdentifier("\"abc\\\\\"def\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc\"\"def\"`" : "\"abc\"\"def\"", StringUtils.enquoteIdentifier("\"abc\"\"def\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\"def\\\"ghi`", StringUtils.enquoteIdentifier("abc\"def\\\"ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\"def\\\\\"ghi`", StringUtils.enquoteIdentifier("abc\"def\\\\\"ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\"\"def\\\"ghi`", StringUtils.enquoteIdentifier("abc\"\"def\\\"ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`abc\"\"def\\\\\"ghi`", StringUtils.enquoteIdentifier("abc\"\"def\\\\\"ghi", '`', pdn, asq, bse), testCase);
+            assertEquals("`\"abc```", StringUtils.enquoteIdentifier("\"abc`", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc``def\"`" : "\"abc`def\"", StringUtils.enquoteIdentifier("\"abc`def\"", '`', pdn, asq, bse), testCase);
+            assertEquals("`\"abc``def\"\"ghi```", StringUtils.enquoteIdentifier("\"abc`def\"\"ghi`", '`', pdn, asq, bse), testCase);
+            assertEquals("`\"abc``def\"ghi\"`", StringUtils.enquoteIdentifier("\"abc`def\"ghi\"", '`', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "`\"abc``def\"\"ghi\"`" : "\"abc`def\"\"ghi\"", StringUtils.enquoteIdentifier("\"abc`def\"\"ghi\"", '`', pdn, asq, bse),
+                    testCase);
+        } while ((pdn = !pdn) || (asq = !asq) || (bse = !bse));
+    }
+
+    /**
+     * Tests StringUtils.enquoteIdentifier() using the double quote char.
+     *
+     * @throws Exception
+     */
+    @Test
+    void testEnquoteIdentifierUsingDoubleQuote() throws Exception {
+        boolean pdn = false; // Pedantic.
+        boolean asq = false; // Ansi-quotes.
+        boolean bse = false; // Backslash escapes.
+
+        do {
+            String testCase = String.format("Case [ pedantic; %s, ansiQuotes: %s, bsEscape: %s ]", pdn ? "Y" : "N", asq ? "Y" : "N", bse ? "Y" : "N");
+
+            // No quotes.
+            assertEquals("\"\"", StringUtils.enquoteIdentifier("", '\"', pdn, asq, bse), testCase);
+            assertEquals("\" \"", StringUtils.enquoteIdentifier(" ", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\"", StringUtils.enquoteIdentifier("abc", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\ndef\"", StringUtils.enquoteIdentifier("abc\ndef", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"abc\\\\\"" : "\"abc\\\"", StringUtils.enquoteIdentifier("abc\\", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\\\\\"", StringUtils.enquoteIdentifier("abc\\\\", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"abc\\\\\\\\\"" : "\"abc\\\\\\\"", StringUtils.enquoteIdentifier("abc\\\\\\", '\"', pdn, asq, bse), testCase);
+
+            // Backquote.
+            assertEquals("\"`\"", StringUtils.enquoteIdentifier("`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\`\"", StringUtils.enquoteIdentifier("\\`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\\\`\"", StringUtils.enquoteIdentifier("\\\\`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"``\"" : "``", StringUtils.enquoteIdentifier("``", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\`abc`\"", StringUtils.enquoteIdentifier("\\`abc`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\\\`abc`\"", StringUtils.enquoteIdentifier("\\\\`abc`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\\\\\`abc`\"", StringUtils.enquoteIdentifier("\\\\\\`abc`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || bse ? "\"`abc\\`\"" : "`abc\\`", StringUtils.enquoteIdentifier("`abc\\`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc\\\\`\"" : "`abc\\\\`", StringUtils.enquoteIdentifier("`abc\\\\`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || bse ? "\"`abc\\\\\\`\"" : "`abc\\\\\\`", StringUtils.enquoteIdentifier("`abc\\\\\\`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc`def\"", StringUtils.enquoteIdentifier("abc`def", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\\`def\"", StringUtils.enquoteIdentifier("abc\\`def", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\\\\`def\"", StringUtils.enquoteIdentifier("abc\\\\`def", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc``def\"", StringUtils.enquoteIdentifier("abc``def", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc`\"" : "`abc`", StringUtils.enquoteIdentifier("`abc`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc\ndef`\"" : "`abc\ndef`", StringUtils.enquoteIdentifier("`abc\ndef`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"`abc`def`\"", StringUtils.enquoteIdentifier("`abc`def`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !bse ? "\"`abc\\`def`\"" : "`abc\\`def`", StringUtils.enquoteIdentifier("`abc\\`def`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"`abc\\\\`def`\"", StringUtils.enquoteIdentifier("`abc\\\\`def`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc``def`\"" : "`abc``def`", StringUtils.enquoteIdentifier("`abc``def`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc`def\\`ghi\"", StringUtils.enquoteIdentifier("abc`def\\`ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc`def\\\\`ghi\"", StringUtils.enquoteIdentifier("abc`def\\\\`ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc``def\\`ghi\"", StringUtils.enquoteIdentifier("abc``def\\`ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc``def\\\\`ghi\"", StringUtils.enquoteIdentifier("abc``def\\\\`ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"`abc\"\"\"", StringUtils.enquoteIdentifier("`abc\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc\"\"def`\"" : "`abc\"def`", StringUtils.enquoteIdentifier("`abc\"def`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"`abc\"\"def``ghi\"\"\"", StringUtils.enquoteIdentifier("`abc\"def``ghi\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"`abc\"\"def`ghi`\"", StringUtils.enquoteIdentifier("`abc\"def`ghi`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn ? "\"`abc\"\"def``ghi`\"" : "`abc\"def``ghi`", StringUtils.enquoteIdentifier("`abc\"def``ghi`", '\"', pdn, asq, bse), testCase);
+
+            // Double quote.
+            assertEquals("\"\"\"\"", StringUtils.enquoteIdentifier("\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"\\\"\"" : "\"\\\"\"\"", StringUtils.enquoteIdentifier("\\\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\\\\"\"\"", StringUtils.enquoteIdentifier("\\\\\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"\"\"\"" : "\"\"", StringUtils.enquoteIdentifier("\"\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"\\\"abc\"\"\"" : "\"\\\"\"abc\"\"\"", StringUtils.enquoteIdentifier("\\\"abc\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\\\\\"\"abc\"\"\"", StringUtils.enquoteIdentifier("\\\\\"abc\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"\\\\\\\"abc\"\"\"" : "\"\\\\\\\"\"abc\"\"\"", StringUtils.enquoteIdentifier("\\\\\\\"abc\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"\"\"abc\\\"\"" : pdn || !asq ? "\"\"\"abc\\\"\"\"" : "\"abc\\\"",
+                    StringUtils.enquoteIdentifier("\"abc\\\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc\\\\\"\"\"" : "\"abc\\\\\"", StringUtils.enquoteIdentifier("\"abc\\\\\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"\"\"abc\\\\\\\"\"" : pdn || !asq ? "\"\"\"abc\\\\\\\"\"\"" : "\"abc\\\\\\\"",
+                    StringUtils.enquoteIdentifier("\"abc\\\\\\\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\"\"def\"", StringUtils.enquoteIdentifier("abc\"def", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"abc\\\"def\"" : "\"abc\\\"\"def\"", StringUtils.enquoteIdentifier("abc\\\"def", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\\\\\"\"def\"", StringUtils.enquoteIdentifier("abc\\\\\"def", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\"\"\"\"def\"", StringUtils.enquoteIdentifier("abc\"\"def", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc\"\"\"" : "\"abc\"", StringUtils.enquoteIdentifier("\"abc\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc\ndef\"\"\"" : "\"abc\ndef\"", StringUtils.enquoteIdentifier("\"abc\ndef\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\"\"abc\"\"def\"\"\"", StringUtils.enquoteIdentifier("\"abc\"def\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? pdn || !asq ? "\"\"\"abc\\\"def\"\"\"" : "\"abc\\\"def\"" : "\"\"\"abc\\\"\"def\"\"\"",
+                    StringUtils.enquoteIdentifier("\"abc\\\"def\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\"\"abc\\\\\"\"def\"\"\"", StringUtils.enquoteIdentifier("\"abc\\\\\"def\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc\"\"\"\"def\"\"\"" : "\"abc\"\"def\"", StringUtils.enquoteIdentifier("\"abc\"\"def\"", '\"', pdn, asq, bse),
+                    testCase);
+            assertEquals(bse ? "\"abc\"\"def\\\"ghi\"" : "\"abc\"\"def\\\"\"ghi\"", StringUtils.enquoteIdentifier("abc\"def\\\"ghi", '\"', pdn, asq, bse),
+                    testCase);
+            assertEquals("\"abc\"\"def\\\\\"\"ghi\"", StringUtils.enquoteIdentifier("abc\"def\\\\\"ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals(bse ? "\"abc\"\"\"\"def\\\"ghi\"" : "\"abc\"\"\"\"def\\\"\"ghi\"",
+                    StringUtils.enquoteIdentifier("abc\"\"def\\\"ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"abc\"\"\"\"def\\\\\"\"ghi\"", StringUtils.enquoteIdentifier("abc\"\"def\\\\\"ghi", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\"\"abc`\"", StringUtils.enquoteIdentifier("\"abc`", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc`def\"\"\"" : "\"abc`def\"", StringUtils.enquoteIdentifier("\"abc`def\"", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\"\"abc`def\"\"\"\"ghi`\"", StringUtils.enquoteIdentifier("\"abc`def\"\"ghi`", '\"', pdn, asq, bse), testCase);
+            assertEquals("\"\"\"abc`def\"\"ghi\"\"\"", StringUtils.enquoteIdentifier("\"abc`def\"ghi\"", '\"', pdn, asq, bse), testCase);
+            assertEquals(pdn || !asq ? "\"\"\"abc`def\"\"\"\"ghi\"\"\"" : "\"abc`def\"\"ghi\"",
+                    StringUtils.enquoteIdentifier("\"abc`def\"\"ghi\"", '\"', pdn, asq, bse), testCase);
+        } while ((pdn = !pdn) || (asq = !asq) || (bse = !bse));
+    }
+
+    /**
+     * Tests StringUtils.isSimpleIdentifier().
+     *
+     * @throws Exception
+     */
+    @Test
+    void testIsSimpleIdentifier() throws Exception {
+        IntFunction<String> repeatX = n -> IntStream.range(0, n).mapToObj(i -> "X").collect(Collectors.joining());
+        Predicate<String> rwc = DatabaseMetaData::isReservedWord;
+
+        boolean useRwc = false;
+        do {
+            // Valid examples.
+            assertTrue(StringUtils.isSimpleIdentifier("a", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("abc", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("ab_cd", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("ab$cd", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("123abc", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("_123", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier("$123", useRwc ? rwc : null));
+            assertTrue(StringUtils.isSimpleIdentifier(repeatX.apply(64), useRwc ? rwc : null));
+
+            // Invalid examples.
+            assertFalse(StringUtils.isSimpleIdentifier(null, useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier(" ", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier(".", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("ab cd", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("ab.cd", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("ab-cd", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("ab`cd", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("ab\"cd", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("`abc`", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("123456", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier("\"abc\"", useRwc ? rwc : null));
+            assertFalse(StringUtils.isSimpleIdentifier(repeatX.apply(65), useRwc ? rwc : null));
+        } while (useRwc = !useRwc);
+
+        assertTrue(DatabaseMetaData.isReservedWord("SELECT"));
+        assertFalse(StringUtils.isSimpleIdentifier("SELECT", rwc));
+        assertTrue(StringUtils.isSimpleIdentifier("SELECT", null));
+        assertTrue(DatabaseMetaData.isReservedWord("update"));
+        assertFalse(StringUtils.isSimpleIdentifier("update", rwc));
+        assertTrue(StringUtils.isSimpleIdentifier("update", null));
     }
 
 }

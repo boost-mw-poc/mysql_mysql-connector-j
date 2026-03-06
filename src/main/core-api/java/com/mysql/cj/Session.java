@@ -175,7 +175,7 @@ public interface Session {
 
     boolean isClosed();
 
-    String getIdentifierQuoteString();
+    char getIdentifierQuoteChar();
 
     DataStoreMetadata getDataStoreMetadata();
 

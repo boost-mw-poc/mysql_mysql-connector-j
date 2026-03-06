@@ -61,7 +61,7 @@ public class BlobFromLocator implements java.sql.Blob {
 
     private int numPrimaryKeys = 0;
 
-    private String quotedId;
+    private char quoteChar;
 
     private ExceptionInterceptor exceptionInterceptor;
 
@@ -83,7 +83,7 @@ public class BlobFromLocator implements java.sql.Blob {
 
         Field[] fields = this.creatorResultSet.getMetadata().getFields();
         this.numColsInResultSet = fields.length;
-        this.quotedId = this.creatorResultSet.getSession().getIdentifierQuoteString();
+        this.quoteChar = this.creatorResultSet.getSession().getIdentifierQuoteChar();
 
         if (this.numColsInResultSet > 1) {
             this.primaryKeyColumns = new ArrayList<>();
@@ -92,7 +92,7 @@ public class BlobFromLocator implements java.sql.Blob {
             for (int i = 0; i < this.numColsInResultSet; i++) {
                 if (fields[i].isPrimaryKey()) {
                     StringBuilder keyName = new StringBuilder();
-                    keyName.append(this.quotedId);
+                    keyName.append(this.quoteChar);
 
                     String originalColumnName = fields[i].getOriginalName();
 
@@ -102,7 +102,7 @@ public class BlobFromLocator implements java.sql.Blob {
                         keyName.append(fields[i].getName());
                     }
 
-                    keyName.append(this.quotedId);
+                    keyName.append(this.quoteChar);
 
                     this.primaryKeyColumns.add(keyName.toString());
                     this.primaryKeyValues.add(this.creatorResultSet.getString(i + 1));
@@ -124,28 +124,28 @@ public class BlobFromLocator implements java.sql.Blob {
             String databaseName = fields[0].getDatabaseName();
 
             if (databaseName != null && databaseName.length() > 0) {
-                tableNameBuffer.append(this.quotedId);
+                tableNameBuffer.append(this.quoteChar);
                 tableNameBuffer.append(databaseName);
-                tableNameBuffer.append(this.quotedId);
+                tableNameBuffer.append(this.quoteChar);
                 tableNameBuffer.append('.');
             }
 
-            tableNameBuffer.append(this.quotedId);
+            tableNameBuffer.append(this.quoteChar);
             tableNameBuffer.append(fields[0].getOriginalTableName());
-            tableNameBuffer.append(this.quotedId);
+            tableNameBuffer.append(this.quoteChar);
 
             this.tableName = tableNameBuffer.toString();
         } else {
             StringBuilder tableNameBuffer = new StringBuilder();
 
-            tableNameBuffer.append(this.quotedId);
+            tableNameBuffer.append(this.quoteChar);
             tableNameBuffer.append(fields[0].getTableName());
-            tableNameBuffer.append(this.quotedId);
+            tableNameBuffer.append(this.quoteChar);
 
             this.tableName = tableNameBuffer.toString();
         }
 
-        this.blobColumnName = this.quotedId + this.creatorResultSet.getString(blobColumnIndex) + this.quotedId;
+        this.blobColumnName = this.quoteChar + this.creatorResultSet.getString(blobColumnIndex) + this.quoteChar;
     }
 
     private void notEnoughInformationInQuery() throws SQLException {

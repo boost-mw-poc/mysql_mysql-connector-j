@@ -989,8 +989,8 @@ public class NativeSession extends CoreSession implements Serializable {
     }
 
     @Override
-    public String getIdentifierQuoteString() {
-        return this.protocol != null && this.protocol.getServerSession().useAnsiQuotedIdentifiers() ? "\"" : "`";
+    public char getIdentifierQuoteChar() {
+        return this.protocol != null && this.protocol.getServerSession().useAnsiQuotedIdentifiers() ? '"' : '`';
     }
 
     public Timer getCancelTimer() {

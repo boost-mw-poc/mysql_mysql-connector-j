@@ -3206,9 +3206,9 @@ public class MetaDataRegressionTest extends BaseTestCase {
 
         testBug65871_testCatalog("db1`testbug65871", StringUtils.quoteIdentifier("db1`testbug65871", pedantic), conn1);
 
-        testBug65871_testCatalog("db2`testbug65871", StringUtils.quoteIdentifier("db2`testbug65871", "\"", pedantic), conn1);
+        testBug65871_testCatalog("db2`testbug65871", StringUtils.quoteIdentifier("db2`testbug65871", '"', pedantic), conn1);
 
-        testBug65871_testCatalog("`db3`testbug65871`", StringUtils.quoteIdentifier("`db3`testbug65871`", "\"", pedantic), conn1);
+        testBug65871_testCatalog("`db3`testbug65871`", StringUtils.quoteIdentifier("`db3`testbug65871`", '"', pedantic), conn1);
     }
 
     private void testBug65871_testCatalog(String unquotedDbName, String quotedDbName, Connection conn1) throws Exception {
@@ -3229,13 +3229,13 @@ public class MetaDataRegressionTest extends BaseTestCase {
             testBug65871_testTable(unquotedDbName, quotedDbName, "table1`testbug65871", StringUtils.quoteIdentifier("table1`testbug65871", pedantic), conn1,
                     st1);
 
-            testBug65871_testTable(unquotedDbName, quotedDbName, "table2`testbug65871", StringUtils.quoteIdentifier("table2`testbug65871", "\"", pedantic),
+            testBug65871_testTable(unquotedDbName, quotedDbName, "table2`testbug65871", StringUtils.quoteIdentifier("table2`testbug65871", '"', pedantic),
                     conn1, st1);
 
-            testBug65871_testTable(unquotedDbName, quotedDbName, "table3\"testbug65871", StringUtils.quoteIdentifier("table3\"testbug65871", "\"", pedantic),
+            testBug65871_testTable(unquotedDbName, quotedDbName, "table3\"testbug65871", StringUtils.quoteIdentifier("table3\"testbug65871", '"', pedantic),
                     conn1, st1);
 
-            testBug65871_testTable(unquotedDbName, quotedDbName, "`table4`testbug65871`", StringUtils.quoteIdentifier("`table4`testbug65871`", "\"", pedantic),
+            testBug65871_testTable(unquotedDbName, quotedDbName, "`table4`testbug65871`", StringUtils.quoteIdentifier("`table4`testbug65871`", '"', pedantic),
                     conn1, st1);
 
         } finally {
