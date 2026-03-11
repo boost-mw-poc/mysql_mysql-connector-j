@@ -730,8 +730,10 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTimeSendTimeFract; // TODO milliseconds are ignored by server. Bug ?
-                                        String expTimeCal2 = useSSPS ? expTimeNoMsCal : expTimeCal; // TODO milliseconds are ignored by server. Bug ?
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTimeSendTimeFract;
+                                        String expTime3 = useSSPS ? expTimeNoMs : expTimeSendTimeFract;
+                                        String expTimeCal2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMsCal : expTimeCal;
 
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, null, senderTz, expTimeCal2, null, UseMethod.setTime, cal_02);
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, null, senderTz, expTime2, null, UseMethod.setTime);
@@ -744,8 +746,8 @@ public class DateTimeTest extends BaseTestCase {
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.MEDIUMTEXT, senderTz, expTimeSendTimeFract);
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.LONGTEXT, senderTz, expTimeSendTimeFract);
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.DATE, senderTz, s_19700101);
-                                        setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.DATETIME, senderTz, s_19700101 + " " + expTime2);
-                                        setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.TIMESTAMP, senderTz, s_19700101 + " " + expTime2);
+                                        setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.DATETIME, senderTz, s_19700101 + " " + expTime3);
+                                        setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.TIMESTAMP, senderTz, s_19700101 + " " + expTime3);
                                         setObjectFromTz(props, tVarchar, sqlTime_120000_123, MysqlType.YEAR, senderTz, s_1970);
                                     }
                                 }
@@ -1017,13 +1019,14 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetimeCal2 = useSSPS ? zdt_calendar_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetimeCal; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetimeCal;
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetime;
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
+                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS;
 
                                         setObjectFromTz(props, tVarchar, ts, null, senderTz, expDatetimeCal2, null, UseMethod.setTimestamp, cal_02);
                                         setObjectFromTz(props, tVarchar, ts, null, senderTz, expDatetimeTS2, null, UseMethod.setTimestamp);
@@ -1291,11 +1294,12 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS; // TODO milliseconds are ignored by server. Bug ?
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetime;
+                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS;
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, cal_02, null, senderTz, expDatetimeTS2);
                                         setObjectFromTz(props, tVarchar, cal_02, MysqlType.DATETIME, senderTz, expDatetime2);
@@ -1549,11 +1553,12 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS; // TODO milliseconds are ignored by server. Bug ?
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetime;
+                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS;
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, utilDate, null, senderTz, expDatetimeTS2);
                                         setObjectFromTz(props, tVarchar, utilDate, MysqlType.DATETIME, senderTz, expDatetime2);
@@ -1964,7 +1969,8 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime6; // TODO milliseconds are ignored by server. Bug ?
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime6;
 
                                         setObjectFromTz(props, tVarchar, orig_lt, null, senderTz, expTime2);
                                         setObjectFromTz(props, tVarchar, orig_lt, MysqlType.TIME, senderTz, expTime2);
@@ -2209,10 +2215,11 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : zdt_20200101_120000_123456_on_wire.format(dateTimeFmt); // TODO milliseconds are ignored by server. Bug ?
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                                : zdt_20200101_120000_123456_on_wire.format(dateTimeFmt);
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, orig_ldt, null, senderTz, expDatetime2);
                                         setObjectFromTz(props, tVarchar, orig_ldt, MysqlType.DATETIME, senderTz, expDatetime2);
@@ -2441,7 +2448,8 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
-                                        String expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
+                                        String expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, ot_120000_123456_05_00, null, senderTz, expTime2);
                                         setObjectFromTz(props, tVarchar, ot_120000_123456_05_00, MysqlType.TIME, senderTz, expTime2);
@@ -2807,12 +2815,12 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS; // TODO milliseconds are ignored by server. Bug ?
-
-                                        expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetime;
+                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS;
+                                        expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, odt_20200101_120000_123456_05_00, null, senderTz, expDatetimeTS2);
                                         setObjectFromTz(props, tVarchar, odt_20200101_120000_123456_05_00, MysqlType.DATETIME, senderTz, expDatetime2);
@@ -3172,12 +3180,12 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
                                         String expDatetime2 = useSSPS
                                                 ? zdt_20200101_120000_123456_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET)
-                                                : expDatetime; // TODO milliseconds are ignored by server. Bug ?
-                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS; // TODO milliseconds are ignored by server. Bug ?
-
-                                        expTime2 = useSSPS ? expTimeNoMs : expTime; // TODO milliseconds are ignored by server. Bug ?
+                                                : expDatetime;
+                                        String expDatetimeTS2 = useSSPS ? zdt_TS_on_wire.format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) : expDatetimeTS;
+                                        expTime2 = !versionMeetsMinimum(9, 7) && useSSPS ? expTimeNoMs : expTime;
 
                                         setObjectFromTz(props, tVarchar, zdt_20200101_120000_123456_05_00, null, senderTz, expDatetimeTS2);
                                         setObjectFromTz(props, tVarchar, zdt_20200101_120000_123456_05_00, MysqlType.DATETIME, senderTz, expDatetime2);
@@ -3286,10 +3294,12 @@ public class DateTimeTest extends BaseTestCase {
 
                                         /* Into VARCHAR field */
 
-                                        String expChar = expDur + (withFract && sendFractionalSeconds && useSSPS ? "000" : "");
-                                        String expChar2 = useSSPS ? TimeUtil.getDurationString(dur_no_fract) : expChar; // TODO milliseconds are ignored by server. Bug ?
-                                        String expNegChar = expNegDur + (withFract && sendFractionalSeconds && useSSPS ? "000" : "");
-                                        String expNegChar2 = useSSPS ? TimeUtil.getDurationString(neg_dur_no_fract) : expNegChar; // TODO milliseconds are ignored by server. Bug ?
+                                        // TODO milliseconds are ignored by server. Bug#33650138/WL#16669
+                                        String expChar = expDur + (withFract && sendFractionalSeconds && !versionMeetsMinimum(9, 7) && useSSPS ? "000" : "");
+                                        String expChar2 = !versionMeetsMinimum(9, 7) && useSSPS ? TimeUtil.getDurationString(dur_no_fract) : expChar;
+                                        String expNegChar = expNegDur
+                                                + (withFract && sendFractionalSeconds && !versionMeetsMinimum(9, 7) && useSSPS ? "000" : "");
+                                        String expNegChar2 = !versionMeetsMinimum(9, 7) && useSSPS ? TimeUtil.getDurationString(neg_dur_no_fract) : expNegChar;
 
                                         setObjectFromTz(props, tVarchar, dur, null, senderTz, expChar2);
                                         setObjectFromTz(props, tVarchar, neg_dur, null, senderTz, expNegChar2);
