@@ -58,7 +58,7 @@ public class LocalDateTimeValueFactoryTest extends CommonAsserts {
     @Test
     public void testCreateFromTime() {
         assertThrows(DataReadException.class,
-                "The value '-1:00:00' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.",
+                "The value '-01:00:00' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.",
                 () -> {
                     LocalDateTimeValueFactoryTest.this.vf.createFromTime(new InternalTime(-1, 0, 0, 0, 0));
                     return null;

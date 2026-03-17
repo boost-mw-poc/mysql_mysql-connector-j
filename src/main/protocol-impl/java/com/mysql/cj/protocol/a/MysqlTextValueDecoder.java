@@ -20,6 +20,8 @@
 
 package com.mysql.cj.protocol.a;
 
+import static com.mysql.cj.util.TimeUtil.pow10;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.regex.Matcher;
@@ -283,76 +285,80 @@ public class MysqlTextValueDecoder implements ValueDecoder {
     }
 
     public static InternalTime getTime(byte[] bytes, int offset, int length, int scale) {
-        int pos = 0;
-        // used to track the length of the current time segment during parsing
-        int segmentLen;
-
         if (length < TIME_STR_LEN_MIN || length > TIME_STR_LEN_MAX_WITH_MICROS) {
             throw new DataReadException(Messages.getString("ResultSet.InvalidLengthForType", new Object[] { length, "TIME" }));
         }
 
+        int pos = offset;
+        int maxPos = offset + length;
         boolean negative = false;
-
-        if (bytes[offset] == '-') {
+        if (bytes[pos] == '-') {
             pos++;
             negative = true;
         }
 
-        // parse hours field
-        for (segmentLen = 0; Character.isDigit((char) bytes[offset + pos + segmentLen]); segmentLen++) {
-
+        // Parse hours.
+        int segmentLen = 0;
+        while (pos + segmentLen < maxPos && Character.isDigit((char) bytes[pos + segmentLen])) {
+            segmentLen++;
         }
-        if (segmentLen == 0 || bytes[offset + pos + segmentLen] != ':') {
+        if (segmentLen == 0 || pos + segmentLen >= maxPos || bytes[pos + segmentLen] != ':') {
             throw new DataReadException(
                     Messages.getString("ResultSet.InvalidFormatForType", new Object[] { "TIME", StringUtils.toString(bytes, offset, length) }));
         }
-        int hours = getInt(bytes, offset + pos, offset + pos + segmentLen);
-        if (negative) {
-            hours *= -1;
-        }
-        pos += segmentLen + 1; // +1 for ':' character
+        int hours = getInt(bytes, pos, pos + segmentLen);
+        pos += segmentLen + 1; // + 1 for character ':'
 
-        // parse minutes field
-        for (segmentLen = 0; Character.isDigit((char) bytes[offset + pos + segmentLen]); segmentLen++) {
-
+        // Parse minutes.
+        segmentLen = 0;
+        while (pos + segmentLen < maxPos && Character.isDigit((char) bytes[pos + segmentLen])) {
+            segmentLen++;
         }
-        if (segmentLen != 2 || bytes[offset + pos + segmentLen] != ':') {
+        if (segmentLen != 2 || pos + segmentLen >= maxPos || bytes[pos + segmentLen] != ':') {
             throw new DataReadException(
                     Messages.getString("ResultSet.InvalidFormatForType", new Object[] { "TIME", StringUtils.toString(bytes, offset, length) }));
         }
-        int minutes = getInt(bytes, offset + pos, offset + pos + segmentLen);
-        pos += segmentLen + 1;
+        int minutes = getInt(bytes, pos, pos + segmentLen);
+        pos += segmentLen + 1; // + 1 for character ':'
 
-        // parse seconds field
-        for (segmentLen = 0; offset + pos + segmentLen < offset + length && Character.isDigit((char) bytes[offset + pos + segmentLen]); segmentLen++) {
-
+        // Parse seconds.
+        segmentLen = 0;
+        while (pos + segmentLen < maxPos && Character.isDigit((char) bytes[pos + segmentLen])) {
+            segmentLen++;
         }
         if (segmentLen != 2) {
             throw new DataReadException(
-                    Messages.getString("ResultSet.InvalidFormatForType", new Object[] { StringUtils.toString(bytes, offset, length), "TIME" }));
+                    Messages.getString("ResultSet.InvalidFormatForType", new Object[] { "TIME", StringUtils.toString(bytes, offset, length) }));
         }
-        int seconds = getInt(bytes, offset + pos, offset + pos + segmentLen);
+        int seconds = getInt(bytes, pos, pos + segmentLen);
         pos += segmentLen;
 
-        // parse optional microsecond fractional value
+        // Parse optional fractional seconds.
         int nanos = 0;
-        if (length > pos) {
-            pos++; // skip '.' character
-
-            for (segmentLen = 0; offset + pos + segmentLen < offset + length && Character.isDigit((char) bytes[offset + pos + segmentLen]); segmentLen++) {
-
-            }
-            if (segmentLen + pos != length) {
+        if (pos < maxPos) {
+            if (bytes[pos] != '.') {
                 throw new DataReadException(
-                        Messages.getString("ResultSet.InvalidFormatForType", new Object[] { StringUtils.toString(bytes, offset, length), "TIME" }));
+                        Messages.getString("ResultSet.InvalidFormatForType", new Object[] { "TIME", StringUtils.toString(bytes, offset, length) }));
             }
-            nanos = getInt(bytes, offset + pos, offset + pos + segmentLen);
-            // scale out nanos appropriately. mysql supports up to 6 digits of fractional seconds, each additional digit increasing the range by a factor of
-            // 10. one digit is tenths, two is hundreths, etc
-            nanos = nanos * (int) Math.pow(10, 9 - segmentLen);
+            pos++; // + 1 for character '.'
+
+            segmentLen = 0;
+            while (pos + segmentLen < maxPos && Character.isDigit((char) bytes[pos + segmentLen])) {
+                segmentLen++;
+            }
+            if (segmentLen == 0 || segmentLen + pos != maxPos) {
+                throw new DataReadException(
+                        Messages.getString("ResultSet.InvalidFormatForType", new Object[] { "TIME", StringUtils.toString(bytes, offset, length) }));
+            }
+            nanos = getInt(bytes, pos, pos + segmentLen);
+            // Scale out nanos appropriately. MySQL supports up to 6 digits of fractional seconds, each additional digit increasing the range by a factor of
+            // 10, one digit is tenths, two is hundreths, etc
+            nanos *= pow10(9 - segmentLen);
         }
 
-        return new InternalTime(hours, minutes, seconds, nanos, scale);
+        InternalTime time = new InternalTime(hours, minutes, seconds, nanos, scale);
+        time.setNegative(negative);
+        return time;
     }
 
     public static InternalTimestamp getTimestamp(byte[] bytes, int offset, int length, int scale) {
@@ -383,11 +389,13 @@ public class MysqlTextValueDecoder implements ValueDecoder {
         int nanos;
         if (length == TIMESTAMP_STR_LEN_WITH_NANOS) {
             nanos = getInt(bytes, offset + 20, offset + length);
+        } else if (length == TIMESTAMP_STR_LEN_NO_FRAC) {
+            nanos = 0;
         } else {
-            nanos = length == TIMESTAMP_STR_LEN_NO_FRAC ? 0 : getInt(bytes, offset + 20, offset + length);
-            // scale out nanos appropriately. mysql supports up to 6 digits of fractional seconds, each additional digit increasing the range by a factor of
-            // 10. one digit is tenths, two is hundreths, etc
-            nanos = nanos * (int) Math.pow(10, 9 - (length - TIMESTAMP_STR_LEN_NO_FRAC - 1));
+            nanos = getInt(bytes, offset + 20, offset + length);
+            // Scale out nanos appropriately. MySQL supports up to 6 digits of fractional seconds, each additional digit increasing the range by a factor of
+            // 10, one digit is tenths, two is hundreths, etc
+            nanos *= pow10(9 - (length - TIMESTAMP_STR_LEN_NO_FRAC - 1));
         }
 
         return new InternalTimestamp(year, month, day, hours, minutes, seconds, nanos, scale);

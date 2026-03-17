@@ -47,6 +47,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Hashtable;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.TimeZone;
 
@@ -3427,7 +3428,7 @@ public class DateTimeTest extends BaseTestCase {
                 TimeZone.setDefault(tz_UTC);
                 testConn = this.utcConnections.get(getKey(props));
                 Statement localStmt = testConn.createStatement();
-                localStmt.execute("set @@time_zone='+00:00'");
+                localStmt.execute("SET @@time_zone='+00:00'");
                 String sql = "SELECT * FROM " + tableName + " WHERE id = " + id + " AND d = '" + expectedUTCValue + "'"
                         + (expectedUnixTimestamp != null ? " AND unix_timestamp(d) = " + expectedUnixTimestamp : "");
                 ResultSet localRs = localStmt.executeQuery(sql);
@@ -3486,7 +3487,7 @@ public class DateTimeTest extends BaseTestCase {
                                         Instant exp_instant_tz = ldt_20200101_0000.atZone(currZoneId).toInstant();
                                         Instant exp_instant_05 = ldt_20200101_0000.atOffset(ZoneOffset.ofHours(5)).toInstant();
 
-                                        Calendar exp_cal = Calendar.getInstance(tz);
+                                        Calendar exp_cal = Calendar.getInstance(tz, Locale.US);
                                         exp_cal.set(2020, 0, 1, 0, 0, 0);
                                         exp_cal.set(Calendar.MILLISECOND, 0);
                                         exp_cal.setLenient(false);
@@ -3523,7 +3524,7 @@ public class DateTimeTest extends BaseTestCase {
                                         exp_instant_tz = ldt_20191231_0000.atZone(currZoneId).toInstant();
                                         exp_instant_05 = ldt_20191231_0000.atOffset(ZoneOffset.ofHours(5)).toInstant();
 
-                                        exp_cal = Calendar.getInstance(tz);
+                                        exp_cal = Calendar.getInstance(tz, Locale.US);
                                         exp_cal.set(2019, 11, 31, 0, 0, 0);
                                         exp_cal.set(Calendar.MILLISECOND, 0);
                                         exp_cal.setLenient(false);
@@ -3620,7 +3621,7 @@ public class DateTimeTest extends BaseTestCase {
                                         Instant exp_instant_tz = exp_ldt.atZone(currZoneId).toInstant();
                                         Instant exp_instant_05 = exp_ldt.atOffset(ZoneOffset.ofHours(5)).toInstant();
 
-                                        Calendar exp_cal = Calendar.getInstance(tz);
+                                        Calendar exp_cal = Calendar.getInstance(tz, Locale.US);
                                         exp_cal.clear();
                                         exp_cal.set(Calendar.HOUR_OF_DAY, 12);
                                         exp_cal.set(Calendar.MILLISECOND, withFract ? 123 : 0);
@@ -3707,7 +3708,7 @@ public class DateTimeTest extends BaseTestCase {
                                             this.rs.getObject(1, ZonedDateTime.class);
                                             return null;
                                         });
-                                        assertEquals(Duration.parse(withFract ? "PT300H10M20.123S" : "PT300H10M20S"), this.rs.getObject(1, Duration.class));
+                                        assertEquals(Duration.parse(withFract ? "PT300H10M20.0123S" : "PT300H10M20S"), this.rs.getObject(1, Duration.class));
                                         assertEquals(dur1, this.rs.getString(1));
 
                                         assertTrue(this.rs.next());
@@ -3771,7 +3772,7 @@ public class DateTimeTest extends BaseTestCase {
                                             this.rs.getObject(1, ZonedDateTime.class);
                                             return null;
                                         });
-                                        assertEquals(Duration.parse(withFract ? "-PT300H10M20.123S" : "-PT300H10M20S"), this.rs.getObject(1, Duration.class));
+                                        assertEquals(Duration.parse(withFract ? "-PT300H10M20.0123S" : "-PT300H10M20S"), this.rs.getObject(1, Duration.class));
                                         assertEquals(dur2, this.rs.getString(1));
 
                                         testConn.close();
@@ -3870,7 +3871,7 @@ public class DateTimeTest extends BaseTestCase {
 
                                         ZonedDateTime exp_odt = exp_on_wire.withZoneSameLocal(preserveInstants ? connTz.toZoneId() : currZoneId);
 
-                                        Calendar exp_cal = Calendar.getInstance(preserveInstants ? connTz : clientTz);
+                                        Calendar exp_cal = Calendar.getInstance(preserveInstants ? connTz : clientTz, Locale.US);
                                         exp_cal.set(exp_on_wire.getYear(), exp_on_wire.getMonthValue() - 1, exp_on_wire.getDayOfMonth(), exp_on_wire.getHour(),
                                                 exp_on_wire.getMinute(), exp_on_wire.getSecond());
                                         exp_cal.set(Calendar.MILLISECOND, exp_on_wire.getNano() / 1000000);
@@ -3989,7 +3990,7 @@ public class DateTimeTest extends BaseTestCase {
                                                 ? exp_on_wire.withZoneSameLocal(connTz.toZoneId()).withZoneSameInstant(currZoneId)
                                                 : exp_on_wire.withZoneSameLocal(currZoneId)).toInstant();
 
-                                        Calendar exp_cal = Calendar.getInstance(preserveInstants ? connTz : clientTz);
+                                        Calendar exp_cal = Calendar.getInstance(preserveInstants ? connTz : clientTz, Locale.US);
                                         exp_cal.set(exp_on_wire.getYear(), exp_on_wire.getMonthValue() - 1, exp_on_wire.getDayOfMonth(), exp_on_wire.getHour(),
                                                 exp_on_wire.getMinute(), exp_on_wire.getSecond());
                                         exp_cal.set(Calendar.MILLISECOND, exp_on_wire.getNano() / 1000000);
@@ -4086,7 +4087,7 @@ public class DateTimeTest extends BaseTestCase {
                                             Instant exp_instant_tz = ldt_20200101_0000.atZone(currZoneId).toInstant();
                                             Instant exp_instant_05 = ldt_20200101_0000.atOffset(ZoneOffset.ofHours(5)).toInstant();
 
-                                            Calendar exp_cal = Calendar.getInstance(tz);
+                                            Calendar exp_cal = Calendar.getInstance(tz, Locale.US);
                                             exp_cal.set(2020, 0, 1, 0, 0, 0);
                                             exp_cal.set(Calendar.MILLISECOND, 0);
                                             exp_cal.setLenient(false);

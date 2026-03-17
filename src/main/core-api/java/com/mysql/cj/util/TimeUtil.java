@@ -39,6 +39,7 @@ import java.util.Properties;
 import java.util.TimeZone;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.mysql.cj.Messages;
@@ -90,9 +91,10 @@ public class TimeUtil {
     public static final Pattern DATETIME_LITERAL_SHORT12 = Pattern
             .compile("\\d{2}([0][1-9]|[1][0-2])([0][1-9]|[1-2]\\d|[3][0-1])([0-1]\\d|[2][0-3])([0-5]\\d){2}(\\.\\d{1,9}){0,1}");
 
-    public static final Pattern DURATION_LITERAL_WITH_DAYS = Pattern
-            .compile("(-)?(([0-2])?\\d|[3][0-4]) (([0-1])?\\d|[2][0-3])(:([0-5])?\\d(:([0-5])?\\d(\\.\\d{1,9})?)?)?");
-    public static final Pattern DURATION_LITERAL_NO_DAYS = Pattern.compile("(-)?\\d{1,3}:([0-5])?\\d(:([0-5])?\\d(\\.\\d{1,9})?)?");
+    public static final Pattern DURATION_LITERAL_WITH_DAYS = Pattern.compile("(?<sign>-)?(?<days>(?:[0-2]?\\d|3[0-4]))\\s+(?<hours>(?:[0-1]?\\d|2[0-3]))"
+            + "(?::(?<minutes>(?:[0-5]?\\d))(?::(?<seconds>(?:[0-5]?\\d))(?:\\.(?<fraction>\\d{1,9}))?)?)?");
+    public static final Pattern DURATION_LITERAL_NO_DAYS = Pattern
+            .compile("(?<sign>-)?(?<hours>\\d{1,3}):(?<minutes>(?:[0-5])?\\d)(?::(?<seconds>(?:[0-5])?\\d)(?:\\.(?<fraction>\\d{1,9}))?)?");
 
     // Mappings from TimeZone identifications (prefixed by type: Windows, TZ name, MetaZone, TZ alias, ...), to standard TimeZone Ids
     private static final String TIME_ZONE_MAPPINGS_RESOURCE = "/com/mysql/cj/util/TimeZoneMapping.properties";
@@ -127,6 +129,12 @@ public class TimeUtil {
         }
 
         return System.currentTimeMillis();
+    }
+
+    private static final int[] POW10 = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
+
+    public static int pow10(int exp) {
+        return POW10[exp];
     }
 
     /**
@@ -187,8 +195,8 @@ public class TimeUtil {
             throw ExceptionFactory.createException(WrongArgumentException.class, "fsp value must be in 0 to 6 range.");
         }
         Timestamp res = (Timestamp) ts.clone();
-        double tail = Math.pow(10, 9 - fsp);
-        int nanos = serverRoundFracSecs ? (int) Math.round(res.getNanos() / tail) * (int) tail : (int) (res.getNanos() / tail) * (int) tail;
+        int tail = POW10[9 - fsp];
+        int nanos = serverRoundFracSecs ? (res.getNanos() + tail / 2) / tail * tail : res.getNanos() / tail * tail;
         if (nanos > 999999999) { // if rounded up to the second then increment seconds
             nanos %= 1000000000; // get last 9 digits
             res.setTime(res.getTime() + 1000); // increment seconds
@@ -215,9 +223,8 @@ public class TimeUtil {
             throw ExceptionFactory.createException(WrongArgumentException.class, "fsp value must be in 0 to 6 range.");
         }
         int originalNano = x.getNano();
-        double tail = Math.pow(10, 9 - fsp);
-
-        int adjustedNano = serverRoundFracSecs ? (int) Math.round(originalNano / tail) * (int) tail : (int) (originalNano / tail) * (int) tail;
+        int tail = POW10[9 - fsp];
+        int adjustedNano = serverRoundFracSecs ? (originalNano + tail / 2) / tail * tail : originalNano / tail * tail;
         if (adjustedNano > 999999999) { // if rounded up to the second then increment seconds
             adjustedNano %= 1000000000;
             x = x.plusSeconds(1);
@@ -230,9 +237,8 @@ public class TimeUtil {
             throw ExceptionFactory.createException(WrongArgumentException.class, "fsp value must be in 0 to 6 range.");
         }
         int originalNano = x.getNano();
-        double tail = Math.pow(10, 9 - fsp);
-
-        int adjustedNano = serverRoundFracSecs ? (int) Math.round(originalNano / tail) * (int) tail : (int) (originalNano / tail) * (int) tail;
+        int tail = POW10[9 - fsp];
+        int adjustedNano = serverRoundFracSecs ? (originalNano + tail / 2) / tail * tail : originalNano / tail * tail;
         if (adjustedNano > 999999999) { // if rounded up to the second then increment seconds
             adjustedNano %= 1000000000;
             x = x.plusSeconds(1);
@@ -245,9 +251,8 @@ public class TimeUtil {
             throw ExceptionFactory.createException(WrongArgumentException.class, "fsp value must be in 0 to 6 range.");
         }
         int originalNano = x.getNano();
-        double tail = Math.pow(10, 9 - fsp);
-
-        int adjustedNano = serverRoundFracSecs ? (int) Math.round(originalNano / tail) * (int) tail : (int) (originalNano / tail) * (int) tail;
+        int tail = POW10[9 - fsp];
+        int adjustedNano = serverRoundFracSecs ? (originalNano + tail / 2) / tail * tail : originalNano / tail * tail;
         if (adjustedNano > 999999999) { // if rounded up to the second then increment seconds
             adjustedNano %= 1000000000;
             x = x.plusSeconds(1);
@@ -294,7 +299,7 @@ public class TimeUtil {
         }
 
         // just truncate because we expect the rounding was done before
-        nanos = (int) (nanos / Math.pow(10, 9 - fsp));
+        nanos /= POW10[9 - fsp];
         if (nanos == 0) {
             return "0";
         }
@@ -393,6 +398,8 @@ public class TimeUtil {
     }
 
     public static Object parseToDateTimeObject(String s, MysqlType targetMysqlType) {
+        Matcher m;
+
         if (DATE_LITERAL_WITH_DELIMITERS.matcher(s).matches()) {
             return LocalDate.parse(getCanonicalDate(s), DateTimeFormatter.ISO_LOCAL_DATE);
 
@@ -427,16 +434,37 @@ public class TimeUtil {
             return LocalDateTime.parse(getCanonicalDateTime(s),
                     new DateTimeFormatterBuilder().appendPattern("yyyy-MM-dd HH:mm:ss").appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true).toFormatter());
 
-        } else if (DURATION_LITERAL_WITH_DAYS.matcher(s).matches() || DURATION_LITERAL_NO_DAYS.matcher(s).matches()) {
-            s = s.startsWith("-") ? s.replace("-", "-P") : "P" + s;
-            s = s.contains(" ") ? s.replace(" ", "DT") : s.replace("P", "PT");
-            String[] ch = new String[] { "H", "M", "S" };
-            int pos = 0;
-            while (s.contains(":")) {
-                s = s.replaceFirst(":", ch[pos++]);
+        } else if ((m = DURATION_LITERAL_WITH_DAYS.matcher(s)).matches()) {
+            int da = m.group("days") == null ? 0 : Integer.parseInt(m.group("days"));
+            int hr = m.group("hours") == null ? 0 : Integer.parseInt(m.group("hours"));
+            int mi = m.group("minutes") == null ? 0 : Integer.parseInt(m.group("minutes"));
+            int se = m.group("seconds") == null ? 0 : Integer.parseInt(m.group("seconds"));
+            int na = 0;
+            if (m.group("fraction") != null) {
+                String fr = m.group("fraction");
+                na = Integer.parseInt(fr) * POW10[9 - fr.length()];
             }
-            s = s + ch[pos];
-            return Duration.parse(s);
+
+            Duration duration = Duration.ofDays(da).plusHours(hr).plusMinutes(mi).plusSeconds(se).plusNanos(na);
+            if (m.group("sign") != null) {
+                duration = duration.negated();
+            }
+            return duration;
+        } else if ((m = DURATION_LITERAL_NO_DAYS.matcher(s)).matches()) {
+            int hr = m.group("hours") == null ? 0 : Integer.parseInt(m.group("hours"));
+            int mi = m.group("minutes") == null ? 0 : Integer.parseInt(m.group("minutes"));
+            int se = m.group("seconds") == null ? 0 : Integer.parseInt(m.group("seconds"));
+            int na = 0;
+            if (m.group("fraction") != null) {
+                String fr = m.group("fraction");
+                na = Integer.parseInt(fr) * POW10[9 - fr.length()];
+            }
+
+            Duration duration = Duration.ofHours(hr).plusMinutes(mi).plusSeconds(se).plusNanos(na);
+            if (m.group("sign") != null) {
+                duration = duration.negated();
+            }
+            return duration;
         }
         throw ExceptionFactory.createException(WrongArgumentException.class, "There is no known date-time pattern for '" + s + "' value");
     }

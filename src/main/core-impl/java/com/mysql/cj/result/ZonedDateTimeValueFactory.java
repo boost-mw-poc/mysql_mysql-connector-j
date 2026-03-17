@@ -57,7 +57,7 @@ public class ZonedDateTimeValueFactory extends AbstractDateTimeValueFactory<Zone
      */
     @Override
     public ZonedDateTime localCreateFromTime(InternalTime it) {
-        if (it.getHours() < 0 || it.getHours() >= 24) {
+        if (it.isNegative() || it.getHours() >= 24) {
             throw new DataReadException(Messages.getString("ResultSet.InvalidTimeValue", new Object[] { it.toString() }));
         }
         return LocalDateTime.of(1970, 1, 1, it.getHours(), it.getMinutes(), it.getSeconds(), it.getNanos()).atZone(this.defaultTimeZone.toZoneId());

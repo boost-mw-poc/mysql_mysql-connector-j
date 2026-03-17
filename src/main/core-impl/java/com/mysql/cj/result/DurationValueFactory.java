@@ -38,9 +38,11 @@ public class DurationValueFactory extends AbstractDateTimeValueFactory<Duration>
 
     @Override
     public Duration localCreateFromTime(InternalTime it) {
-        String ptn = (it.getHours() < 0 ? "-PT" : "PT") + (it.getHours() < 0 ? -it.getHours() : it.getHours()) + "H" + it.getMinutes() + "M" + it.getSeconds()
-                + "." + it.getNanos() + "S";
-        return Duration.parse(ptn);
+        Duration duration = Duration.ofHours(it.getHours()).plusMinutes(it.getMinutes()).plusSeconds(it.getSeconds()).plusNanos(it.getNanos());
+        if (it.isNegative()) {
+            duration = duration.negated();
+        }
+        return duration;
     }
 
     @Override

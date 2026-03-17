@@ -60,6 +60,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -9061,6 +9062,36 @@ public class ResultSetRegressionTest extends BaseTestCase {
         assertEquals(4, this.rs.getInt(2));
         assertEquals(5, this.rs.getInt(3));
         assertEquals(2, this.rs.getInt(4));
+    }
+
+    /**
+     * Tests for Bug#119863 (Bug#38951042), Inaccurate decoding of negative TIME durations in Binary Protocol (Cursor Mode).
+     *
+     * @throws Exception
+     */
+    @Test
+    void testBug119863() throws Exception {
+        Duration expDuration = Duration.parse("-PT838H59M59S");
+
+        this.rs = this.stmt.executeQuery("SELECT CAST('-838:59:59' AS TIME)");
+        assertTrue(this.rs.next());
+        assertEquals("-838:59:59", this.rs.getString(1));
+        assertEquals(expDuration, this.rs.getObject(1, Duration.class));
+
+        boolean useSPS = false;
+        do {
+            final String testCase = String.format("Case: [useServerPrepStmts: %s]", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            try (Connection testConn = getConnectionWithProps(props)) {
+                this.pstmt = testConn.prepareStatement("SELECT CAST('-838:59:59' AS TIME)");
+                this.rs = this.pstmt.executeQuery();
+                assertTrue(this.rs.next(), testCase);
+                assertEquals("-838:59:59", this.rs.getString(1), testCase);
+                assertEquals(expDuration, this.rs.getObject(1, Duration.class), testCase);
+            }
+        } while (useSPS = !useSPS);
     }
 
 }

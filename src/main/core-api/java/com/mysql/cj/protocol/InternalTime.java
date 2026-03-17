@@ -51,10 +51,12 @@ public class InternalTime {
 
     public static InternalTime from(Duration x) {
         Duration durationAbs = x.abs();
-        long fullSeconds = durationAbs.getSeconds();
-        long fullMinutes = fullSeconds / 60;
-        long fullHours = fullMinutes / 60;
-        InternalTime internalTime = new InternalTime((int) fullHours, (int) (fullMinutes % 60), (int) (fullSeconds % 60), durationAbs.getNano(), -1);
+        long durationSeconds = durationAbs.getSeconds();
+        int hours = (int) (durationSeconds / 3600);
+        int minutes = (int) (durationSeconds % 3600 / 60);
+        int seconds = (int) (durationSeconds % 60);
+        int nanos = durationAbs.getNano();
+        InternalTime internalTime = new InternalTime(hours, minutes, seconds, nanos, -1);
         internalTime.setNegative(x.isNegative());
         return internalTime;
     }
@@ -70,7 +72,7 @@ public class InternalTime {
     }
 
     public InternalTime(int hours, int minutes, int seconds, int nanos, int scale) {
-        this.hours = hours;
+        setHours(hours);
         this.minutes = minutes;
         this.seconds = seconds;
         this.nanos = nanos;
@@ -90,7 +92,10 @@ public class InternalTime {
     }
 
     public void setHours(int hours) {
-        this.hours = hours;
+        this.hours = Math.abs(hours);
+        if (hours < 0) {
+            setNegative(true);
+        }
     }
 
     public int getMinutes() {
@@ -132,9 +137,10 @@ public class InternalTime {
     @Override
     public String toString() {
         if (this.nanos > 0) {
-            return String.format("%02d:%02d:%02d.%s", this.hours, this.minutes, this.seconds, TimeUtil.formatNanos(this.nanos, this.scale, false));
+            return String.format("%s%02d:%02d:%02d.%s", this.negative ? "-" : "", this.hours, this.minutes, this.seconds,
+                    TimeUtil.formatNanos(this.nanos, this.scale, false));
         }
-        return String.format("%02d:%02d:%02d", this.hours, this.minutes, this.seconds);
+        return String.format("%s%02d:%02d:%02d", this.negative ? "-" : "", this.hours, this.minutes, this.seconds);
     }
 
 }

@@ -76,7 +76,7 @@ public class SqlTimestampValueFactory extends AbstractDateTimeValueFactory<Times
      */
     @Override
     public Timestamp localCreateFromTime(InternalTime it) {
-        if (it.getHours() < 0 || it.getHours() >= 24) {
+        if (it.isNegative() || it.getHours() >= 24) {
             throw new DataReadException(Messages.getString("ResultSet.InvalidTimeValue", new Object[] { it.toString() }));
         }
 

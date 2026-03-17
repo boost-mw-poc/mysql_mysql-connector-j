@@ -52,7 +52,7 @@ public class StringValueFactoryTest extends CommonAsserts {
         assertEquals("12:20:02.0420", this.vf.createFromTime(new InternalTime(12, 20, 02, 42000000, 4)));
         assertEquals("12:20:02.000004", this.vf.createFromTime(new InternalTime(12, 20, 02, 4000, 6)));
         assertEquals("01:01:01.000001", this.vf.createFromTime(new InternalTime(1, 1, 1, 1000, 6)));
-        assertEquals("-1:00:00", this.vf.createFromTime(new InternalTime(-1, 0, 0, 0, 0)).toString());
+        assertEquals("-01:00:00", this.vf.createFromTime(new InternalTime(-1, 0, 0, 0, 0)).toString());
         assertEquals("-13:00:00", this.vf.createFromTime(new InternalTime(-13, 0, 0, 0, 0)).toString());
         assertEquals("44:05:06", this.vf.createFromTime(new InternalTime(44, 5, 6, 0, 0)).toString());
         assertEquals("44:05:06.000300", this.vf.createFromTime(new InternalTime(44, 5, 6, 300000, 6)).toString());
